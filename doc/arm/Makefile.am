@@ -79,7 +79,16 @@ EXTRA_DIST =					\
 	../misc/secondary.zoneopt		\
 	../misc/static-stub.zoneopt		\
 	../misc/stub.zoneopt			\
-	../notes/*.rst
+	../notes/notes-9.19.0.rst		\
+	../notes/notes-9.19.1.rst		\
+	../notes/notes-9.19.2.rst		\
+	../notes/notes-9.19.3.rst		\
+	../notes/notes-9.19.4.rst		\
+	../notes/notes-9.19.5.rst		\
+	../notes/notes-9.19.6.rst		\
+	../notes/notes-9.19.7.rst		\
+	../notes/notes-current.rst		\
+	../notes/notes-known-issues.rst	
 
 html-local:
 	$(AM_V_SPHINX)$(SPHINX_BUILD) -b html -d $(SPHINXBUILDDIR)/.doctrees/html $(ALLSPHINXOPTS) $(SPHINXBUILDDIR)/html
