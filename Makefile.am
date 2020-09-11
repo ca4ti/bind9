@@ -30,3 +30,12 @@ EXTRA_DIST =			\
 dist-hook:
 	find $(distdir) -type f -name .gitignore -delete
 	git rev-parse --short HEAD | cut -b1-7 > $(distdir)/srcid
+
+# By default 'dist' creates read-only directories and files. As system test
+# needs write access to some of those directories (so do few unit tests), add
+# necessary write permissions.
+distcheck-hook:
+	find $(distdir)/bin/tests/system -exec chmod u+w {} \;
+	chmod u+w $(distdir)/tests/isc/testdata/file/
+	chmod u+w $(distdir)/tests/dns/
+	chmod u+w $(distdir)/tests/dns/testdata/zt/zone1.db
