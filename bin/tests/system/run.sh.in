@@ -143,7 +143,7 @@ start_servers() {
     if $restart || [ "$run" -gt 0 ]; then
         restart_opt="--restart"
     fi
-    if ! $PERL start.pl ${restart_opt} --port "$PORT" "$systest"; then
+    if ! $PERL ${srcdir}/start.pl ${restart_opt} --port "$PORT" "$systest"; then
         echoinfo "I:$systest:starting servers failed"
         return 1
     fi
