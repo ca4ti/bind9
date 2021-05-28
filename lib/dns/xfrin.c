@@ -188,6 +188,14 @@ struct dns_xfrin_ctx {
 	isc_tlsctx_cache_t *tlsctx_cache;
 };
 
+typedef struct dns_xfrin_offload {
+	isc_mem_t *mctx;
+	dns_xfrin_ctx_t *xfr;
+	isc_result_t result;
+	isc_region_t region;
+	isc_sockaddr_t peer;
+} dns_xfrin_offload_t;
+
 #define XFRIN_MAGIC    ISC_MAGIC('X', 'f', 'r', 'I')
 #define VALID_XFRIN(x) ISC_MAGIC_VALID(x, XFRIN_MAGIC)
 
@@ -227,6 +235,8 @@ ixfr_putdata(dns_xfrin_ctx_t *xfr, dns_diffop_t op, dns_name_t *name,
 	     dns_ttl_t ttl, dns_rdata_t *rdata);
 static isc_result_t
 ixfr_commit(dns_xfrin_ctx_t *xfr);
+static void
+ixfr_finalize(dns_xfrin_ctx_t *xfr);
 
 static isc_result_t
 xfr_rr(dns_xfrin_ctx_t *xfr, dns_name_t *name, uint32_t ttl,
@@ -250,6 +260,9 @@ xfrin_destroy(dns_xfrin_ctx_t *xfr);
 
 static void
 xfrin_fail(dns_xfrin_ctx_t *xfr, isc_result_t result, const char *msg);
+static void
+xfrin_reset(dns_xfrin_ctx_t *xfr);
+
 static isc_result_t
 render(dns_message_t *msg, isc_mem_t *mctx, isc_buffer_t *buf);
 
@@ -264,6 +277,11 @@ xfrin_log1(int level, const char *zonetext, const isc_sockaddr_t *primaryaddr,
 static void
 xfrin_log(dns_xfrin_ctx_t *xfr, int level, const char *fmt, ...)
 	ISC_FORMAT_PRINTF(3, 4);
+
+static void
+xfrin_consume(void *data);
+static void
+xfrin_consume_done(void *data, isc_result_t result);
 
 /**************************************************************************/
 /*
@@ -365,13 +383,7 @@ failure:
 
 static isc_result_t
 axfr_finalize(dns_xfrin_ctx_t *xfr) {
-	isc_result_t result;
-
-	CHECK(dns_zone_replacedb(xfr->zone, xfr->db, true));
-
-	result = ISC_R_SUCCESS;
-failure:
-	return (result);
+	return (dns_zone_replacedb(xfr->zone, xfr->db, true));
 }
 
 /**************************************************************************/
@@ -481,6 +493,27 @@ ixfr_commit(dns_xfrin_ctx_t *xfr) {
 	result = ISC_R_SUCCESS;
 failure:
 	return (result);
+}
+
+static void
+ixfr_finalize(dns_xfrin_ctx_t *xfr) {
+	/*
+	 * Close the journal.
+	 */
+	if (xfr->ixfr.journal != NULL) {
+		dns_journal_destroy(&xfr->ixfr.journal);
+	}
+
+	/*
+	 * Inform the caller we succeeded.
+	 */
+	if (xfr->done != NULL) {
+		(xfr->done)(xfr->zone, ISC_R_SUCCESS);
+		xfr->done = NULL;
+	}
+
+	atomic_store(&xfr->shuttingdown, true);
+	xfr->shutdown_result = ISC_R_SUCCESS;
 }
 
 /**************************************************************************/
@@ -1328,23 +1361,73 @@ static void
 xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 		isc_region_t *region, void *cbarg) {
 	dns_xfrin_ctx_t *xfr = (dns_xfrin_ctx_t *)cbarg;
-	dns_message_t *msg = NULL;
-	dns_name_t *name = NULL;
-	const dns_name_t *tsigowner = NULL;
-	isc_buffer_t buffer;
-	isc_sockaddr_t peer;
+	dns_xfrin_offload_t *offload;
+	dns_transport_type_t transport_type = DNS_TRANSPORT_TCP;
 
 	REQUIRE(VALID_XFRIN(xfr));
-
-	isc_refcount_decrement0(&xfr->recvs);
+	REQUIRE(handle == xfr->readhandle);
 
 	if (atomic_load(&xfr->shuttingdown)) {
 		result = ISC_R_SHUTTINGDOWN;
 	}
 
-	CHECK(result);
+	if (result != ISC_R_SUCCESS) {
+		xfrin_fail(xfr, result, "failed while receiving responses");
+		isc_nmhandle_detach(&xfr->readhandle);
+		isc_refcount_decrement0(&xfr->recvs);
+		dns_xfrin_detach(&xfr); /* recv_xfr */
+		return;
+	}
+
+	if (xfr->transport != NULL) {
+		transport_type = dns_transport_get_type(xfr->transport);
+	}
 
 	xfrin_log(xfr, ISC_LOG_DEBUG(7), "received %u bytes", region->length);
+
+	offload = isc_mem_get(xfr->mctx, sizeof(*offload));
+	*offload = (dns_xfrin_offload_t){
+		.xfr = xfr,
+	};
+	isc_mem_attach(xfr->mctx, &offload->mctx);
+
+	/* FIXME: We need isc_nm_read() with "own" buffer here */
+	offload->region.base = isc_mem_get(xfr->mctx, region->length);
+	offload->region.length = region->length;
+	memmove(offload->region.base, region->base, region->length);
+
+	offload->peer = isc_nmhandle_peeraddr(handle);
+
+	switch (transport_type) {
+	case DNS_TRANSPORT_TCP:
+		isc_nm_work_offload(xfr->netmgr, xfrin_consume,
+				    xfrin_consume_done, offload);
+		return;
+	case DNS_TRANSPORT_TLS:
+		/* The TLSDNS layer must be synchronous */
+		xfrin_consume(offload);
+		xfrin_consume_done(offload, ISC_R_SUCCESS);
+		break;
+	default:
+		INSIST(0);
+		ISC_UNREACHABLE();
+	}
+}
+
+/*
+ * xfrin_consume() is run from the "offload" thread
+ */
+static void
+xfrin_consume(void *data) {
+	isc_result_t result = ISC_R_UNSET;
+	dns_xfrin_offload_t *offload = data;
+	dns_xfrin_ctx_t *xfr = NULL;
+	dns_name_t *name = NULL;
+	dns_message_t *msg = NULL;
+	const dns_name_t *tsigowner = NULL;
+	isc_buffer_t buffer;
+
+	xfr = offload->xfr;
 
 	dns_message_create(xfr->mctx, DNS_MESSAGE_INTENTPARSE, &msg);
 
@@ -1360,15 +1443,14 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 		msg->tcp_continuation = 1;
 	}
 
-	isc_buffer_init(&buffer, region->base, region->length);
-	isc_buffer_add(&buffer, region->length);
-	peer = isc_nmhandle_peeraddr(handle);
+	isc_buffer_init(&buffer, offload->region.base, offload->region.length);
+	isc_buffer_add(&buffer, offload->region.length);
 
 	result = dns_message_parse(msg, &buffer,
 				   DNS_MESSAGEPARSE_PRESERVEORDER);
 	if (result == ISC_R_SUCCESS) {
-		dns_message_logpacket(msg, "received message from", &peer,
-				      DNS_LOGCATEGORY_XFER_IN,
+		dns_message_logpacket(msg, "received message from",
+				      &offload->peer, DNS_LOGCATEGORY_XFER_IN,
 				      DNS_LOGMODULE_XFER_IN, ISC_LOG_DEBUG(10),
 				      xfr->mctx);
 	} else {
@@ -1376,42 +1458,36 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 			  isc_result_totext(result));
 	}
 
-	if (result != ISC_R_SUCCESS || msg->rcode != dns_rcode_noerror ||
-	    msg->opcode != dns_opcode_query || msg->rdclass != xfr->rdclass ||
-	    msg->id != xfr->id)
-	{
-		if (result == ISC_R_SUCCESS && msg->rcode != dns_rcode_noerror)
-		{
+	switch (result) {
+	case DNS_R_NOERROR:
+		/* The original code didn't make much sense */
+		INSIST(0);
+		ISC_UNREACHABLE();
+		break;
+	case ISC_R_SUCCESS:
+		if (msg->rcode != dns_rcode_noerror) {
 			result = dns_result_fromrcode(msg->rcode);
-		} else if (result == ISC_R_SUCCESS &&
-			   msg->opcode != dns_opcode_query) {
+		} else if (msg->opcode != dns_opcode_query) {
 			result = DNS_R_UNEXPECTEDOPCODE;
-		} else if (result == ISC_R_SUCCESS &&
-			   msg->rdclass != xfr->rdclass) {
+		} else if (msg->rdclass != xfr->rdclass) {
 			result = DNS_R_BADCLASS;
-		} else if (result == ISC_R_SUCCESS || result == DNS_R_NOERROR) {
+		} else if (msg->id != xfr->id) {
 			result = DNS_R_UNEXPECTEDID;
+		} else {
+			break;
 		}
-
+		/* fallthrough */
+	default:
 		if (xfr->reqtype == dns_rdatatype_axfr ||
 		    xfr->reqtype == dns_rdatatype_soa) {
 			goto failure;
 		}
-
 		xfrin_log(xfr, ISC_LOG_DEBUG(3), "got %s, retrying with AXFR",
 			  isc_result_totext(result));
-	try_axfr:
-		isc_nmhandle_detach(&xfr->readhandle);
+
 		dns_message_detach(&msg);
-		xfrin_reset(xfr);
-		xfr->reqtype = dns_rdatatype_soa;
-		xfr->state = XFRST_SOAQUERY;
-		result = xfrin_start(xfr);
-		if (result != ISC_R_SUCCESS) {
-			xfrin_fail(xfr, result, "failed setting up socket");
-		}
-		dns_xfrin_detach(&xfr); /* recv_xfr */
-		return;
+		result = DNS_R_TRYAXFR;
+		goto failure;
 	}
 
 	/*
@@ -1481,7 +1557,8 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 	{
 		xfrin_log(xfr, ISC_LOG_DEBUG(3),
 			  "empty answer section, retrying with AXFR");
-		goto try_axfr;
+		result = DNS_R_TRYAXFR;
+		goto failure;
 	}
 
 	if (xfr->reqtype == dns_rdatatype_soa &&
@@ -1566,6 +1643,48 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 	xfr->tsigctx = msg->tsigctx;
 	msg->tsigctx = NULL;
 
+	result = ISC_R_SUCCESS;
+
+failure:
+	/* We don't need the parsed message anymore */
+	dns_message_detach(&msg);
+	offload->result = result;
+}
+
+/*
+ * The xfrin_consume_done() is run on the matching uv_loop
+ */
+static void
+xfrin_consume_done(void *data, isc_result_t result) {
+	dns_xfrin_offload_t *offload = data;
+	dns_xfrin_ctx_t *xfr = offload->xfr;
+
+	REQUIRE(VALID_XFRIN(xfr));
+	/* We don't ever cancel the offloaded processing,
+	   it will always finish */
+	REQUIRE(result == ISC_R_SUCCESS);
+
+	switch (offload->result) {
+	case ISC_R_SUCCESS:
+		break;
+	case DNS_R_TRYAXFR:
+		isc_nm_cancelread(xfr->readhandle);
+		isc_nmhandle_detach(&xfr->readhandle);
+		isc_refcount_decrement0(&xfr->recvs);
+
+		xfrin_reset(xfr);
+		xfr->reqtype = dns_rdatatype_soa;
+		xfr->state = XFRST_SOAQUERY;
+		result = xfrin_start(xfr);
+		if (result != ISC_R_SUCCESS) {
+			xfrin_fail(xfr, result, "failed setting up socket");
+		}
+		goto detach_xfr;
+	default:
+		result = offload->result;
+		goto failure;
+	}
+
 	switch (xfr->state) {
 	case XFRST_GOTSOA:
 		xfr->reqtype = dns_rdatatype_axfr;
@@ -1574,36 +1693,21 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 		break;
 	case XFRST_AXFR_END:
 		CHECK(axfr_finalize(xfr));
-		/* FALLTHROUGH */
+		/* fallthrough */
 	case XFRST_IXFR_END:
-		/*
-		 * Close the journal.
-		 */
-		if (xfr->ixfr.journal != NULL) {
-			dns_journal_destroy(&xfr->ixfr.journal);
-		}
-
-		/*
-		 * Inform the caller we succeeded.
-		 */
-		if (xfr->done != NULL) {
-			(xfr->done)(xfr->zone, ISC_R_SUCCESS);
-			xfr->done = NULL;
-		}
-
-		atomic_store(&xfr->shuttingdown, true);
-		xfr->shutdown_result = ISC_R_SUCCESS;
+		ixfr_finalize(xfr);
 		break;
 	default:
 		/*
-		 * Read the next message.
+		 * Read the next message.  We need to wait for the offload work
+		 * to finish and only then we can restart the reading on the TCP
+		 * socket.
 		 */
 		/* The readhandle is still attached */
 		/* The recv_xfr is still attached */
-		dns_message_detach(&msg);
-		isc_refcount_increment0(&xfr->recvs);
+		/* The recvs is still counted */
 		isc_nm_read(xfr->handle, xfrin_recv_done, xfr);
-		return;
+		goto detach_offload;
 	}
 
 failure:
@@ -1611,11 +1715,16 @@ failure:
 		xfrin_fail(xfr, result, "failed while receiving responses");
 	}
 
-	if (msg != NULL) {
-		dns_message_detach(&msg);
-	}
 	isc_nmhandle_detach(&xfr->readhandle);
+	isc_refcount_decrement0(&xfr->recvs);
+
+detach_xfr:
 	dns_xfrin_detach(&xfr); /* recv_xfr */
+
+detach_offload:
+	isc_mem_put(offload->mctx, offload->region.base,
+		    offload->region.length);
+	isc_mem_putanddetach(&offload->mctx, offload, sizeof(*offload));
 }
 
 static void

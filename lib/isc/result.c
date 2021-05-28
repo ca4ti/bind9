@@ -238,6 +238,7 @@ static const char *description[ISC_R_NRESULTS] = {
 	[DST_R_BADKEYTYPE] = "bad key type",
 	[DST_R_NOENGINE] = "no engine",
 	[DST_R_EXTERNALKEY] = "illegal operation for an external key",
+	[DNS_R_TRYAXFR] = "retry with AXFR",
 
 	[DNS_R_NOERROR] = "NOERROR",
 	[DNS_R_FORMERR] = "FORMERR",
@@ -464,6 +465,7 @@ static const char *identifier[ISC_R_NRESULTS] = {
 	[DNS_R_NSEC3BADALG] = "DNS_R_NSEC3BADALG",
 	[DNS_R_NSEC3RESALT] = "DNS_R_NSEC3RESALT",
 	[DNS_R_INCONSISTENTRR] = "DNS_R_INCONSISTENTRR",
+	[DNS_R_TRYAXFR] = "DNS_R_TRYAXFR",
 
 	[DST_R_UNSUPPORTEDALG] = "DST_R_UNSUPPORTEDALG",
 	[DST_R_CRYPTOFAILURE] = "DST_R_CRYPTOFAILURE",
