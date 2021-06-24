@@ -252,6 +252,7 @@ zone "expired-sigs.autosign" {
 	file "expired-sigs.autosign.db";
 	inline-signing yes;
 	dnssec-policy "autosign";
+	zonemd-check no;
 };
 
 /*
@@ -302,6 +303,7 @@ zone "zsk-retired.autosign" {
 	file "zsk-retired.autosign.db";
 	inline-signing yes;
 	dnssec-policy "autosign";
+	zonemd-check no;
 };
 
 /*
@@ -358,6 +360,7 @@ zone "step4.zsk-prepub.autosign" {
 	file "step4.zsk-prepub.autosign.db";
 	inline-signing yes;
 	dnssec-policy "zsk-prepub";
+	zonemd-check no;
 };
 zone "step5.zsk-prepub.autosign" {
 	type primary;

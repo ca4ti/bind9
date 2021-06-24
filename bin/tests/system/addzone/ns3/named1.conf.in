@@ -30,6 +30,7 @@ options {
 zone "." {
 	type primary;
 	file "redirect.db";
+	zonemd-check no;
 };
 
 primaries "test" {
