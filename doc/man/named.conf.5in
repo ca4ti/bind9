@@ -374,6 +374,9 @@ options {
 	zero\-no\-soa\-ttl <boolean>;
 	zero\-no\-soa\-ttl\-cache <boolean>;
 	zone\-statistics ( full | terse | none | <boolean> );
+	zonemd\-check <boolean>;
+	zonemd\-dnssec\-only <boolean>;
+	zonemd\-required <boolean>;
 };
 
 parental\-agents <string> [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... }; // may occur multiple times
@@ -648,6 +651,9 @@ view <string> [ <class> ] {
 	zero\-no\-soa\-ttl <boolean>;
 	zero\-no\-soa\-ttl\-cache <boolean>;
 	zone\-statistics ( full | terse | none | <boolean> );
+	zonemd\-check <boolean>;
+	zonemd\-dnssec\-only <boolean>;
+	zonemd\-required <boolean>;
 }; // may occur multiple times
 
 
@@ -723,6 +729,9 @@ zone <string> [ <class> ] {
 	update\-policy ( local | { ( deny | grant ) <string> ( 6to4\-self | external | krb5\-self | krb5\-selfsub | krb5\-subdomain | krb5\-subdomain\-self\-rhs | ms\-self | ms\-selfsub | ms\-subdomain | ms\-subdomain\-self\-rhs | name | self | selfsub | selfwild | subdomain | tcp\-self | wildcard | zonesub ) [ <string> ] <rrtypelist>; ... };
 	zero\-no\-soa\-ttl <boolean>;
 	zone\-statistics ( full | terse | none | <boolean> );
+	zonemd\-check <boolean>;
+	zonemd\-dnssec\-only <boolean>;
+	zonemd\-required <boolean>;
 };
 
 .ft P
@@ -798,6 +807,9 @@ zone <string> [ <class> ] {
 	use\-alt\-transfer\-source <boolean>;
 	zero\-no\-soa\-ttl <boolean>;
 	zone\-statistics ( full | terse | none | <boolean> );
+	zonemd\-check <boolean>;
+	zonemd\-dnssec\-only <boolean>;
+	zonemd\-required <boolean>;
 };
 
 .ft P
@@ -851,6 +863,9 @@ zone <string> [ <class> ] {
 	use\-alt\-transfer\-source <boolean>;
 	zero\-no\-soa\-ttl <boolean>;
 	zone\-statistics ( full | terse | none | <boolean> );
+	zonemd\-check <boolean>;
+	zonemd\-dnssec\-only <boolean>;
+	zonemd\-required <boolean>;
 };
 
 .ft P
