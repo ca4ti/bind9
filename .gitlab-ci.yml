@@ -20,6 +20,8 @@ variables:
   SCAN_BUILD: scan-build-13
   ASAN_SYMBOLIZER_PATH: /usr/lib/llvm-13/bin/llvm-symbolizer
   CLANG_FORMAT: clang-format-13
+  CLANG_TIDY: clang-tidy-13
+  CLANG_APPLY_REPLACEMENTS: clang-apply-replacements-13
 
   CFLAGS_COMMON: -fno-omit-frame-pointer -fno-optimize-sibling-calls -O1 -g -Wall -Wextra 
 
@@ -429,12 +431,18 @@ misc:
     expire_in: "1 day"
     when: on_failure
 
-clang-format:
-  <<: *precheck_job
+clang-tidy:
+  <<: *default_triggering_rules
+  <<: *base_image
+  stage: postcheck
   needs: []
   script:
-    - if [ -r .clang-format ]; then "${CLANG_FORMAT}" -i -style=file $(git ls-files '*.c' '*.h'); fi
-    - git diff > clang-format.patch
+    - *configure
+    - (make bind.keys.h)
+    - (cd lib/dns && make gen include/dns/enumtype.h include/dns/enumclass.h include/dns/rdatastruct.h code.h)
+    - (make -nwk all || true) | compiledb
+    - if [ -r .clang-format ]; then ./util/run-clang-tidy.sh; fi
+    - if [ -r .clang-format ]; then ./util/run-clang-format.sh; fi
     - if test "$(git status --porcelain | grep -Ev '\?\?' | wc -l)" -gt "0"; then git status --short; exit 1; fi
   artifacts:
     paths:
