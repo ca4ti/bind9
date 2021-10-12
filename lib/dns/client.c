@@ -51,13 +51,13 @@
 
 #include <dst/dst.h>
 
-#define DNS_CLIENT_MAGIC    ISC_MAGIC('D', 'N', 'S', 'c')
+#define DNS_CLIENT_MAGIC ISC_MAGIC('D', 'N', 'S', 'c')
 #define DNS_CLIENT_VALID(c) ISC_MAGIC_VALID(c, DNS_CLIENT_MAGIC)
 
-#define RCTX_MAGIC    ISC_MAGIC('R', 'c', 't', 'x')
+#define RCTX_MAGIC ISC_MAGIC('R', 'c', 't', 'x')
 #define RCTX_VALID(c) ISC_MAGIC_VALID(c, RCTX_MAGIC)
 
-#define UCTX_MAGIC    ISC_MAGIC('U', 'c', 't', 'x')
+#define UCTX_MAGIC ISC_MAGIC('U', 'c', 't', 'x')
 #define UCTX_VALID(c) ISC_MAGIC_VALID(c, UCTX_MAGIC)
 
 #define MAX_RESTARTS 16
@@ -103,7 +103,7 @@ struct dns_client {
 	ISC_LIST(struct resctx) resctxs;
 };
 
-#define DEF_FIND_TIMEOUT    5
+#define DEF_FIND_TIMEOUT 5
 #define DEF_FIND_UDPRETRIES 3
 
 /*%
@@ -855,7 +855,7 @@ client_resfind(resctx_t *rctx, dns_fetchevent_t *event) {
 			ansname = NULL;
 		}
 
-	done:
+done:
 		/*
 		 * Free temporary resources
 		 */

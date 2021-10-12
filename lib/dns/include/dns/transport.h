@@ -16,20 +16,20 @@
 #include <dns/name.h>
 
 typedef enum {
-	DNS_TRANSPORT_NONE = 0,
-	DNS_TRANSPORT_UDP = 1,
-	DNS_TRANSPORT_TCP = 2,
-	DNS_TRANSPORT_TLS = 3,
-	DNS_TRANSPORT_HTTP = 4,
+	DNS_TRANSPORT_NONE  = 0,
+	DNS_TRANSPORT_UDP   = 1,
+	DNS_TRANSPORT_TCP   = 2,
+	DNS_TRANSPORT_TLS   = 3,
+	DNS_TRANSPORT_HTTP  = 4,
 	DNS_TRANSPORT_COUNT = 5,
 } dns_transport_type_t;
 
 typedef enum {
-	DNS_HTTP_GET = 0,
+	DNS_HTTP_GET  = 0,
 	DNS_HTTP_POST = 1,
 } dns_http_mode_t;
 
-typedef struct dns_transport	  dns_transport_t;
+typedef struct dns_transport      dns_transport_t;
 typedef struct dns_transport_list dns_transport_list_t;
 
 dns_transport_t *
@@ -62,7 +62,7 @@ uint32_t
 dns_transport_get_tls_versions(const dns_transport_t *transport);
 bool
 dns_transport_get_prefer_server_ciphers(const dns_transport_t *transport,
-					bool		     *preferp);
+					bool                  *preferp);
 /*%<
  * Getter functions: return the type, cert file, key file, CA file,
  * hostname, HTTP endpoint, or HTTP mode (GET or POST) for 'transport'.
@@ -91,10 +91,10 @@ dns_transport_set_tlsname(dns_transport_t *transport, const char *tlsname);
 
 void
 dns_transport_set_tls_versions(dns_transport_t *transport,
-			       const uint32_t	tls_versions);
+			       const uint32_t   tls_versions);
 void
 dns_transport_set_prefer_server_ciphers(dns_transport_t *transport,
-					const bool	 prefer);
+					const bool       prefer);
 /*%<
  * Setter functions: set the type, cert file, key file, CA file,
  * hostname, HTTP endpoint, or HTTP mode (GET or POST) for 'transport'.

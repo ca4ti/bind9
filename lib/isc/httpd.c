@@ -40,19 +40,19 @@
 		}                              \
 	} while (0)
 
-#define HTTP_RECVLEN	 4096
-#define HTTP_SENDGROW	 1024
+#define HTTP_RECVLEN 4096
+#define HTTP_SENDGROW 1024
 #define HTTP_SEND_MAXLEN 10240
 
-#define HTTPD_CLOSE	     0x0001 /* Got a Connection: close header */
-#define HTTPD_FOUNDHOST	     0x0002 /* Got a Host: header */
-#define HTTPD_KEEPALIVE	     0x0004 /* Got a Connection: Keep-Alive */
+#define HTTPD_CLOSE 0x0001     /* Got a Connection: close header */
+#define HTTPD_FOUNDHOST 0x0002 /* Got a Host: header */
+#define HTTPD_KEEPALIVE 0x0004 /* Got a Connection: Keep-Alive */
 #define HTTPD_ACCEPT_DEFLATE 0x0008
 
-#define HTTPD_MAGIC    ISC_MAGIC('H', 't', 'p', 'd')
+#define HTTPD_MAGIC ISC_MAGIC('H', 't', 'p', 'd')
 #define VALID_HTTPD(m) ISC_MAGIC_VALID(m, HTTPD_MAGIC)
 
-#define HTTPDMGR_MAGIC	  ISC_MAGIC('H', 'p', 'd', 'm')
+#define HTTPDMGR_MAGIC ISC_MAGIC('H', 'p', 'd', 'm')
 #define VALID_HTTPDMGR(m) ISC_MAGIC_VALID(m, HTTPDMGR_MAGIC)
 
 /*%
@@ -77,7 +77,7 @@ struct isc_httpd {
 	isc_httpdmgr_t *mgr; /*%< our parent */
 	ISC_LINK(isc_httpd_t) link;
 
-	isc_nmhandle_t *handle;	    /* Permanent pointer to handle */
+	isc_nmhandle_t *handle;     /* Permanent pointer to handle */
 	isc_nmhandle_t *readhandle; /* Waiting for a read callback */
 	isc_nmhandle_t *sendhandle; /* Waiting for a send callback */
 
@@ -88,9 +88,9 @@ struct isc_httpd {
 	 * Received data state.
 	 */
 	char recvbuf[HTTP_RECVLEN]; /*%< receive buffer */
-	uint32_t recvlen;	    /*%< length recv'd */
-	uint32_t consume;	    /*%< length of last command */
-	char *headers;		    /*%< set in process_request() */
+	uint32_t recvlen;           /*%< length recv'd */
+	uint32_t consume;           /*%< length of last command */
+	char *headers;              /*%< set in process_request() */
 	bool truncated;
 	method_t method;
 	char *url;
@@ -140,9 +140,9 @@ struct isc_httpdmgr {
 	isc_mem_t *mctx;
 	isc_nmsocket_t *sock;
 
-	isc_httpdclientok_t *client_ok;	 /*%< client validator */
+	isc_httpdclientok_t *client_ok;  /*%< client validator */
 	isc_httpdondestroy_t *ondestroy; /*%< cleanup callback */
-	void *cb_arg;			 /*%< argument for the above */
+	void *cb_arg;                    /*%< argument for the above */
 
 	unsigned int flags;
 	ISC_LIST(isc_httpd_t) running; /*%< running clients */
@@ -1137,9 +1137,9 @@ httpd_addheaderuint(isc_httpd_t *httpd, const char *name, int val) {
 
 	snprintf(buf, sizeof(buf), "%d", val);
 
-	needlen = strlen(name);	    /* name itself */
+	needlen = strlen(name);     /* name itself */
 	needlen += 2 + strlen(buf); /* :<space> and val */
-	needlen += 2;		    /* CRLF */
+	needlen += 2;               /* CRLF */
 
 	while (isc_buffer_availablelength(&httpd->headerbuffer) < needlen) {
 		result = grow_headerspace(httpd);

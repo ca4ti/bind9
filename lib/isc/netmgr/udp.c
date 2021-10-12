@@ -36,11 +36,11 @@
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
 #if defined(RTM_VERSION) && defined(RTM_NEWADDR) && defined(RTM_DELADDR)
-#define USE_ROUTE_SOCKET      1
-#define ROUTE_SOCKET_PF	      PF_ROUTE
+#define USE_ROUTE_SOCKET 1
+#define ROUTE_SOCKET_PF PF_ROUTE
 #define ROUTE_SOCKET_PROTOCOL 0
-#define MSGHDR		      rt_msghdr
-#define MSGTYPE		      rtm_type
+#define MSGHDR rt_msghdr
+#define MSGTYPE rtm_type
 #endif /* if defined(RTM_VERSION) && defined(RTM_NEWADDR) && \
 	* defined(RTM_DELADDR) */
 #endif /* ifdef HAVE_NET_ROUTE_H */
@@ -49,12 +49,12 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #if defined(RTM_NEWADDR) && defined(RTM_DELADDR)
-#define USE_ROUTE_SOCKET      1
-#define USE_NETLINK	      1
-#define ROUTE_SOCKET_PF	      PF_NETLINK
+#define USE_ROUTE_SOCKET 1
+#define USE_NETLINK 1
+#define ROUTE_SOCKET_PF PF_NETLINK
 #define ROUTE_SOCKET_PROTOCOL NETLINK_ROUTE
-#define MSGHDR		      nlmsghdr
-#define MSGTYPE		      nlmsg_type
+#define MSGHDR nlmsghdr
+#define MSGTYPE nlmsg_type
 #endif /* if defined(RTM_NEWADDR) && defined(RTM_DELADDR) */
 #endif /* if defined(HAVE_LINUX_NETLINK_H) && defined(HAVE_LINUX_RTNETLINK_H) \
 	*/
@@ -1098,7 +1098,7 @@ isc__nm_udp_failed_read_cb(isc_nmsocket_t *sock, isc_result_t result) {
 			isc__nm_readcb(sock, req, result);
 		}
 
-	destroy:
+destroy:
 		isc__nmsocket_prep_destroy(sock);
 		return;
 	}

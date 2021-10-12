@@ -65,16 +65,15 @@
 /***
  *** Imports.
  ***/
-#include <inttypes.h>
-
-#include <isc/lang.h>
-#include <isc/types.h>
-
 #include <arpa/inet.h> /* Contractual promise. */
+#include <inttypes.h>
 #include <net/if.h>
 #include <netinet/in.h> /* Contractual promise. */
 #include <sys/socket.h> /* Contractual promise. */
 #include <sys/types.h>
+
+#include <isc/lang.h>
+#include <isc/types.h>
 
 #ifndef IN6ADDR_LOOPBACK_INIT
 #ifdef s6_addr
@@ -278,7 +277,7 @@ isc_net_probeunix(void);
 #define ISC_NET_DSCPSETV6  0x08 /* Can set DSCP on socket IPv6 */
 #define ISC_NET_DSCPPKTV4  0x10 /* Can set DSCP on per packet IPv4 */
 #define ISC_NET_DSCPPKTV6  0x20 /* Can set DSCP on per packet IPv6 */
-#define ISC_NET_DSCPALL	   0x3f /* All valid flags */
+#define ISC_NET_DSCPALL    0x3f /* All valid flags */
 
 unsigned int
 isc_net_probedscp(void);

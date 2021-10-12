@@ -56,11 +56,11 @@
 
 #define STATS_XML_VERSION_MAJOR "3"
 #define STATS_XML_VERSION_MINOR "12"
-#define STATS_XML_VERSION	STATS_XML_VERSION_MAJOR "." STATS_XML_VERSION_MINOR
+#define STATS_XML_VERSION STATS_XML_VERSION_MAJOR "." STATS_XML_VERSION_MINOR
 
 #define STATS_JSON_VERSION_MAJOR "1"
 #define STATS_JSON_VERSION_MINOR "6"
-#define STATS_JSON_VERSION	 STATS_JSON_VERSION_MAJOR "." STATS_JSON_VERSION_MINOR
+#define STATS_JSON_VERSION STATS_JSON_VERSION_MAJOR "." STATS_JSON_VERSION_MINOR
 
 #define CHECK(m)                               \
 	do {                                   \
@@ -89,9 +89,9 @@ struct named_statschannel {
 
 typedef struct stats_dumparg {
 	isc_statsformat_t type;
-	void *arg;		 /* type dependent argument */
-	int ncounters;		 /* for general statistics */
-	int *counterindices;	 /* for general statistics */
+	void *arg;               /* type dependent argument */
+	int ncounters;           /* for general statistics */
+	int *counterindices;     /* for general statistics */
 	uint64_t *countervalues; /* for general statistics */
 	isc_result_t result;
 } stats_dumparg_t;
@@ -172,18 +172,18 @@ static const char *tcpoutsizestats_xmldesc[dns_sizecounter_out_max];
 static const char *dnstapstats_xmldesc[dns_dnstapcounter_max];
 static const char *gluecachestats_xmldesc[dns_gluecachestatscounter_max];
 #else /* if defined(EXTENDED_STATS) */
-#define nsstats_xmldesc		NULL
-#define resstats_xmldesc	NULL
-#define adbstats_xmldesc	NULL
-#define zonestats_xmldesc	NULL
-#define sockstats_xmldesc	NULL
-#define dnssecstats_xmldesc	NULL
-#define udpinsizestats_xmldesc	NULL
+#define nsstats_xmldesc NULL
+#define resstats_xmldesc NULL
+#define adbstats_xmldesc NULL
+#define zonestats_xmldesc NULL
+#define sockstats_xmldesc NULL
+#define dnssecstats_xmldesc NULL
+#define udpinsizestats_xmldesc NULL
 #define udpoutsizestats_xmldesc NULL
-#define tcpinsizestats_xmldesc	NULL
+#define tcpinsizestats_xmldesc NULL
 #define tcpoutsizestats_xmldesc NULL
-#define dnstapstats_xmldesc	NULL
-#define gluecachestats_xmldesc	NULL
+#define dnstapstats_xmldesc NULL
+#define gluecachestats_xmldesc NULL
 #endif /* EXTENDED_STATS */
 
 #define TRY0(a)                       \
@@ -1487,7 +1487,7 @@ rdtypestat_dump(dns_rdatastatstype_t type, uint64_t val, void *arg) {
 		TRY0(xmlTextWriterWriteFormatString(writer, "%" PRIu64, val));
 
 		TRY0(xmlTextWriterEndElement(writer)); /* type */
-#endif						       /* ifdef HAVE_LIBXML2 */
+#endif                                                 /* ifdef HAVE_LIBXML2 */
 		break;
 	case isc_statsformat_json:
 #ifdef HAVE_JSON_C
@@ -1573,7 +1573,7 @@ rdatasetstats_dump(dns_rdatastatstype_t type, uint64_t val, void *arg) {
 		TRY0(xmlTextWriterEndElement(writer)); /* counter */
 
 		TRY0(xmlTextWriterEndElement(writer)); /* rrset */
-#endif						       /* ifdef HAVE_LIBXML2 */
+#endif                                                 /* ifdef HAVE_LIBXML2 */
 		break;
 	case isc_statsformat_json:
 #ifdef HAVE_JSON_C
@@ -1629,7 +1629,7 @@ opcodestat_dump(dns_opcode_t code, uint64_t val, void *arg) {
 						 ISC_XMLCHAR codebuf));
 		TRY0(xmlTextWriterWriteFormatString(writer, "%" PRIu64, val));
 		TRY0(xmlTextWriterEndElement(writer)); /* counter */
-#endif						       /* ifdef HAVE_LIBXML2 */
+#endif                                                 /* ifdef HAVE_LIBXML2 */
 		break;
 	case isc_statsformat_json:
 #ifdef HAVE_JSON_C
@@ -1685,7 +1685,7 @@ rcodestat_dump(dns_rcode_t code, uint64_t val, void *arg) {
 						 ISC_XMLCHAR codebuf));
 		TRY0(xmlTextWriterWriteFormatString(writer, "%" PRIu64, val));
 		TRY0(xmlTextWriterEndElement(writer)); /* counter */
-#endif						       /* ifdef HAVE_LIBXML2 */
+#endif                                                 /* ifdef HAVE_LIBXML2 */
 		break;
 	case isc_statsformat_json:
 #ifdef HAVE_JSON_C
@@ -1739,7 +1739,7 @@ dnssecsignstat_dump(dns_keytag_t tag, uint64_t val, void *arg) {
 						 ISC_XMLCHAR tagbuf));
 		TRY0(xmlTextWriterWriteFormatString(writer, "%" PRIu64, val));
 		TRY0(xmlTextWriterEndElement(writer)); /* counter */
-#endif						       /* ifdef HAVE_LIBXML2 */
+#endif                                                 /* ifdef HAVE_LIBXML2 */
 		break;
 	case isc_statsformat_json:
 #ifdef HAVE_JSON_C
@@ -1768,14 +1768,14 @@ cleanup:
 /*
  * Which statistics to include when rendering to XML
  */
-#define STATS_XML_STATUS  0x00 /* display only common statistics */
-#define STATS_XML_SERVER  0x01
-#define STATS_XML_ZONES	  0x02
-#define STATS_XML_TASKS	  0x04
-#define STATS_XML_NET	  0x08
-#define STATS_XML_MEM	  0x10
+#define STATS_XML_STATUS 0x00 /* display only common statistics */
+#define STATS_XML_SERVER 0x01
+#define STATS_XML_ZONES 0x02
+#define STATS_XML_TASKS 0x04
+#define STATS_XML_NET 0x08
+#define STATS_XML_MEM 0x10
 #define STATS_XML_TRAFFIC 0x20
-#define STATS_XML_ALL	  0xff
+#define STATS_XML_ALL 0xff
 
 static isc_result_t
 zone_xmlrender(dns_zone_t *zone, void *arg) {
@@ -2494,14 +2494,14 @@ render_xml_traffic(const char *url, isc_httpdurl_t *urlinfo,
 /*
  * Which statistics to include when rendering to JSON
  */
-#define STATS_JSON_STATUS  0x00 /* display only common statistics */
-#define STATS_JSON_SERVER  0x01
-#define STATS_JSON_ZONES   0x02
-#define STATS_JSON_TASKS   0x04
-#define STATS_JSON_NET	   0x08
-#define STATS_JSON_MEM	   0x10
+#define STATS_JSON_STATUS 0x00 /* display only common statistics */
+#define STATS_JSON_SERVER 0x01
+#define STATS_JSON_ZONES 0x02
+#define STATS_JSON_TASKS 0x04
+#define STATS_JSON_NET 0x08
+#define STATS_JSON_MEM 0x10
 #define STATS_JSON_TRAFFIC 0x20
-#define STATS_JSON_ALL	   0xff
+#define STATS_JSON_ALL 0xff
 
 #define CHECKMEM(m)                              \
 	do {                                     \

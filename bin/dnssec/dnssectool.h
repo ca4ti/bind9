@@ -26,8 +26,8 @@
 
 /*! verbosity: set by -v and -q option in each program, defined in dnssectool.c
  */
-extern int verbose;
-extern bool quiet;
+extern int         verbose;
+extern bool        quiet;
 
 /*! program name, statically initialized in each program */
 extern const char *program;
@@ -42,7 +42,7 @@ extern const char *journal;
  * terminated by a zero. The size of the array is an arbitrary limit
  * which should be greater than the number of known digest types.
  */
-extern uint8_t dtype[8];
+extern uint8_t     dtype[8];
 
 typedef void(fatalcallback_t)(void);
 

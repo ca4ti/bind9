@@ -35,7 +35,7 @@
 #ifdef HAVE_NET_ROUTE_H
 #include <net/route.h>
 #if defined(RTM_VERSION) && defined(RTM_NEWADDR) && defined(RTM_DELADDR)
-#define MSGHDR	rt_msghdr
+#define MSGHDR rt_msghdr
 #define MSGTYPE rtm_type
 #endif /* if defined(RTM_VERSION) && defined(RTM_NEWADDR) && \
 	* defined(RTM_DELADDR) */
@@ -46,7 +46,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #if defined(RTM_NEWADDR) && defined(RTM_DELADDR)
-#define MSGHDR	nlmsghdr
+#define MSGHDR nlmsghdr
 #define MSGTYPE nlmsg_type
 #endif /* if defined(RTM_NEWADDR) && defined(RTM_DELADDR) */
 #endif /* if defined(HAVE_LINUX_NETLINK_H) && defined(HAVE_LINUX_RTNETLINK_H) \
@@ -60,7 +60,7 @@
 #define UDPBUFFERS 1000
 #endif /* TUNE_LARGE */
 
-#define IFMGR_MAGIC		 ISC_MAGIC('I', 'F', 'M', 'G')
+#define IFMGR_MAGIC ISC_MAGIC('I', 'F', 'M', 'G')
 #define NS_INTERFACEMGR_VALID(t) ISC_MAGIC_VALID(t, IFMGR_MAGIC)
 
 #define IFMGR_COMMON_LOGARGS \
@@ -71,21 +71,21 @@ struct ns_interfacemgr {
 	unsigned int magic; /*%< Magic number */
 	isc_refcount_t references;
 	isc_mutex_t lock;
-	isc_mem_t *mctx;	  /*%< Memory context */
-	ns_server_t *sctx;	  /*%< Server context */
-	isc_taskmgr_t *taskmgr;	  /*%< Task manager */
-	isc_task_t *excl;	  /*%< Exclusive task */
+	isc_mem_t *mctx;          /*%< Memory context */
+	ns_server_t *sctx;        /*%< Server context */
+	isc_taskmgr_t *taskmgr;   /*%< Task manager */
+	isc_task_t *excl;         /*%< Exclusive task */
 	isc_timermgr_t *timermgr; /*%< Timer manager */
-	isc_nm_t *nm;		  /*%< Net manager */
-	int ncpus;		  /*%< Number of workers */
+	isc_nm_t *nm;             /*%< Net manager */
+	int ncpus;                /*%< Number of workers */
 	dns_dispatchmgr_t *dispatchmgr;
 	unsigned int generation; /*%< Current generation no */
 	ns_listenlist_t *listenon4;
 	ns_listenlist_t *listenon6;
-	dns_aclenv_t *aclenv;		     /*%< Localhost/localnets ACLs */
+	dns_aclenv_t *aclenv;                /*%< Localhost/localnets ACLs */
 	ISC_LIST(ns_interface_t) interfaces; /*%< List of interfaces */
 	ISC_LIST(isc_sockaddr_t) listenon;
-	int backlog;		     /*%< Listen queue size */
+	int backlog;                 /*%< Listen queue size */
 	atomic_bool shuttingdown;    /*%< Interfacemgr shutting down */
 	ns_clientmgr_t **clientmgrs; /*%< Client managers */
 	isc_nmhandle_t *route;
@@ -1133,7 +1133,7 @@ do_scan(ns_interfacemgr_t *mgr, bool verbose, bool config) {
 			goto ignore_interface;
 		}
 
-	listenon:
+listenon:
 		ll = (family == AF_INET) ? mgr->listenon4 : mgr->listenon6;
 		dolistenon = true;
 		for (le = ISC_LIST_HEAD(ll->elts); le != NULL;
@@ -1260,7 +1260,7 @@ do_scan(ns_interfacemgr_t *mgr, bool verbose, bool config) {
 		}
 		continue;
 
-	ignore_interface:
+ignore_interface:
 		isc_log_write(IFMGR_COMMON_LOGARGS, ISC_LOG_ERROR,
 			      "ignoring %s interface %s: %s",
 			      (family == AF_INET) ? "IPv4" : "IPv6",

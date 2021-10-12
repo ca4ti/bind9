@@ -31,7 +31,7 @@
 #include "../time.c"
 
 #define NS_PER_S 1000000000 /*%< Nanoseconds per second. */
-#define MAX_NS	 (NS_PER_S - 1)
+#define MAX_NS (NS_PER_S - 1)
 
 struct time_vectors {
 	isc_time_t a;

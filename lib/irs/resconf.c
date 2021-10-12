@@ -52,7 +52,7 @@
 
 #include <irs/resconf.h>
 
-#define IRS_RESCONF_MAGIC    ISC_MAGIC('R', 'E', 'S', 'c')
+#define IRS_RESCONF_MAGIC ISC_MAGIC('R', 'E', 'S', 'c')
 #define IRS_RESCONF_VALID(c) ISC_MAGIC_VALID(c, IRS_RESCONF_MAGIC)
 
 /*!
@@ -71,10 +71,10 @@
  * resolv.conf parameters
  */
 
-#define RESCONFMAXNAMESERVERS 3U   /*%< max 3 "nameserver" entries */
-#define RESCONFMAXSEARCH      8U   /*%< max 8 domains in "search" entry */
-#define RESCONFMAXLINELEN     256U /*%< max size of a line */
-#define RESCONFMAXSORTLIST    10U  /*%< max 10 */
+#define RESCONFMAXNAMESERVERS 3U /*%< max 3 "nameserver" entries */
+#define RESCONFMAXSEARCH 8U      /*%< max 8 domains in "search" entry */
+#define RESCONFMAXLINELEN 256U   /*%< max size of a line */
+#define RESCONFMAXSORTLIST 10U   /*%< max 10 */
 
 #define CHECK(op)                            \
 	do {                                 \
@@ -392,7 +392,7 @@ resconf_parsesearch(irs_resconf_t *conf, FILE *fp) {
 		idx++;
 		conf->searchnxt++;
 
-	ignore:
+ignore:
 		if (delim == EOF || delim == '\n') {
 			break;
 		} else {

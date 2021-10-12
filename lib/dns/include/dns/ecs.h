@@ -39,8 +39,8 @@
  */
 struct dns_ecs {
 	isc_netaddr_t addr;
-	uint8_t	      source;
-	uint8_t	      scope;
+	uint8_t       source;
+	uint8_t       scope;
 };
 
 /* <address>/NNN/NNN */

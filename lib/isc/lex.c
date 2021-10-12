@@ -46,7 +46,7 @@ typedef struct inputsource {
 	ISC_LINK(struct inputsource) link;
 } inputsource;
 
-#define LEX_MAGIC    ISC_MAGIC('L', 'e', 'x', '!')
+#define LEX_MAGIC ISC_MAGIC('L', 'e', 'x', '!')
 #define VALID_LEX(l) ISC_MAGIC_VALID(l, LEX_MAGIC)
 
 struct isc_lex {
@@ -500,7 +500,7 @@ isc_lex_gettoken(isc_lex_t *lex, unsigned int options, isc_token_t *tokenp) {
 			}
 		}
 
-	no_read:
+no_read:
 		/* INSIST(c == EOF || (c >= 0 && c <= 255)); */
 		switch (state) {
 		case lexstate_start:

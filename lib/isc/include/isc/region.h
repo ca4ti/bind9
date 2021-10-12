@@ -24,7 +24,7 @@ struct isc_region {
 };
 
 struct isc_textregion {
-	char	     *base;
+	char        *base;
 	unsigned int length;
 };
 
@@ -59,7 +59,7 @@ struct isc_consttextregion {
 #define isc_textregion_consume(r, l)        \
 	do {                                \
 		isc_textregion_t *_r = (r); \
-		unsigned int	  _l = (l); \
+		unsigned int      _l = (l); \
 		INSIST(_r->length >= _l);   \
 		_r->base += _l;             \
 		_r->length -= _l;           \
@@ -68,7 +68,7 @@ struct isc_consttextregion {
 #define isc_constregion_consume(r, l)        \
 	do {                                 \
 		isc_constregion_t *_r = (r); \
-		unsigned int	   _l = (l); \
+		unsigned int       _l = (l); \
 		INSIST(_r->length >= _l);    \
 		_r->base += _l;              \
 		_r->length -= _l;            \

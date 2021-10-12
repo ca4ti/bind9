@@ -63,7 +63,7 @@ typedef struct dns_clientinfo {
 } dns_clientinfo_t;
 
 typedef isc_result_t (*dns_clientinfo_sourceip_t)(dns_clientinfo_t *client,
-						  isc_sockaddr_t	 **addrp);
+						  isc_sockaddr_t  **addrp);
 
 #define DNS_CLIENTINFOMETHODS_VERSION 2
 #define DNS_CLIENTINFOMETHODS_AGE     1
@@ -73,8 +73,8 @@ typedef isc_result_t (*dns_clientinfo_sourceip_t)(dns_clientinfo_t *client,
  * contrib/modules/dlz/dlz_minmal.h.
  */
 typedef struct dns_clientinfomethods {
-	uint16_t		  version;
-	uint16_t		  age;
+	uint16_t                  version;
+	uint16_t                  age;
 	dns_clientinfo_sourceip_t sourceip;
 } dns_clientinfomethods_t;
 

@@ -19,9 +19,9 @@
 #pragma once
 
 #include <pthread.h>
-#define dlz_mutex_t	  pthread_mutex_t
-#define dlz_mutex_init	  pthread_mutex_init
+#define dlz_mutex_t       pthread_mutex_t
+#define dlz_mutex_init    pthread_mutex_init
 #define dlz_mutex_destroy pthread_mutex_destroy
-#define dlz_mutex_lock	  pthread_mutex_lock
+#define dlz_mutex_lock    pthread_mutex_lock
 #define dlz_mutex_trylock pthread_mutex_trylock
 #define dlz_mutex_unlock  pthread_mutex_unlock

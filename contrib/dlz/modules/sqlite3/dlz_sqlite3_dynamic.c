@@ -44,12 +44,12 @@
 #include <dlz_pthread.h>
 
 #define dbc_search_limit 30
-#define ALLNODES	 1
-#define ALLOWXFR	 2
-#define AUTHORITY	 3
-#define FINDZONE	 4
-#define COUNTZONE	 5
-#define LOOKUP		 6
+#define ALLNODES 1
+#define ALLOWXFR 2
+#define AUTHORITY 3
+#define FINDZONE 4
+#define COUNTZONE 5
+#define LOOKUP 6
 
 #define safeGet(in) in == NULL ? "" : in
 
@@ -79,7 +79,7 @@ typedef struct {
 	unsigned int pnRow;    /* Number of result rows */
 	unsigned int pnColumn; /* Number of result columns */
 	unsigned int curRow;   /* Current row */
-	char *pzErrmsg;	       /* Error message */
+	char *pzErrmsg;        /* Error message */
 } sqlite3_res_t;
 
 /* forward references */
@@ -492,7 +492,7 @@ sqlite3_process_rs(sqlite3_instance_t *db, dns_sdlzlookup_t *lookup,
 	char *endp;
 	int ttl;
 
-	row = sqlite3_fetch_row(rs);	 /* get a row from the result set */
+	row = sqlite3_fetch_row(rs);     /* get a row from the result set */
 	fields = sqlite3_num_fields(rs); /* how many columns in result set */
 	while (row != NULL) {
 		unsigned int len = 0;

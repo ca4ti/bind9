@@ -851,7 +851,7 @@ protoneg_check_protocol(const uint8_t **pout, uint8_t *pout_len,
 }
 
 /* dot prepended by its length (3 bytes) */
-#define DOT_PROTO_ALPN	   "\x3" ISC_TLS_DOT_PROTO_ALPN_ID
+#define DOT_PROTO_ALPN "\x3" ISC_TLS_DOT_PROTO_ALPN_ID
 #define DOT_PROTO_ALPN_LEN (sizeof(DOT_PROTO_ALPN) - 1)
 
 static bool
@@ -901,7 +901,7 @@ isc_tlsctx_enable_dot_server_alpn(isc_tlsctx_t *tls) {
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 
-#define TLSCTX_CACHE_MAGIC    ISC_MAGIC('T', 'l', 'S', 'c')
+#define TLSCTX_CACHE_MAGIC ISC_MAGIC('T', 'l', 'S', 'c')
 #define VALID_TLSCTX_CACHE(t) ISC_MAGIC_VALID(t, TLSCTX_CACHE_MAGIC)
 
 typedef struct isc_tlsctx_cache_entry {

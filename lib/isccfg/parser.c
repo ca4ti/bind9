@@ -181,7 +181,7 @@ cfg_rep_t cfg_rep_duration = { "duration", free_noop };
  * An implicit list.  These are formed by clauses that occur multiple times.
  */
 static cfg_type_t cfg_type_implicitlist = { "implicitlist", NULL,
-					    print_list,	    NULL,
+					    print_list,     NULL,
 					    &cfg_rep_list,  NULL };
 
 /* Functions. */
@@ -772,7 +772,7 @@ cfg_obj_isvoid(const cfg_obj_t *obj) {
 	return (obj->type->rep == &cfg_rep_void);
 }
 
-cfg_type_t cfg_type_void = { "void",	   cfg_parse_void, cfg_print_void,
+cfg_type_t cfg_type_void = { "void",       cfg_parse_void, cfg_print_void,
 			     cfg_doc_void, &cfg_rep_void,  NULL };
 
 /*
@@ -830,9 +830,9 @@ cfg_obj_aspercentage(const cfg_obj_t *obj) {
 	return (obj->value.uint32);
 }
 
-cfg_type_t cfg_type_percentage = { "percentage",	 cfg_parse_percentage,
+cfg_type_t cfg_type_percentage = { "percentage",         cfg_parse_percentage,
 				   cfg_print_percentage, cfg_doc_terminal,
-				   &cfg_rep_percentage,	 NULL };
+				   &cfg_rep_percentage,  NULL };
 
 bool
 cfg_obj_ispercentage(const cfg_obj_t *obj) {
@@ -913,9 +913,9 @@ cfg_obj_asfixedpoint(const cfg_obj_t *obj) {
 	return (obj->value.uint32);
 }
 
-cfg_type_t cfg_type_fixedpoint = { "fixedpoint",	 cfg_parse_fixedpoint,
+cfg_type_t cfg_type_fixedpoint = { "fixedpoint",         cfg_parse_fixedpoint,
 				   cfg_print_fixedpoint, cfg_doc_terminal,
-				   &cfg_rep_fixedpoint,	 NULL };
+				   &cfg_rep_fixedpoint,  NULL };
 
 bool
 cfg_obj_isfixedpoint(const cfg_obj_t *obj) {
@@ -980,9 +980,9 @@ cfg_obj_asuint32(const cfg_obj_t *obj) {
 	return (obj->value.uint32);
 }
 
-cfg_type_t cfg_type_uint32 = { "integer",	 cfg_parse_uint32,
+cfg_type_t cfg_type_uint32 = { "integer",        cfg_parse_uint32,
 			       cfg_print_uint32, cfg_doc_terminal,
-			       &cfg_rep_uint32,	 NULL };
+			       &cfg_rep_uint32,  NULL };
 
 /*
  * uint64
@@ -1009,7 +1009,7 @@ cfg_print_uint64(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 
 cfg_type_t cfg_type_uint64 = { "64_bit_integer", NULL,
 			       cfg_print_uint64, cfg_doc_terminal,
-			       &cfg_rep_uint64,	 NULL };
+			       &cfg_rep_uint64,  NULL };
 
 /*
  * Get the number of digits in a number.
@@ -1144,8 +1144,8 @@ uint32_t
 cfg_obj_asduration(const cfg_obj_t *obj) {
 	REQUIRE(obj != NULL && obj->type->rep == &cfg_rep_duration);
 	uint32_t duration = 0;
-	duration += obj->value.duration.parts[6];	      /* Seconds */
-	duration += obj->value.duration.parts[5] * 60;	      /* Minutes */
+	duration += obj->value.duration.parts[6];             /* Seconds */
+	duration += obj->value.duration.parts[5] * 60;        /* Minutes */
 	duration += obj->value.duration.parts[4] * 3600;      /* Hours */
 	duration += obj->value.duration.parts[3] * 86400;     /* Days */
 	duration += obj->value.duration.parts[2] * 86400 * 7; /* Weaks */
@@ -1153,7 +1153,7 @@ cfg_obj_asduration(const cfg_obj_t *obj) {
 	 * The below additions are not entirely correct
 	 * because days may very per month and per year.
 	 */
-	duration += obj->value.duration.parts[1] * 86400 * 31;	/* Months */
+	duration += obj->value.duration.parts[1] * 86400 * 31;  /* Months */
 	duration += obj->value.duration.parts[0] * 86400 * 365; /* Years */
 	return (duration);
 }
@@ -1393,7 +1393,7 @@ cleanup:
  *
  * A duration can also be a TTL value (number + optional unit).
  */
-cfg_type_t cfg_type_duration = { "duration",	     cfg_parse_duration,
+cfg_type_t cfg_type_duration = { "duration",         cfg_parse_duration,
 				 cfg_print_duration, cfg_doc_terminal,
 				 &cfg_rep_duration,  NULL };
 cfg_type_t cfg_type_duration_or_unlimited = { "duration_or_unlimited",
@@ -1706,25 +1706,25 @@ cfg_obj_asstring(const cfg_obj_t *obj) {
 
 /* Quoted string only */
 cfg_type_t cfg_type_qstring = { "quoted_string", cfg_parse_qstring,
-				print_qstring,	 cfg_doc_terminal,
+				print_qstring,   cfg_doc_terminal,
 				&cfg_rep_string, NULL };
 
 /* Unquoted string only */
-cfg_type_t cfg_type_ustring = { "string",	   parse_ustring,
+cfg_type_t cfg_type_ustring = { "string",          parse_ustring,
 				cfg_print_ustring, cfg_doc_terminal,
 				&cfg_rep_string,   NULL };
 
 /* Any string (quoted or unquoted); printed with quotes */
-cfg_type_t cfg_type_astring = { "string",	 cfg_parse_astring,
-				print_qstring,	 cfg_doc_terminal,
+cfg_type_t cfg_type_astring = { "string",        cfg_parse_astring,
+				print_qstring,   cfg_doc_terminal,
 				&cfg_rep_string, NULL };
 
 /*
  * Any string (quoted or unquoted); printed with quotes.
  * If CFG_PRINTER_XKEY is set when printing the string will be '?' out.
  */
-cfg_type_t cfg_type_sstring = { "string",	 cfg_parse_sstring,
-				print_sstring,	 cfg_doc_terminal,
+cfg_type_t cfg_type_sstring = { "string",        cfg_parse_sstring,
+				print_sstring,   cfg_doc_terminal,
 				&cfg_rep_string, NULL };
 
 /*
@@ -1733,8 +1733,8 @@ cfg_type_t cfg_type_sstring = { "string",	 cfg_parse_sstring,
  * bracket balance, but not otherwise parsed.
  */
 cfg_type_t cfg_type_bracketed_text = { "bracketed_text", parse_btext,
-				       print_btext,	 doc_btext,
-				       &cfg_rep_string,	 NULL };
+				       print_btext,      doc_btext,
+				       &cfg_rep_string,  NULL };
 
 #if defined(HAVE_GEOIP2)
 /*
@@ -1742,13 +1742,13 @@ cfg_type_t cfg_type_bracketed_text = { "bracketed_text", parse_btext,
  * geoip [ db <database> ] search-type <string>
  */
 static const char *geoiptype_enums[] = {
-	"area",	      "areacode",  "asnum",	  "city",     "continent",
+	"area",       "areacode",  "asnum",       "city",     "continent",
 	"country",    "country3",  "countryname", "domain",   "isp",
-	"metro",      "metrocode", "netspeed",	  "org",      "postal",
-	"postalcode", "region",	   "regionname",  "timezone", "tz",
+	"metro",      "metrocode", "netspeed",    "org",      "postal",
+	"postalcode", "region",    "regionname",  "timezone", "tz",
 	NULL
 };
-static cfg_type_t cfg_type_geoiptype = { "geoiptype",	    cfg_parse_enum,
+static cfg_type_t cfg_type_geoiptype = { "geoiptype",       cfg_parse_enum,
 					 cfg_print_ustring, cfg_doc_enum,
 					 &cfg_rep_string,   &geoiptype_enums };
 
@@ -1760,7 +1760,7 @@ static cfg_tuplefielddef_t geoip_fields[] = {
 	{ NULL, NULL, 0 }
 };
 
-static cfg_type_t cfg_type_geoip = { "geoip",	parse_geoip,	print_geoip,
+static cfg_type_t cfg_type_geoip = { "geoip",   parse_geoip,    print_geoip,
 				     doc_geoip, &cfg_rep_tuple, geoip_fields };
 
 static isc_result_t
@@ -1872,7 +1872,7 @@ parse_addrmatchelt(cfg_parser_t *pctx, const cfg_type_t *type,
 			goto bad;
 		}
 	} else {
-	bad:
+bad:
 		cfg_parser_error(pctx, CFG_LOG_NEAR,
 				 "expected IP match list element");
 		return (ISC_R_UNEXPECTEDTOKEN);
@@ -2040,7 +2040,7 @@ cfg_print_boolean(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 	}
 }
 
-cfg_type_t cfg_type_boolean = { "boolean",	   cfg_parse_boolean,
+cfg_type_t cfg_type_boolean = { "boolean",         cfg_parse_boolean,
 				cfg_print_boolean, cfg_doc_terminal,
 				&cfg_rep_boolean,  NULL };
 
@@ -2356,7 +2356,7 @@ cfg_parse_mapbody(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	for (;;) {
 		cfg_listelt_t *elt;
 
-	redo:
+redo:
 		/*
 		 * Parse the option name and see if it is known.
 		 */
@@ -2408,7 +2408,7 @@ cfg_parse_mapbody(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 				}
 			}
 		}
-	done:
+done:
 		if (clause == NULL || clause->name == NULL) {
 			cfg_parser_error(pctx, CFG_LOG_NOPREP,
 					 "unknown option");
@@ -2932,9 +2932,9 @@ cleanup:
 	return (result);
 }
 
-cfg_type_t cfg_type_token = { "token",		 parse_token,
+cfg_type_t cfg_type_token = { "token",           parse_token,
 			      cfg_print_ustring, cfg_doc_terminal,
-			      &cfg_rep_string,	 NULL };
+			      &cfg_rep_string,   NULL };
 
 /*
  * An unsupported option.  This is just a list of tokens with balanced braces
@@ -2983,9 +2983,9 @@ cleanup:
 	return (result);
 }
 
-cfg_type_t cfg_type_unsupported = { "unsupported",	 parse_unsupported,
+cfg_type_t cfg_type_unsupported = { "unsupported",       parse_unsupported,
 				    cfg_print_spacelist, cfg_doc_terminal,
-				    &cfg_rep_list,	 NULL };
+				    &cfg_rep_list,       NULL };
 
 /*
  * Try interpreting the current token as a network address.
@@ -3039,8 +3039,8 @@ token_addr(cfg_parser_t *pctx, unsigned int flags, isc_netaddr_t *na) {
 			}
 		}
 		if ((flags & CFG_ADDR_V6OK) != 0 && strlen(s) <= 127U) {
-			char buf[128];	   /* see lib/bind9/getaddresses.c */
-			char *d;	   /* zone delimiter */
+			char buf[128];     /* see lib/bind9/getaddresses.c */
+			char *d;           /* zone delimiter */
 			uint32_t zone = 0; /* scope zone ID */
 
 			strlcpy(buf, s, sizeof(buf));
@@ -3244,25 +3244,25 @@ cfg_doc_netaddr(cfg_printer_t *pctx, const cfg_type_t *type) {
 	}
 }
 
-cfg_type_t cfg_type_netaddr = { "netaddr",	    parse_netaddr,
+cfg_type_t cfg_type_netaddr = { "netaddr",          parse_netaddr,
 				cfg_print_sockaddr, cfg_doc_netaddr,
 				&cfg_rep_sockaddr,  &netaddr_flags };
 
-cfg_type_t cfg_type_netaddr4 = { "netaddr4",	     parse_netaddr,
+cfg_type_t cfg_type_netaddr4 = { "netaddr4",         parse_netaddr,
 				 cfg_print_sockaddr, cfg_doc_netaddr,
 				 &cfg_rep_sockaddr,  &netaddr4_flags };
 
-cfg_type_t cfg_type_netaddr4wild = { "netaddr4wild",	 parse_netaddr,
+cfg_type_t cfg_type_netaddr4wild = { "netaddr4wild",     parse_netaddr,
 				     cfg_print_sockaddr, cfg_doc_netaddr,
-				     &cfg_rep_sockaddr,	 &netaddr4wild_flags };
+				     &cfg_rep_sockaddr,  &netaddr4wild_flags };
 
-cfg_type_t cfg_type_netaddr6 = { "netaddr6",	     parse_netaddr,
+cfg_type_t cfg_type_netaddr6 = { "netaddr6",         parse_netaddr,
 				 cfg_print_sockaddr, cfg_doc_netaddr,
 				 &cfg_rep_sockaddr,  &netaddr6_flags };
 
-cfg_type_t cfg_type_netaddr6wild = { "netaddr6wild",	 parse_netaddr,
+cfg_type_t cfg_type_netaddr6wild = { "netaddr6wild",     parse_netaddr,
 				     cfg_print_sockaddr, cfg_doc_netaddr,
-				     &cfg_rep_sockaddr,	 &netaddr6wild_flags };
+				     &cfg_rep_sockaddr,  &netaddr6wild_flags };
 
 /* netprefix */
 
@@ -3369,7 +3369,7 @@ cfg_obj_asnetprefix(const cfg_obj_t *obj, isc_netaddr_t *netaddr,
 	*prefixlen = obj->value.netprefix.prefixlen;
 }
 
-cfg_type_t cfg_type_netprefix = { "netprefix",	      cfg_parse_netprefix,
+cfg_type_t cfg_type_netprefix = { "netprefix",        cfg_parse_netprefix,
 				  print_netprefix,    cfg_doc_terminal,
 				  &cfg_rep_netprefix, NULL };
 
@@ -3427,15 +3427,15 @@ cleanup:
 }
 
 static unsigned int sockaddr_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK;
-cfg_type_t cfg_type_sockaddr = { "sockaddr",	     cfg_parse_sockaddr,
+cfg_type_t cfg_type_sockaddr = { "sockaddr",         cfg_parse_sockaddr,
 				 cfg_print_sockaddr, cfg_doc_sockaddr,
 				 &cfg_rep_sockaddr,  &sockaddr_flags };
 
 static unsigned int sockaddrdscp_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK |
 					 CFG_ADDR_DSCPOK;
-cfg_type_t cfg_type_sockaddrdscp = { "sockaddr",	 cfg_parse_sockaddr,
+cfg_type_t cfg_type_sockaddrdscp = { "sockaddr",         cfg_parse_sockaddr,
 				     cfg_print_sockaddr, cfg_doc_sockaddr,
-				     &cfg_rep_sockaddr,	 &sockaddrdscp_flags };
+				     &cfg_rep_sockaddr,  &sockaddrdscp_flags };
 
 isc_result_t
 cfg_parse_sockaddr(cfg_parser_t *pctx, const cfg_type_t *type,

@@ -27,32 +27,32 @@
 ISC_LANG_BEGINDECLS
 
 typedef enum {
-	dns_ssumatchtype_name = 0,
-	dns_ssumatchtype_subdomain = 1,
-	dns_ssumatchtype_wildcard = 2,
-	dns_ssumatchtype_self = 3,
-	dns_ssumatchtype_selfsub = 4,
-	dns_ssumatchtype_selfwild = 5,
-	dns_ssumatchtype_selfkrb5 = 6,
-	dns_ssumatchtype_selfms = 7,
-	dns_ssumatchtype_subdomainms = 8,
-	dns_ssumatchtype_subdomainkrb5 = 9,
-	dns_ssumatchtype_tcpself = 10,
-	dns_ssumatchtype_6to4self = 11,
-	dns_ssumatchtype_external = 12,
-	dns_ssumatchtype_local = 13,
-	dns_ssumatchtype_selfsubms = 14,
-	dns_ssumatchtype_selfsubkrb5 = 15,
+	dns_ssumatchtype_name                 = 0,
+	dns_ssumatchtype_subdomain            = 1,
+	dns_ssumatchtype_wildcard             = 2,
+	dns_ssumatchtype_self                 = 3,
+	dns_ssumatchtype_selfsub              = 4,
+	dns_ssumatchtype_selfwild             = 5,
+	dns_ssumatchtype_selfkrb5             = 6,
+	dns_ssumatchtype_selfms               = 7,
+	dns_ssumatchtype_subdomainms          = 8,
+	dns_ssumatchtype_subdomainkrb5        = 9,
+	dns_ssumatchtype_tcpself              = 10,
+	dns_ssumatchtype_6to4self             = 11,
+	dns_ssumatchtype_external             = 12,
+	dns_ssumatchtype_local                = 13,
+	dns_ssumatchtype_selfsubms            = 14,
+	dns_ssumatchtype_selfsubkrb5          = 15,
 	dns_ssumatchtype_subdomainselfkrb5rhs = 16,
-	dns_ssumatchtype_subdomainselfmsrhs = 17,
-	dns_ssumatchtype_max = 17, /* max value */
+	dns_ssumatchtype_subdomainselfmsrhs   = 17,
+	dns_ssumatchtype_max                  = 17, /* max value */
 
 	dns_ssumatchtype_dlz = 18 /* intentionally higher than _max */
 } dns_ssumatchtype_t;
 
 typedef struct dns_ssuruletype {
 	dns_rdatatype_t type; /* type allowed */
-	unsigned int	max;  /* maximum number of records allowed. */
+	unsigned int    max;  /* maximum number of records allowed. */
 } dns_ssuruletype_t;
 
 void

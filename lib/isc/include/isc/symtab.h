@@ -88,9 +88,9 @@
  ***/
 /*% Symbol table value. */
 typedef union isc_symvalue {
-	void	     *as_pointer;
+	void        *as_pointer;
 	const void  *as_cpointer;
-	int	     as_integer;
+	int          as_integer;
 	unsigned int as_uinteger;
 } isc_symvalue_t;
 
@@ -98,9 +98,9 @@ typedef void (*isc_symtabaction_t)(char *key, unsigned int type,
 				   isc_symvalue_t value, void *userarg);
 /*% Symbol table exists. */
 typedef enum {
-	isc_symexists_reject = 0,  /*%< Disallow the define */
+	isc_symexists_reject  = 0, /*%< Disallow the define */
 	isc_symexists_replace = 1, /*%< Replace the old value with the new */
-	isc_symexists_add = 2	   /*%< Add the new tuple */
+	isc_symexists_add     = 2  /*%< Add the new tuple */
 } isc_symexists_t;
 
 ISC_LANG_BEGINDECLS
