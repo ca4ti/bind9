@@ -168,7 +168,7 @@ isc_hex_decodestring(const char *cstr, isc_buffer_t *target) {
 
 	hex_decode_init(&ctx, -1, target);
 	for (;;) {
-		int c = *cstr++;
+		int c = (unsigned char)*cstr++;
 		if (c == '\0') {
 			break;
 		}
