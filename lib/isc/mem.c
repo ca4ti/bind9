@@ -60,8 +60,8 @@
 
 #include "mem_p.h"
 
-#define MCTXLOCK(m) LOCK(&m->lock)
-#define MCTXUNLOCK(m) UNLOCK(&m->lock)
+#define MCTXLOCK(m) LOCK(&(m)->lock)
+#define MCTXUNLOCK(m) UNLOCK(&(m)->lock)
 
 #ifndef ISC_MEM_DEBUGGING
 #define ISC_MEM_DEBUGGING 0
@@ -191,7 +191,7 @@ struct isc_mempool {
 #define TRACE_OR_RECORD (ISC_MEM_DEBUGTRACE | ISC_MEM_DEBUGRECORD)
 
 #define SHOULD_TRACE_OR_RECORD(ptr) \
-	((isc_mem_debugging & TRACE_OR_RECORD) != 0 && ptr != NULL)
+	(((isc_mem_debugging & TRACE_OR_RECORD) != 0) && (ptr) != NULL)
 
 #define ADD_TRACE(a, b, c, d, e)                \
 	if (SHOULD_TRACE_OR_RECORD(b)) {        \
@@ -326,9 +326,9 @@ unlock:
 }
 #endif /* ISC_MEM_TRACKLINES */
 
-#define ADJUST_ZERO_ALLOCATION_SIZE(s)    \
-	if (s == 0) {                     \
-		s = ZERO_ALLOCATION_SIZE; \
+#define ADJUST_ZERO_ALLOCATION_SIZE(s)      \
+	if ((s) == 0) {                     \
+		(s) = ZERO_ALLOCATION_SIZE; \
 	}
 
 #define MEM_ALIGN(a) ((a) ? MALLOCX_ALIGN(a) : 0)
@@ -388,10 +388,10 @@ mem_realloc(isc_mem_t *ctx, void *old_ptr, size_t old_size, size_t new_size,
 	return (new_ptr);
 }
 
-#define stats_bucket(ctx, size)                      \
-	((size / STATS_BUCKET_SIZE) >= STATS_BUCKETS \
-		 ? &ctx->stats[STATS_BUCKETS]        \
-		 : &ctx->stats[size / STATS_BUCKET_SIZE])
+#define stats_bucket(ctx, size)                        \
+	(((size) / STATS_BUCKET_SIZE) >= STATS_BUCKETS \
+		 ? &(ctx)->stats[STATS_BUCKETS]        \
+		 : &(ctx)->stats[(size) / STATS_BUCKET_SIZE])
 
 /*!
  * Update internal counters after a memory get.
@@ -677,18 +677,18 @@ isc__mem_destroy(isc_mem_t **ctxp FLARG) {
 	*ctxp = NULL;
 }
 
-#define CALL_HI_WATER(ctx)                                             \
-	{                                                              \
-		if (ctx->water != NULL && hi_water(ctx)) {             \
-			(ctx->water)(ctx->water_arg, ISC_MEM_HIWATER); \
-		}                                                      \
+#define CALL_HI_WATER(ctx)                                                 \
+	{                                                                  \
+		if ((ctx)->water != NULL && hi_water(ctx)) {               \
+			((ctx)->water)((ctx)->water_arg, ISC_MEM_HIWATER); \
+		}                                                          \
 	}
 
-#define CALL_LO_WATER(ctx)                                             \
-	{                                                              \
-		if ((ctx->water != NULL) && lo_water(ctx)) {           \
-			(ctx->water)(ctx->water_arg, ISC_MEM_LOWATER); \
-		}                                                      \
+#define CALL_LO_WATER(ctx)                                                 \
+	{                                                                  \
+		if (((ctx)->water != NULL) && lo_water(ctx)) {             \
+			((ctx)->water)((ctx)->water_arg, ISC_MEM_LOWATER); \
+		}                                                          \
 	}
 
 static inline bool
@@ -1606,7 +1606,7 @@ error:
 #endif /* HAVE_LIBXML2 */
 
 #ifdef HAVE_JSON_C
-#define CHECKMEM(m) RUNTIME_CHECK(m != NULL)
+#define CHECKMEM(m) RUNTIME_CHECK((m) != NULL)
 
 static isc_result_t
 json_renderctx(isc_mem_t *ctx, summarystat_t *summary, json_object *array) {

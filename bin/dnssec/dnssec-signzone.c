@@ -94,8 +94,8 @@ typedef struct hashlist hashlist_t;
 
 static int nsec_datatype = dns_rdatatype_nsec;
 
-#define check_dns_dbiterator_current(result)                               \
-	check_result((result == DNS_R_NEWORIGIN) ? ISC_R_SUCCESS : result, \
+#define check_dns_dbiterator_current(result)                                   \
+	check_result(((result) == DNS_R_NEWORIGIN) ? ISC_R_SUCCESS : (result), \
 		     "dns_dbiterator_current()")
 
 #define IS_NSEC3 (nsec_datatype == dns_rdatatype_nsec3)
@@ -185,7 +185,7 @@ static bool no_max_check = false;
 #define INCSTAT(counter)            \
 	if (printstats) {           \
 		LOCK(&statslock);   \
-		counter++;          \
+		(counter)++;        \
 		UNLOCK(&statslock); \
 	}
 

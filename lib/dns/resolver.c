@@ -217,7 +217,7 @@
 #define RES_DOMAIN_MAX_BITS 32
 #define RES_DOMAIN_OVERCOMMIT 3
 
-#define RES_DOMAIN_NEXTTABLE(hindex) ((hindex == 0) ? 1 : 0)
+#define RES_DOMAIN_NEXTTABLE(hindex) (((hindex) == 0) ? 1 : 0)
 
 static inline uint32_t
 hash_32(uint32_t val, unsigned int bits) {

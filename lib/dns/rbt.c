@@ -65,7 +65,7 @@
 #define RBT_HASH_MAX_BITS 32
 #define RBT_HASH_OVERCOMMIT 3
 
-#define RBT_HASH_NEXTTABLE(hindex) ((hindex == 0) ? 1 : 0)
+#define RBT_HASH_NEXTTABLE(hindex) (((hindex) == 0) ? 1 : 0)
 
 #define GOLDEN_RATIO_32 0x61C88647
 
@@ -115,7 +115,7 @@ struct dns_rbt {
 #define FINDCALLBACK(node) ((node)->find_callback)
 
 #define WANTEMPTYDATA_OR_DATA(options, node) \
-	((options & DNS_RBTFIND_EMPTYDATA) != 0 || DATA(node) != NULL)
+	(((options)&DNS_RBTFIND_EMPTYDATA) != 0 || DATA(node) != NULL)
 
 /*%
  * Structure elements from the rbtdb.c, not
@@ -143,7 +143,7 @@ struct dns_rbt {
 #define OLDOFFSETLEN(node) (OFFSETS(node)[-1])
 
 #define NODE_SIZE(node) \
-	(sizeof(*node) + OLDNAMELEN(node) + OLDOFFSETLEN(node) + 1)
+	(sizeof(*(node)) + OLDNAMELEN(node) + OLDOFFSETLEN(node) + 1)
 
 /*%
  * Color management.
@@ -255,7 +255,7 @@ static inline bool
 rehashing_in_progress(dns_rbt_t *rbt);
 
 #define TRY_NEXTTABLE(hindex, rbt) \
-	(hindex == rbt->hindex && rehashing_in_progress(rbt))
+	((hindex) == (rbt)->hindex && rehashing_in_progress(rbt))
 
 static inline void
 rotate_left(dns_rbtnode_t *node, dns_rbtnode_t **rootp);
