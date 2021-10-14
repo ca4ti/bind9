@@ -162,7 +162,6 @@ isc__trampoline_detach(isc__trampoline_t *trampoline) {
 	free(trampoline);
 
 	UNLOCK(&isc__trampoline_lock);
-	return;
 }
 
 void

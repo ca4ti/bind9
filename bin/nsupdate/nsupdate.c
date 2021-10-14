@@ -3380,7 +3380,6 @@ getinput(isc_task_t *task, isc_event_t *event) {
 		return;
 	}
 	start_update();
-	return;
 }
 
 int

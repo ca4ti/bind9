@@ -583,7 +583,6 @@ currentversion(dns_db_t *db, dns_dbversion_t **versionp) {
 	UNUSED(db);
 
 	*versionp = (void *)&dummy;
-	return;
 }
 
 static isc_result_t
@@ -602,7 +601,6 @@ attachversion(dns_db_t *db, dns_dbversion_t *source,
 
 	UNUSED(db);
 	*targetp = source;
-	return;
 }
 
 static void
@@ -1078,7 +1076,6 @@ printnode(dns_db_t *db, dns_dbnode_t *node, FILE *out) {
 	UNUSED(db);
 	UNUSED(node);
 	UNUSED(out);
-	return;
 }
 
 static isc_result_t

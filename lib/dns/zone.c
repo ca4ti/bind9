@@ -1814,8 +1814,6 @@ dns_zone_setmaxttl(dns_zone_t *zone, dns_ttl_t maxttl) {
 	}
 	zone->maxttl = maxttl;
 	UNLOCK_ZONE(zone);
-
-	return;
 }
 
 static isc_result_t
@@ -4020,7 +4018,6 @@ set_resigntime(dns_zone_t *zone) {
 
 cleanup:
 	dns_db_detach(&db);
-	return;
 }
 
 static isc_result_t
@@ -4312,7 +4309,6 @@ failure:
 	if (sr != NULL) {
 		dns_keytable_detach(&sr);
 	}
-	return;
 }
 
 /*
@@ -13873,7 +13869,6 @@ free_stub:
 
 done:
 	INSIST(event == NULL);
-	return;
 }
 
 /*
@@ -14418,7 +14413,6 @@ detach:
 		queue_xfrin(zone);
 	}
 	dns_zone_idetach(&zone);
-	return;
 }
 
 static void
@@ -14975,7 +14969,6 @@ unlock:
 	if (key != NULL) {
 		dns_tsigkey_detach(&key);
 	}
-	return;
 }
 
 /*
