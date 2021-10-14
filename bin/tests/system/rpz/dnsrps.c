@@ -109,8 +109,8 @@ main(int argc, char **argv) {
 				 " dnsrpzd-sock dnsrpzd.sock;"
 				 " dnsrpzd-rpzf dnsrpzd.rpzf",
 				 optarg);
-			client = librpz->client_create(&emsg, clist, cstr,
-						       true);
+			client =
+				librpz->client_create(&emsg, clist, cstr, true);
 			if (client == NULL) {
 				fprintf(stderr, "## %s\n", emsg.c);
 				return (1);

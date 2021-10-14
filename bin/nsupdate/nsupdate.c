@@ -997,8 +997,8 @@ pre_parse_args(int argc, char **argv) {
 			debugging = true;
 			ddebugging = true;
 			memdebugging = true;
-			isc_mem_debugging = ISC_MEM_DEBUGTRACE |
-					    ISC_MEM_DEBUGRECORD;
+			isc_mem_debugging =
+				ISC_MEM_DEBUGTRACE | ISC_MEM_DEBUGRECORD;
 			break;
 
 		case '4':
@@ -2959,8 +2959,8 @@ start_gssrequest(dns_name_t *primary) {
 
 	isc_nonce_buf(&val, sizeof(val));
 
-	result = snprintf(mykeystr, sizeof(mykeystr), "%u.sig-%s", val,
-			  namestr);
+	result =
+		snprintf(mykeystr, sizeof(mykeystr), "%u.sig-%s", val, namestr);
 	RUNTIME_CHECK(result <= sizeof(mykeystr));
 
 	isc_buffer_init(&buf, mykeystr, strlen(mykeystr));

@@ -287,8 +287,8 @@ isc_time_subtract(const isc_time_t *t, const isc_interval_t *i,
 			return (ISC_R_RANGE);
 		}
 		result->seconds--;
-		result->nanoseconds = NS_PER_S + t->nanoseconds -
-				      i->nanoseconds;
+		result->nanoseconds =
+			NS_PER_S + t->nanoseconds - i->nanoseconds;
 	}
 
 	return (ISC_R_SUCCESS);

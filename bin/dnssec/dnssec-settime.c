@@ -364,8 +364,8 @@ main(int argc, char **argv) {
 			 * We don't have to copy it here, but do it to
 			 * simplify cleanup later
 			 */
-			directory = isc_mem_strdup(mctx,
-						   isc_commandline_argument);
+			directory =
+				isc_mem_strdup(mctx, isc_commandline_argument);
 			break;
 		case 'k':
 			if (setdnskey) {
@@ -607,8 +607,8 @@ main(int argc, char **argv) {
 			      "generating a successor.");
 		}
 
-		result = dst_key_gettime(prevkey, DST_TIME_INACTIVE,
-					 &previnact);
+		result =
+			dst_key_gettime(prevkey, DST_TIME_INACTIVE, &previnact);
 		if (result != ISC_R_SUCCESS) {
 			fatal("Predecessor has no inactivation date. "
 			      "You must set one before\n\t"
@@ -684,8 +684,8 @@ main(int argc, char **argv) {
 		}
 	}
 
-	result = dst_key_fromnamedfile(filename, directory, options, mctx,
-				       &key);
+	result =
+		dst_key_fromnamedfile(filename, directory, options, mctx, &key);
 	if (result != ISC_R_SUCCESS) {
 		fatal("Invalid keyfile %s: %s", filename,
 		      isc_result_totext(result));

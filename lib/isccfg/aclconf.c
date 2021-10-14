@@ -720,8 +720,8 @@ cfg_acl_fromconfig2(const cfg_obj_t *acl_data, const cfg_obj_t *cctx,
 			} else if (strcasecmp(cfg_obj_asstring(obj_transport),
 					      "udp-tcp") == 0) {
 				/* Good ol' DNS over port 53 */
-				transports = isc_nm_tcpdnssocket |
-					     isc_nm_udpsocket;
+				transports =
+					isc_nm_tcpdnssocket | isc_nm_udpsocket;
 				encrypted = false;
 			} else if (strcasecmp(cfg_obj_asstring(obj_transport),
 					      "tls") == 0) {
@@ -773,9 +773,9 @@ cfg_acl_fromconfig2(const cfg_obj_t *acl_data, const cfg_obj_t *cctx,
 		iptab = dacl->iptable;
 
 		if (nest_level != 0) {
-			result = dns_acl_create(mctx,
-						cfg_list_length(ce, false),
-						&de->nestedacl);
+			result =
+				dns_acl_create(mctx, cfg_list_length(ce, false),
+					       &de->nestedacl);
 			if (result != ISC_R_SUCCESS) {
 				goto cleanup;
 			}

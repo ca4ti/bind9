@@ -957,10 +957,10 @@ xfrin_start(dns_xfrin_ctx_t *xfr) {
 		uint32_t tls_versions;
 		const char *ciphers = NULL;
 		bool prefer_server_ciphers;
-		const uint16_t family = isc_sockaddr_pf(&xfr->primaryaddr) ==
-							PF_INET6
-						? AF_INET6
-						: AF_INET;
+		const uint16_t family =
+			isc_sockaddr_pf(&xfr->primaryaddr) == PF_INET6
+				? AF_INET6
+				: AF_INET;
 		const char *tlsname = NULL;
 
 		INSIST(xfr->transport != NULL);
@@ -1364,8 +1364,8 @@ xfrin_recv_done(isc_nmhandle_t *handle, isc_result_t result,
 	isc_buffer_add(&buffer, region->length);
 	peer = isc_nmhandle_peeraddr(handle);
 
-	result = dns_message_parse(msg, &buffer,
-				   DNS_MESSAGEPARSE_PRESERVEORDER);
+	result =
+		dns_message_parse(msg, &buffer, DNS_MESSAGEPARSE_PRESERVEORDER);
 	if (result == ISC_R_SUCCESS) {
 		dns_message_logpacket(msg, "received message from", &peer,
 				      DNS_LOGCATEGORY_XFER_IN,

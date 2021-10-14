@@ -729,8 +729,8 @@ no_read:
 				continue;
 			}
 			if ((options & ISC_LEXOPT_ESCAPE) != 0) {
-				escaped = (!escaped && c == '\\') ? true
-								  : false;
+				escaped =
+					(!escaped && c == '\\') ? true : false;
 			}
 			if (remaining == 0U) {
 				result = grow_data(lex, &remaining, &curr,
@@ -1039,8 +1039,8 @@ isc_lex_getlasttokentext(isc_lex_t *lex, isc_token_t *tokenp, isc_region_t *r) {
 	INSIST(source->ignored <= isc_buffer_consumedlength(source->pushback));
 	r->base = (unsigned char *)isc_buffer_base(source->pushback) +
 		  source->ignored;
-	r->length = isc_buffer_consumedlength(source->pushback) -
-		    source->ignored;
+	r->length =
+		isc_buffer_consumedlength(source->pushback) - source->ignored;
 }
 
 char *

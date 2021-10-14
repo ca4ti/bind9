@@ -126,8 +126,8 @@ dns_ipkeylist_copy(isc_mem_t *mctx, const dns_ipkeylist_t *src,
 	if (src->keys != NULL) {
 		for (i = 0; i < src->count; i++) {
 			if (src->keys[i] != NULL) {
-				dst->keys[i] = isc_mem_get(mctx,
-							   sizeof(dns_name_t));
+				dst->keys[i] =
+					isc_mem_get(mctx, sizeof(dns_name_t));
 				dns_name_init(dst->keys[i], NULL);
 				dns_name_dup(src->keys[i], mctx, dst->keys[i]);
 			} else {
@@ -139,8 +139,8 @@ dns_ipkeylist_copy(isc_mem_t *mctx, const dns_ipkeylist_t *src,
 	if (src->tlss != NULL) {
 		for (i = 0; i < src->count; i++) {
 			if (src->tlss[i] != NULL) {
-				dst->tlss[i] = isc_mem_get(mctx,
-							   sizeof(dns_name_t));
+				dst->tlss[i] =
+					isc_mem_get(mctx, sizeof(dns_name_t));
 				dns_name_init(dst->tlss[i], NULL);
 				dns_name_dup(src->tlss[i], mctx, dst->tlss[i]);
 			} else {

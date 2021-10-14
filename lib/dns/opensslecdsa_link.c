@@ -847,8 +847,8 @@ opensslecdsa_tofile(const dst_key_t *key, const char *directory) {
 					       DST_R_OPENSSLFAILURE));
 	}
 #else
-	status = EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY,
-				       &privkey);
+	status =
+		EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PRIV_KEY, &privkey);
 	if (status != 1 || privkey == NULL) {
 		DST_RET(dst__openssl_toresult2("EVP_PKEY_get_bn_param",
 					       DST_R_OPENSSLFAILURE));
@@ -867,16 +867,16 @@ opensslecdsa_tofile(const dst_key_t *key, const char *directory) {
 
 	if (key->engine != NULL) {
 		priv.elements[i].tag = TAG_ECDSA_ENGINE;
-		priv.elements[i].length = (unsigned short)strlen(key->engine) +
-					  1;
+		priv.elements[i].length =
+			(unsigned short)strlen(key->engine) + 1;
 		priv.elements[i].data = (unsigned char *)key->engine;
 		i++;
 	}
 
 	if (key->label != NULL) {
 		priv.elements[i].tag = TAG_ECDSA_LABEL;
-		priv.elements[i].length = (unsigned short)strlen(key->label) +
-					  1;
+		priv.elements[i].length =
+			(unsigned short)strlen(key->label) + 1;
 		priv.elements[i].data = (unsigned char *)key->label;
 		i++;
 	}

@@ -141,8 +141,8 @@ dns_transport_get_mode(dns_transport_t *transport) {
 dns_transport_t *
 dns_transport_new(const dns_name_t *name, dns_transport_type_t type,
 		  dns_transport_list_t *list) {
-	dns_transport_t *transport = isc_mem_get(list->mctx,
-						 sizeof(*transport));
+	dns_transport_t *transport =
+		isc_mem_get(list->mctx, sizeof(*transport));
 	*transport = (dns_transport_t){ .type = type };
 	isc_refcount_init(&transport->references, 1);
 	isc_mem_attach(list->mctx, &transport->mctx);
@@ -164,8 +164,8 @@ dns_transport_set_certfile(dns_transport_t *transport, const char *certfile) {
 	}
 
 	if (certfile != NULL) {
-		transport->tls.certfile = isc_mem_strdup(transport->mctx,
-							 certfile);
+		transport->tls.certfile =
+			isc_mem_strdup(transport->mctx, certfile);
 	}
 }
 
@@ -180,8 +180,8 @@ dns_transport_set_keyfile(dns_transport_t *transport, const char *keyfile) {
 	}
 
 	if (keyfile != NULL) {
-		transport->tls.keyfile = isc_mem_strdup(transport->mctx,
-							keyfile);
+		transport->tls.keyfile =
+			isc_mem_strdup(transport->mctx, keyfile);
 	}
 }
 
@@ -211,8 +211,8 @@ dns_transport_set_hostname(dns_transport_t *transport, const char *hostname) {
 	}
 
 	if (hostname != NULL) {
-		transport->tls.hostname = isc_mem_strdup(transport->mctx,
-							 hostname);
+		transport->tls.hostname =
+			isc_mem_strdup(transport->mctx, hostname);
 	}
 }
 
@@ -226,8 +226,8 @@ dns_transport_set_endpoint(dns_transport_t *transport, const char *endpoint) {
 	}
 
 	if (endpoint != NULL) {
-		transport->doh.endpoint = isc_mem_strdup(transport->mctx,
-							 endpoint);
+		transport->doh.endpoint =
+			isc_mem_strdup(transport->mctx, endpoint);
 	}
 }
 
@@ -267,8 +267,8 @@ dns_transport_set_ciphers(dns_transport_t *transport, const char *ciphers) {
 	}
 
 	if (ciphers != NULL) {
-		transport->tls.ciphers = isc_mem_strdup(transport->mctx,
-							ciphers);
+		transport->tls.ciphers =
+			isc_mem_strdup(transport->mctx, ciphers);
 	}
 }
 
@@ -283,8 +283,8 @@ dns_transport_set_tlsname(dns_transport_t *transport, const char *tlsname) {
 	}
 
 	if (tlsname != NULL) {
-		transport->tls.tlsname = isc_mem_strdup(transport->mctx,
-							tlsname);
+		transport->tls.tlsname =
+			isc_mem_strdup(transport->mctx, tlsname);
 	}
 }
 

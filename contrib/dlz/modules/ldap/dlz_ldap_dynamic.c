@@ -194,9 +194,9 @@ dlz_ldap_connect(ldap_instance_t *dbi, dbinstance_t *dbc) {
 	}
 
 	/* set protocol version. */
-	ldap_result = ldap_set_option((LDAP *)dbc->dbconn,
-				      LDAP_OPT_PROTOCOL_VERSION,
-				      &(dbi->protocol));
+	ldap_result =
+		ldap_set_option((LDAP *)dbc->dbconn, LDAP_OPT_PROTOCOL_VERSION,
+				&(dbi->protocol));
 	if (ldap_result != LDAP_SUCCESS) {
 		result = ISC_R_NOPERM;
 		goto cleanup;

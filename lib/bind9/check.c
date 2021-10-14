@@ -244,8 +244,8 @@ check_dual_stack(const cfg_obj_t *options, isc_log_t *logctx) {
 		isc_buffer_constinit(&buffer, str, strlen(str));
 		isc_buffer_add(&buffer, strlen(str));
 		name = dns_fixedname_initname(&fixed);
-		tresult = dns_name_fromtext(name, &buffer, dns_rootname, 0,
-					    NULL);
+		tresult =
+			dns_name_fromtext(name, &buffer, dns_rootname, 0, NULL);
 		if (tresult != ISC_R_SUCCESS) {
 			cfg_obj_log(obj, logctx, ISC_LOG_ERROR, "bad name '%s'",
 				    str);
@@ -473,8 +473,8 @@ checkacl(const char *aclname, cfg_aclconfctx_t *actx, const cfg_obj_t *zconfig,
 	if (aclobj == NULL) {
 		return (ISC_R_SUCCESS);
 	}
-	result = cfg_acl_fromconfig(aclobj, config, logctx, actx, mctx, 0,
-				    &acl);
+	result =
+		cfg_acl_fromconfig(aclobj, config, logctx, actx, mctx, 0, &acl);
 	if (acl != NULL) {
 		dns_acl_detach(&acl);
 	}
@@ -614,9 +614,9 @@ check_dns64(cfg_aclconfctx_t *actx, const cfg_obj_t *voptions,
 				dns_acl_t *acl = NULL;
 				isc_result_t tresult;
 
-				tresult = cfg_acl_fromconfig(obj, config,
-							     logctx, actx, mctx,
-							     0, &acl);
+				tresult =
+					cfg_acl_fromconfig(obj, config, logctx,
+							   actx, mctx, 0, &acl);
 				if (acl != NULL) {
 					dns_acl_detach(&acl);
 				}
@@ -1512,8 +1512,8 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 			     element = cfg_list_next(element))
 			{
 				obj = cfg_listelt_value(element);
-				tresult = mustbesecure(obj, symtab, logctx,
-						       mctx);
+				tresult =
+					mustbesecure(obj, symtab, logctx, mctx);
 				if (result == ISC_R_SUCCESS &&
 				    tresult != ISC_R_SUCCESS) {
 					result = tresult;
@@ -3320,9 +3320,9 @@ check_zoneconf(const cfg_obj_t *zconfig, const cfg_obj_t *voptions,
 		(void)cfg_map_get(zoptions, "parental-agents", &obj);
 		if (obj != NULL) {
 			uint32_t count;
-			tresult = validate_remotes("parental-agents", obj,
-						   config, &count, logctx,
-						   mctx);
+			tresult =
+				validate_remotes("parental-agents", obj, config,
+						 &count, logctx, mctx);
 			if (tresult != ISC_R_SUCCESS && result == ISC_R_SUCCESS)
 			{
 				result = tresult;
@@ -4473,8 +4473,8 @@ check_trust_anchor(const cfg_obj_t *key, bool managed, unsigned int *flagsp,
 			/*
 			 * Flag any use of a root key, regardless of content.
 			 */
-			*flagsp |= (managed ? ROOT_KSK_MANAGED
-					    : ROOT_KSK_STATIC);
+			*flagsp |=
+				(managed ? ROOT_KSK_MANAGED : ROOT_KSK_STATIC);
 
 			if (rdata1 == 257 && rdata2 == 3 && rdata3 == 8 &&
 			    (isc_buffer_usedlength(&b) ==
@@ -4529,8 +4529,8 @@ check_trust_anchor(const cfg_obj_t *key, bool managed, unsigned int *flagsp,
 			/*
 			 * Flag any use of a root key, regardless of content.
 			 */
-			*flagsp |= (managed ? ROOT_KSK_MANAGED
-					    : ROOT_KSK_STATIC);
+			*flagsp |=
+				(managed ? ROOT_KSK_MANAGED : ROOT_KSK_STATIC);
 
 			if (rdata1 == 20326 && rdata2 == 8 && rdata3 == 1 &&
 			    (isc_buffer_usedlength(&b) ==
@@ -5025,8 +5025,8 @@ check_one_plugin(const cfg_obj_t *config, const cfg_obj_t *obj,
 	char full_path[PATH_MAX];
 	isc_result_t result;
 
-	result = ns_plugin_expandpath(plugin_path, full_path,
-				      sizeof(full_path));
+	result =
+		ns_plugin_expandpath(plugin_path, full_path, sizeof(full_path));
 	if (result != ISC_R_SUCCESS) {
 		cfg_obj_log(obj, data->lctx, ISC_LOG_ERROR,
 			    "%s: plugin check failed: "

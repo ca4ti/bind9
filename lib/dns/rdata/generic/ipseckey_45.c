@@ -395,8 +395,8 @@ tostruct_ipseckey(ARGS_TOSTRUCT) {
 
 	ipseckey->keylength = region.length;
 	if (ipseckey->keylength != 0U) {
-		ipseckey->key = mem_maybedup(mctx, region.base,
-					     ipseckey->keylength);
+		ipseckey->key =
+			mem_maybedup(mctx, region.base, ipseckey->keylength);
 	} else {
 		ipseckey->key = NULL;
 	}
