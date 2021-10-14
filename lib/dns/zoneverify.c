@@ -1065,7 +1065,7 @@ free_element_heap(void *element, void *uap) {
 }
 
 static bool
-_checknext(const vctx_t *vctx, const struct nsec3_chain_fixed *first,
+nsec3_next(const vctx_t *vctx, const struct nsec3_chain_fixed *first,
 	   const struct nsec3_chain_fixed *e) {
 	char buf[512];
 	const unsigned char *d1 = (const unsigned char *)(first + 1);
@@ -1105,10 +1105,11 @@ _checknext(const vctx_t *vctx, const struct nsec3_chain_fixed *first,
 }
 
 static inline bool
-checknext(isc_mem_t *mctx, const vctx_t *vctx,
-	  const struct nsec3_chain_fixed *first, struct nsec3_chain_fixed *prev,
-	  const struct nsec3_chain_fixed *cur) {
-	bool result = _checknext(vctx, prev, cur);
+nsec3_checknext(isc_mem_t *mctx, const vctx_t *vctx,
+		const struct nsec3_chain_fixed *first,
+		struct nsec3_chain_fixed *prev,
+		const struct nsec3_chain_fixed *cur) {
+	bool result = nsec3_next(vctx, prev, cur);
 
 	if (prev != first) {
 		free_element(mctx, prev);
@@ -1118,9 +1119,10 @@ checknext(isc_mem_t *mctx, const vctx_t *vctx,
 }
 
 static inline bool
-checklast(isc_mem_t *mctx, const vctx_t *vctx, struct nsec3_chain_fixed *first,
-	  struct nsec3_chain_fixed *prev) {
-	bool result = _checknext(vctx, prev, first);
+nsec3_checklast(isc_mem_t *mctx, const vctx_t *vctx,
+		struct nsec3_chain_fixed *first,
+		struct nsec3_chain_fixed *prev) {
+	bool result = nsec3_next(vctx, prev, first);
 	if (prev != first) {
 		free_element(mctx, prev);
 	}
@@ -1188,13 +1190,13 @@ verify_nsec3_chains(const vctx_t *vctx, isc_mem_t *mctx) {
 		if (first == NULL) {
 			prev = first = e;
 		} else if (!chain_equal(first, e, first->salt_length)) {
-			if (!checklast(mctx, vctx, first, prev)) {
+			if (!nsec3_checklast(mctx, vctx, first, prev)) {
 				result = ISC_R_FAILURE;
 			}
 
 			prev = first = e;
 		} else {
-			if (!checknext(mctx, vctx, first, prev, e)) {
+			if (!nsec3_checknext(mctx, vctx, first, prev, e)) {
 				result = ISC_R_FAILURE;
 			}
 
@@ -1202,7 +1204,7 @@ verify_nsec3_chains(const vctx_t *vctx, isc_mem_t *mctx) {
 		}
 	}
 	if (prev != NULL) {
-		if (!checklast(mctx, vctx, first, prev)) {
+		if (!nsec3_checklast(mctx, vctx, first, prev)) {
 			result = ISC_R_FAILURE;
 		}
 	}
