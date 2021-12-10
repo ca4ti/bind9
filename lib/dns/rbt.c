@@ -1082,6 +1082,8 @@ isc_result_t
 dns_rbt_adjusthashsize(dns_rbt_t *rbt, size_t size) {
 	REQUIRE(VALID_RBT(rbt));
 
+	UNUSED(size);
+#if 0
 	if (size > 0) {
 		/*
 		 * Setting a new, finite size limit was requested for the RBT.
@@ -1104,6 +1106,7 @@ dns_rbt_adjusthashsize(dns_rbt_t *rbt, size_t size) {
 		 */
 		rbt->maxhashbits = RBT_HASH_MAX_BITS;
 	}
+#endif
 
 	return (ISC_R_SUCCESS);
 }
