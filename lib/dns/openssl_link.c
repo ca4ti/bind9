@@ -27,6 +27,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <isc/fips.h>
 #include <isc/mem.h>
 #include <isc/mutex.h>
 #include <isc/mutexblock.h>
@@ -53,19 +54,19 @@ static ENGINE *e = NULL;
 
 static void
 enable_fips_mode(void) {
-#ifdef HAVE_FIPS_MODE
-	if (FIPS_mode() != 0) {
+#if defined(ENABLE_FIPS_MODE)
+	if (isc_fips_mode()) {
 		/*
 		 * FIPS mode is already enabled.
 		 */
 		return;
 	}
 
-	if (FIPS_mode_set(1) == 0) {
+	if (isc_fips_set_mode(1) != ISC_R_SUCCESS) {
 		dst__openssl_toresult2("FIPS_mode_set", DST_R_OPENSSLFAILURE);
 		exit(1);
 	}
-#endif /* HAVE_FIPS_MODE */
+#endif
 }
 
 isc_result_t
