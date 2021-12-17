@@ -142,7 +142,7 @@ openssldh_computesecret(const dst_key_t *pub, const dst_key_t *priv,
 	if (EVP_PKEY_derive_init(ctx) != 1) {
 		EVP_PKEY_CTX_free(ctx);
 		return (dst__openssl_toresult2("EVP_PKEY_derive_init",
-					       DST_R_OPENSSLFAILURE));
+					       DST_R_COMPUTESECRETFAILURE));
 	}
 	if (EVP_PKEY_derive_set_peer(ctx, dhpub) != 1) {
 		EVP_PKEY_CTX_free(ctx);
