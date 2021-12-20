@@ -15,4 +15,11 @@
 
 $SHELL clean.sh
 
-copy_setports ns1/named.conf.in ns1/named.conf
+if $FEATURETEST --have-fips-mode
+then
+    copy_setports ns1/named-fips.conf.in ns1/named.conf
+else
+    copy_setports ns1/named-fips.conf.in ns1/named-fips.conf
+    # includes named-fips.conf
+    cp ns1/named.conf.in ns1/named.conf
+fi
