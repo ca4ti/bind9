@@ -72,7 +72,12 @@ EOF
 
 $TSIGKEYGEN ddns-key.example.nil > ns1/ddns.key
 
-$TSIGKEYGEN -a hmac-md5 md5-key > ns1/md5.key
+if $FEATURETEST --have-fips-mode
+then
+    echo "/* MD5 NOT SUPPORTED */" > ns1/md5.key
+else
+    $TSIGKEYGEN -a hmac-md5 md5-key > ns1/md5.key
+fi
 $TSIGKEYGEN -a hmac-sha1 sha1-key > ns1/sha1.key
 $TSIGKEYGEN -a hmac-sha224 sha224-key > ns1/sha224.key
 $TSIGKEYGEN -a hmac-sha256 sha256-key > ns1/sha256.key
