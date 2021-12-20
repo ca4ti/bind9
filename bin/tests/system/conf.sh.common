@@ -274,7 +274,7 @@ DEFAULT_BITS=256
 # DEFAULT_ALGORITHM.
 ALTERNATIVE_ALGORITHM=RSASHA256
 ALTERNATIVE_ALGORITHM_NUMBER=8
-ALTERNATIVE_BITS=1280
+ALTERNATIVE_BITS=2048
 
 # This is an algorithm that is used for tests against the
 # "disable-algorithms" configuration option.  Must be different from above
