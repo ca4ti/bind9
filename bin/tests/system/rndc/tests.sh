@@ -34,10 +34,10 @@ update add text1.other. 600 IN TXT "addition 1"
 send
 END
 [ -s ns2/nil.db.jnl ] || {
-	echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
 }
 [ -s ns2/other.db.jnl ] || {
-	echo_i "'test -s ns2/other.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/other.db.jnl' failed when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -50,8 +50,8 @@ echo_i "checking zone was dumped ($n)"
 ret=0
 for i in 1 2 3 4 5 6 7 8 9 10
 do
-	grep "addition 1" ns2/nil.db > /dev/null && break
-	sleep 1
+    grep "addition 1" ns2/nil.db > /dev/null && break
+    sleep 1
 done
 grep "addition 1" ns2/nil.db > /dev/null 2>&1 || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
@@ -61,7 +61,7 @@ n=$((n+1))
 echo_i "checking journal file is still present ($n)"
 ret=0
 [ -s ns2/nil.db.jnl ] || {
-	echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -107,8 +107,8 @@ echo_i "checking zone was dumped ($n)"
 ret=0
 for i in 1 2 3 4 5 6 7 8 9 10
 do
-	grep "addition 3" ns2/nil.db > /dev/null && break
-	sleep 1
+    grep "addition 3" ns2/nil.db > /dev/null && break
+    sleep 1
 done
 grep "addition 3" ns2/nil.db > /dev/null 2>&1 || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
@@ -118,7 +118,7 @@ n=$((n+1))
 echo_i "checking journal file is still present ($n)"
 ret=0
 [ -s ns2/nil.db.jnl ] || {
-	echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -147,8 +147,8 @@ echo_i "checking zone was dumped ($n)"
 ret=0
 for i in 1 2 3 4 5 6 7 8 9 10
 do
-	grep "addition 4" ns2/nil.db > /dev/null && break
-	sleep 1
+    grep "addition 4" ns2/nil.db > /dev/null && break
+    sleep 1
 done
 grep "addition 4" ns2/nil.db > /dev/null 2>&1 || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
@@ -158,7 +158,7 @@ n=$((n+1))
 echo_i "checking journal file is deleted ($n)"
 ret=0
 [ -s ns2/nil.db.jnl ] && {
-	echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -182,7 +182,7 @@ n=$((n+1))
 echo_i "checking other journal files not removed ($n)"
 ret=0
 [ -s ns2/other.db.jnl ] || {
-	echo_i "'test -s ns2/other.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/other.db.jnl' failed when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -194,10 +194,10 @@ n=$((n+1))
 echo_i "checking all journals removed ($n)"
 ret=0
 [ -s ns2/nil.db.jnl ] && {
-	echo_i "'test -s ns2/nil.db.jnl' succeeded when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' succeeded when it shouldn't have"; ret=1;
 }
 [ -s ns2/other.db.jnl ] && {
-	echo_i "'test -s ns2/other.db.jnl' succeeded when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/other.db.jnl' succeeded when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -221,13 +221,13 @@ update add text6.other. 600 IN TXT "addition 6"
 send
 END
 [ -s ns2/other.db.jnl ] || {
-	echo_i "'test -s ns2/other.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/other.db.jnl' failed when it shouldn't have"; ret=1;
 }
 $RNDCCMD 10.53.0.2 freeze other 2>&1 | sed 's/^/ns2 /' | cat_i
 for i in 1 2 3 4 5 6 7 8 9 10
 do
-	grep "addition 6" ns2/other.db > /dev/null && break
-	sleep 1
+    grep "addition 6" ns2/other.db > /dev/null && break
+    sleep 1
 done
 serial=`awk '$3 ~ /serial/ {print $1}' ns2/other.db`
 newserial=$((serial + 1))
@@ -237,7 +237,7 @@ mv -f ns2/other.db.new ns2/other.db
 $RNDCCMD 10.53.0.2 thaw 2>&1 | sed 's/^/ns2 /' | cat_i
 sleep 1
 [ -f ns2/other.db.jnl ] && {
-	echo_i "'test -f ns2/other.db.jnl' succeeded when it shouldn't have"; ret=1;
+    echo_i "'test -f ns2/other.db.jnl' succeeded when it shouldn't have"; ret=1;
 }
 $NSUPDATE -p ${PORT} -k ns2/session.key > nsupdate.out.2.test$n 2>&1 <<END || ret=1
 server 10.53.0.2
@@ -264,13 +264,13 @@ update add text6.nil. 600 IN TXT "addition 6"
 send
 END
 [ -s ns2/nil.db.jnl ] || {
-	echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
 }
 $RNDCCMD 10.53.0.2 freeze nil 2>&1 | sed 's/^/ns2 /' | cat_i
 for i in 1 2 3 4 5 6 7 8 9 10
 do
-	grep "addition 6" ns2/nil.db > /dev/null && break
-	sleep 1
+    grep "addition 6" ns2/nil.db > /dev/null && break
+    sleep 1
 done
 serial=`awk '$3 ~ /serial/ {print $1}' ns2/nil.db`
 newserial=$((serial + 1))
@@ -280,7 +280,7 @@ mv -f ns2/nil.db.new ns2/nil.db
 $RNDCCMD 10.53.0.2 thaw 2>&1 | sed 's/^/ns2 /' | cat_i
 sleep 1
 [ -s ns2/nil.db.jnl ] || {
-	echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns2/nil.db.jnl' failed when it shouldn't have"; ret=1;
 }
 $NSUPDATE -p ${PORT} -k ns2/session.key > nsupdate.out.2.test$n 2>&1 <<END || ret=1
 server 10.53.0.2
@@ -350,16 +350,16 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
 if ! $FEATURETEST --have-fips-mode; then
-        n=$((n+1))
-        echo_i "testing rndc with hmac-md5 ($n)"
-        ret=0
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT1} -c ns4/key1.conf status > /dev/null 2>&1 || ret=1
-        for i in 2 3 4 5 6
-        do
-                $RNDC -s 10.53.0.4 -p ${EXTRAPORT1} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
-        done
-        if [ $ret != 0 ]; then echo_i "failed"; fi
-        status=$((status+ret))
+    n=$((n+1))
+    echo_i "testing rndc with hmac-md5 ($n)"
+    ret=0
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT1} -c ns4/key1.conf status > /dev/null 2>&1 || ret=1
+    for i in 2 3 4 5 6
+    do
+        $RNDC -s 10.53.0.4 -p ${EXTRAPORT1} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
+    done
+    if [ $ret != 0 ]; then echo_i "failed"; fi
+    status=$((status+ret))
 fi
 
 n=$((n+1))
@@ -368,7 +368,7 @@ ret=0
 $RNDC -s 10.53.0.4 -p ${EXTRAPORT2} -c ns4/key2.conf status > /dev/null 2>&1 || ret=1
 for i in 1 3 4 5 6
 do
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT2} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT2} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
 done
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -379,7 +379,7 @@ ret=0
 $RNDC -s 10.53.0.4 -p ${EXTRAPORT3} -c ns4/key3.conf status > /dev/null 2>&1 || ret=1
 for i in 1 2 4 5 6
 do
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT3} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT3} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
 done
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -390,7 +390,7 @@ ret=0
 $RNDC -s 10.53.0.4 -p ${EXTRAPORT4} -c ns4/key4.conf status > /dev/null 2>&1 || ret=1
 for i in 1 2 3 5 6
 do
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT4} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT4} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
 done
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -401,7 +401,7 @@ ret=0
 $RNDC -s 10.53.0.4 -p ${EXTRAPORT5} -c ns4/key5.conf status > /dev/null 2>&1 || ret=1
 for i in 1 2 3 4 6
 do
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT5} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT5} -c ns4/key${i}.conf status > /dev/null 2>&1 && ret=1
 done
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -412,7 +412,7 @@ ret=0
 $RNDC -s 10.53.0.4 -p ${EXTRAPORT6} -c ns4/key6.conf status > /dev/null 2>&1 || ret=1
 for i in 1 2 3 4 5
 do
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT6} -c ns4/key${i}.conf status > /dev/null 2>&1 2>&1 && ret=1
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT6} -c ns4/key${i}.conf status > /dev/null 2>&1 2>&1 && ret=1
 done
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -422,7 +422,8 @@ echo_i "testing single control channel with multiple algorithms ($n)"
 ret=0
 for i in 1 2 3 4 5 6
 do
-        $RNDC -s 10.53.0.4 -p ${EXTRAPORT7} -c ns4/key${i}.conf status > /dev/null 2>&1 || ret=1
+    test $i = 1 && $FEATURETEST --have-fips-mode && continue
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT7} -c ns4/key${i}.conf status > /dev/null 2>&1 || ret=1
 done
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
@@ -510,20 +511,20 @@ status=$((status+ret))
 
 for i in 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288
 do
-        n=$((n+1))
-	echo_i "testing rndc buffer size limits (size=${i}) ($n)"
-	ret=0
-	$RNDC -s 10.53.0.4 -p ${EXTRAPORT6} -c ns4/key6.conf testgen ${i} 2>&1 > rndc.out.$i.test$n || ret=1
-	actual_size=`$GENCHECK rndc.out.$i.test$n`
-	if [ "$?" = "0" ]; then
-            expected_size=$((i+1))
-	    if [ $actual_size != $expected_size ]; then ret=1; fi
-	else
-	    ret=1
-	fi
+    n=$((n+1))
+    echo_i "testing rndc buffer size limits (size=${i}) ($n)"
+    ret=0
+    $RNDC -s 10.53.0.4 -p ${EXTRAPORT6} -c ns4/key6.conf testgen ${i} 2>&1 > rndc.out.$i.test$n || ret=1
+    actual_size=`$GENCHECK rndc.out.$i.test$n`
+    if [ "$?" = "0" ]; then
+	expected_size=$((i+1))
+	if [ $actual_size != $expected_size ]; then ret=1; fi
+    else
+	ret=1
+    fi
 
-	if [ $ret != 0 ]; then echo_i "failed"; fi
-        status=$((status+ret))
+    if [ $ret != 0 ]; then echo_i "failed"; fi
+    status=$((status+ret))
 done
 
 n=$((n+1))
@@ -760,7 +761,7 @@ update add text2.test. 600 IN TXT "addition 1"
 send
 END
 [ -s ns7/test.db.jnl ] || {
-	echo_i "'test -s ns7/test.db.jnl' failed when it shouldn't have"; ret=1;
+    echo_i "'test -s ns7/test.db.jnl' failed when it shouldn't have"; ret=1;
 }
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))

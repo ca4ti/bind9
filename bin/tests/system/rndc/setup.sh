@@ -41,14 +41,20 @@ copy_setports ns5/named.conf.in ns5/named.conf
 copy_setports ns6/named.conf.in ns6/named.conf
 copy_setports ns7/named.conf.in ns7/named.conf
 
+keyset=
 make_key () {
     $RNDCCONFGEN -k key$1 -A $3 -s 10.53.0.4 -p $2 \
             > ns4/key${1}.conf 2> /dev/null
     egrep -v '(^# Start|^# End|^# Use|^[^#])' ns4/key$1.conf | cut -c3- | \
             sed 's/allow { 10.53.0.4/allow { any/' >> ns4/named.conf
+    key='"'key$1'";'
+    keyset="$keyset $key"
 }
 
-make_key 1 ${EXTRAPORT1} hmac-md5
+if ! $FEATURETEST --have-fips-mode
+then
+    make_key 1 ${EXTRAPORT1} hmac-md5
+fi
 make_key 2 ${EXTRAPORT2} hmac-sha1
 make_key 3 ${EXTRAPORT3} hmac-sha224
 make_key 4 ${EXTRAPORT4} hmac-sha256
@@ -59,7 +65,6 @@ cat >> ns4/named.conf <<- EOF
 
 controls {
 	inet 10.53.0.4 port ${EXTRAPORT7}
-		allow { any; } keys { "key1"; "key2"; "key3";
-                                      "key4"; "key5"; "key6"; };
+		allow { any; } keys { $keyset };
 };
 EOF
