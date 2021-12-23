@@ -667,7 +667,12 @@ zonefile=occluded.example.db
 kskname=$("$KEYGEN" -q -a "$DEFAULT_ALGORITHM" -fk "$zone")
 zskname=$("$KEYGEN" -q -a "$DEFAULT_ALGORITHM" "$zone")
 dnskeyname=$("$KEYGEN" -q -a "$DEFAULT_ALGORITHM" -fk "delegation.$zone")
-keyname=$("$KEYGEN" -q -a DH -b 2048 -n HOST -T KEY "delegation.$zone")
+if $FEATURETEST --have-fips-dh
+then
+	keyname=$("$KEYGEN" -q -a DH -b 2048 -n HOST -T KEY "delegation.$zone")
+else
+	keyname=$("$KEYGEN" -q -a RSASHA256 -b 2048 -n HOST -T KEY "delegation.$zone")
+fi
 $DSFROMKEY "$dnskeyname.key" > "dsset-delegation.${zone}."
 cat "$infile" "${kskname}.key" "${zskname}.key" "${keyname}.key" \
     "${dnskeyname}.key" "dsset-delegation.${zone}." >"$zonefile"
