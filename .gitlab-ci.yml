@@ -120,7 +120,7 @@ stages:
   <<: *linux_amd64
 
 .oraclelinux-8-amd64: &oraclelinux_8_amd64_image
-  image: "$CI_REGISTRY_IMAGE:oraclelinux-8-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:oraclelinux-8-amd64"
   <<: *linux_amd64
 
 # Debian
@@ -134,7 +134,7 @@ stages:
   <<: *linux_amd64
 
 .debian-bullseye-amd64: &debian_bullseye_amd64_image
-  image: "$CI_REGISTRY_IMAGE:debian-bullseye-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:debian-bullseye-amd64"
   <<: *linux_amd64
 
 .debian-sid-amd64: &debian_sid_amd64_image
@@ -150,7 +150,7 @@ stages:
 # Fedora
 
 .fedora-35-amd64: &fedora_35_amd64_image
-  image: "$CI_REGISTRY_IMAGE:fedora-35-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:fedora-35-amd64"
   <<: *linux_amd64
 
 .fedora-35-arm64: &fedora_35_arm64_image
