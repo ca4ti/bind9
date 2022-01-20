@@ -76,8 +76,9 @@ DNSSEC-POLICY
 
   dnssec-policy string {
   	dnskey-ttl duration;
-  	keys { ( csk | ksk | zsk ) [ ( key-directory ) ] lifetime
-  	    duration_or_unlimited algorithm string [ integer ]; ... };
+  	keys { ( csk | ksk | zsk ) [ key-directory | key-store string ]
+  	    lifetime duration_or_unlimited algorithm string [ integer
+  	    ]; ... };
   	max-zone-ttl duration;
   	nsec3param [ iterations integer ] [ optout boolean ] [
   	    salt-length integer ];
@@ -119,6 +120,16 @@ KEY
   key string {
   	algorithm string;
   	secret string;
+  };
+
+KEY-STORE
+^^^^^^^^^
+
+::
+
+  key-store string {
+  	directory string;
+  	uri quoted_string;
   };
 
 LOGGING

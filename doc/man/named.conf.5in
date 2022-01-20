@@ -102,8 +102,9 @@ dlz string {
 .ft C
 dnssec\-policy string {
       dnskey\-ttl duration;
-      keys { ( csk | ksk | zsk ) [ ( key\-directory ) ] lifetime
-          duration_or_unlimited algorithm string [ integer ]; ... };
+      keys { ( csk | ksk | zsk ) [ key\-directory | key\-store string ]
+          lifetime duration_or_unlimited algorithm string [ integer
+          ]; ... };
       max\-zone\-ttl duration;
       nsec3param [ iterations integer ] [ optout boolean ] [
           salt\-length integer ];
@@ -157,6 +158,20 @@ http string {
 key string {
       algorithm string;
       secret string;
+};
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.SS KEY\-STORE
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+key\-store string {
+      directory string;
+      uri quoted_string;
 };
 .ft P
 .fi
