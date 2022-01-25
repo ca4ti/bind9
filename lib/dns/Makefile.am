@@ -84,6 +84,7 @@ libdns_la_HEADERS =			\
 	include/dns/keydata.h		\
 	include/dns/keyflags.h		\
 	include/dns/keymgr.h		\
+	include/dns/keystore.h		\
 	include/dns/keytable.h		\
 	include/dns/keyvalues.h		\
 	include/dns/librpz.h		\
@@ -184,6 +185,7 @@ libdns_la_SOURCES =			\
 	key.c				\
 	keydata.c			\
 	keymgr.c			\
+	keystore.c			\
 	keytable.c			\
 	log.c				\
 	lookup.c			\
