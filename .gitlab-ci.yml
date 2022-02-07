@@ -689,12 +689,12 @@ system:gcc:bullseye:amd64:
   <<: *debian_bullseye_amd64_image
   <<: *system_test_gcov_job
   needs:
-    - job: unit:gcc:bullseye:amd64
+    - job: gcc:bullseye:amd64
       artifacts: true
 
 unit:gcc:bullseye:amd64:
   <<: *debian_bullseye_amd64_image
-  <<: *unit_test_gcov_job
+  <<: *unit_test_job
   needs:
     - job: gcc:bullseye:amd64
       artifacts: true
@@ -1241,7 +1241,8 @@ respdiff:
   stage: system
   variables:
     CC: gcc
-    CFLAGS: "${CFLAGS_COMMON} -Og"
+    CFLAGS: "${CFLAGS_COMMON} --coverage -O0"
+    EXTRA_CONFIGURE: "--with-libidn2 ${WITH_READLINE_LIBEDIT}"
     BIND_BASELINE_VERSION: v9_11_24
     MAX_DISAGREEMENTS_PERCENTAGE: "0.5"
   script:
@@ -1266,6 +1267,36 @@ respdiff:
     untracked: true
     expire_in: "1 day"
     when: always
+
+respdiff-gcov:
+  <<: *base_image
+  <<: *schedules_tags_web_triggering_rules
+  stage: postcheck
+  needs:
+    - job: respdiff
+      artifacts: true
+  script:
+    - rm -rf refserver/
+    - find . -regex "\./bin/.*/\.libs/.*\.\(gcda\|gcno\)" -print -delete
+    # *.gcno and *.gcda files generated for shared library objects are created
+    # in directories in which gcovr is unable to process them properly
+    # (.../.libs/...).  Move such *.gcno and *.gcda files one level higher.
+    - find . -regex ".*/\.libs/.*\.\(gcda\|gcno\)" -execdir mv "{}" .. \;
+    # Help gcovr process the nasty tricks in lib/dns/code.h, where we include C
+    # source files from lib/dns/rdata/*/, using an even nastier trick.
+    - find lib/dns/rdata/* -name "*.c" -execdir cp -f "{}" ../../ \;
+    # Generate XML file in the Cobertura XML format suitable for use by GitLab
+    # for the purpose of displaying code coverage information in the diff view
+    # of a given merge request.
+    - gcovr --root . --exclude-directories bin/tests --exclude-directories doc  --exclude-directories lib/samples --exclude 'lib/.*/tests/.*' --xml -o coverage.xml
+    - gcovr --root . --exclude-directories bin/tests --exclude-directories doc  --exclude-directories lib/samples --exclude 'lib/.*/tests/.*' --html-details -o coverage.html
+    - gcovr --root . --exclude-directories bin/tests --exclude-directories doc  --exclude-directories lib/samples --exclude 'lib/.*/tests/.*' -o coverage.txt
+    - tail -n 3 coverage.txt
+  artifacts:
+    paths:
+      - coverage*.html
+      - coverage.txt
+      - coverage.xml
 
 respdiff-third-party:
   <<: *base_image
@@ -1406,6 +1437,7 @@ gcov:
     - job: system:gcc:bullseye:amd64
       artifacts: true
   script:
+    - find . -regex "\./bin/.*/\.libs/.*\.\(gcda\|gcno\)" -print -delete
     # *.gcno and *.gcda files generated for shared library objects are created
     # in directories in which gcovr is unable to process them properly
     # (.../.libs/...).  Move such *.gcno and *.gcda files one level higher.
