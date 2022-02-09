@@ -48,6 +48,7 @@
 #include <dns/dnstap.h>
 #include <dns/fixedname.h>
 #include <dns/kasp.h>
+#include <dns/keystore.h>
 #include <dns/keyvalues.h>
 #include <dns/peer.h>
 #include <dns/rbt.h>
@@ -1108,6 +1109,39 @@ check_port(const cfg_obj_t *options, isc_log_t *logctx, const char *type,
 }
 
 static isc_result_t
+check_keystore(const cfg_obj_t *obj, isc_log_t *logctx, dns_kasp_t *kasp,
+	       dns_keystorelist_t *kslist) {
+	isc_result_t result = ISC_R_SUCCESS;
+	dns_kasp_key_t *kkey;
+	dns_keystore_t *ks = NULL;
+
+	REQUIRE(kasp != NULL);
+
+	dns_kasp_freeze(kasp);
+
+	for (kkey = ISC_LIST_HEAD(dns_kasp_keys(kasp)); kkey != NULL;
+	     kkey = ISC_LIST_NEXT(kkey, link))
+	{
+		const char *keystore = dns_kasp_key_keystore(kkey);
+		if (keystore != NULL && strcmp("key-directory", keystore) != 0)
+		{
+			if (dns_keystorelist_find(kslist, keystore, &ks) ==
+			    ISC_R_SUCCESS) {
+				dns_keystore_detach(&ks);
+			} else {
+				cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+					    "key-store '%s' not found",
+					    keystore);
+				result = ISC_R_FAILURE;
+			}
+		}
+	}
+
+	dns_kasp_thaw(kasp);
+	return (result);
+}
+
+static isc_result_t
 check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 	      isc_log_t *logctx, isc_mem_t *mctx, optlevel_t optlevel) {
 	isc_result_t result = ISC_R_SUCCESS;
@@ -1121,6 +1155,8 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 	isc_buffer_t b;
 	uint32_t lifetime = 3600;
 	bool has_dnssecpolicy = false;
+	dns_keystorelist_t kslist;
+	dns_keystore_t *ks = NULL, *ks_next = NULL;
 	const char *ccalg = "siphash24";
 	cfg_aclconfctx_t *actx = NULL;
 	static const char *sources[] = {
@@ -1251,6 +1287,63 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 	}
 
 	/*
+	 * Check key-store.
+	 */
+	ISC_LIST_INIT(kslist);
+
+	obj = NULL;
+	(void)cfg_map_get(options, "key-store", &obj);
+	if (obj != NULL) {
+		bool bad_keystore = false;
+		if (optlevel != optlevel_config) {
+			bad_keystore = true;
+		} else if (!cfg_obj_islist(obj)) {
+			bad_keystore = true;
+		} else {
+			for (element = cfg_list_first(obj); element != NULL;
+			     element = cfg_list_next(element))
+			{
+				isc_result_t ret;
+				const char *name;
+				cfg_obj_t *kconfig = cfg_listelt_value(element);
+				if (!cfg_obj_istuple(kconfig)) {
+					bad_keystore = true;
+					continue;
+				}
+				name = cfg_obj_asstring(cfg_tuple_get(
+					cfg_listelt_value(element), "name"));
+				if (strcmp("key-directory", name) == 0) {
+					cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+						    "name 'key-directory' not "
+						    "allowed");
+					if (result == ISC_R_SUCCESS) {
+						result = ISC_R_FAILURE;
+					}
+				}
+
+				ret = cfg_keystore_fromconfig(
+					kconfig, mctx, logctx, &kslist, &ks);
+				if (ret != ISC_R_SUCCESS) {
+					if (result == ISC_R_SUCCESS) {
+						result = ret;
+					}
+				}
+				if (ks != NULL) {
+					dns_keystore_detach(&ks);
+				}
+			}
+		}
+
+		if (bad_keystore) {
+			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+				    "may only be configured at the top level");
+			if (result == ISC_R_SUCCESS) {
+				result = ISC_R_FAILURE;
+			}
+		}
+	}
+
+	/*
 	 * Check dnssec-policy.
 	 */
 	obj = NULL;
@@ -1288,6 +1381,12 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 					ret = cfg_kasp_fromconfig(kconfig, NULL,
 								  mctx, logctx,
 								  &list, &kasp);
+					if (ret == ISC_R_SUCCESS) {
+						/* Check key-stores of keys */
+						ret = check_keystore(
+							obj, logctx, kasp,
+							&kslist);
+					}
 					if (ret != ISC_R_SUCCESS) {
 						if (result == ISC_R_SUCCESS) {
 							result = ret;
@@ -1329,6 +1428,18 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 		}
 	}
 
+	/*
+	 * Cleanup key-store.
+	 */
+	for (ks = ISC_LIST_HEAD(kslist); ks != NULL; ks = ks_next) {
+		ks_next = ISC_LIST_NEXT(ks, link);
+		ISC_LIST_UNLINK(kslist, ks, link);
+		dns_keystore_detach(&ks);
+	}
+
+	/*
+	 * Other checks.
+	 */
 	obj = NULL;
 	cfg_map_get(options, "max-rsa-exponent-size", &obj);
 	if (obj != NULL) {
