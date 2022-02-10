@@ -53,10 +53,11 @@ if HAVE_LIBNGHTTP2
 check_PROGRAMS +=	\
 	doh_test
 
-doh_test_CPPFLAGS =	\
-	$(AM_CPPFLAGS)	\
-	$(LIBNGHTTP2_CFLAGS)	\
-	$(OPENSSL_CFLAGS)
+doh_test_CPPFLAGS =	  \
+	$(OPENSSL_CFLAGS) \
+	$(AM_CPPFLAGS)	  \
+	$(LIBUV_CFLAGS)	  \
+	$(LIBNGHTTP2_CFLAGS)
 
 doh_test_LDADD =	\
 	$(LDADD)	\
@@ -68,21 +69,21 @@ doh_test_SOURCES =	\
 
 endif HAVE_LIBNGHTTP2
 
-hmac_test_CPPFLAGS =	\
-	$(AM_CPPFLAGS)	\
-	$(OPENSSL_CFLAGS)
+hmac_test_CPPFLAGS =	  \
+	$(OPENSSL_CFLAGS) \
+	$(AM_CPPFLAGS)
 
 hmac_test_LDADD =	\
-	$(LDADD)	\
-	$(OPENSSL_LIBS)
+	$(OPENSSL_LIBS) \
+	$(LDADD)
 
-md_test_CPPFLAGS =	\
-	$(AM_CPPFLAGS)	\
-	$(OPENSSL_CFLAGS)
+md_test_CPPFLAGS =	  \
+	$(OPENSSL_CFLAGS) \
+	$(AM_CPPFLAGS)
 
 md_test_LDADD =		\
-	$(LDADD)	\
-	$(OPENSSL_LIBS)
+	$(OPENSSL_LIBS) \
+	$(LDADD)
 
 random_test_LDADD =	\
 	$(LDADD)	\

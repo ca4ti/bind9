@@ -43,8 +43,8 @@ libns_la_CPPFLAGS =				\
 	$(LIBDNS_CFLAGS)			\
 	$(LIBISC_CFLAGS)			\
 	$(LIBNS_CFLAGS)				\
-	$(LIBUV_CFLAGS)				\
-	$(OPENSSL_CFLAGS)
+	$(OPENSSL_CFLAGS)			\
+	$(LIBUV_CFLAGS)
 
 libns_la_LIBADD =	\
 	$(LIBDNS_LIBS)	\

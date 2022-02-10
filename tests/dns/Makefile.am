@@ -12,8 +12,9 @@ AM_CPPFLAGS +=				\
 
 LDADD +=				\
 	$(LIBISC_LIBS)			\
-	$(LIBUV_LIBS)			\
-	$(LIBDNS_LIBS)
+	$(OPENSS_LIBS)			\
+	$(LIBDNS_LIBS)			\
+	$(LIBUV_LIBS)
 
 check_PROGRAMS =		\
 	acl_test		\

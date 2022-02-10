@@ -218,8 +218,8 @@ libisc_la_SOURCES =		\
 libisc_la_CPPFLAGS =		\
 	$(AM_CPPFLAGS)		\
 	$(LIBISC_CFLAGS)	\
-	$(LIBUV_CFLAGS)		\
 	$(OPENSSL_CFLAGS)	\
+	$(LIBUV_CFLAGS)		\
 	$(ZLIB_CFLAGS)
 
 libisc_la_LDFLAGS =		\
@@ -227,8 +227,8 @@ libisc_la_LDFLAGS =		\
 	-release "$(PACKAGE_VERSION)"
 
 libisc_la_LIBADD =		\
-	$(LIBUV_LIBS)		\
 	$(OPENSSL_LIBS)		\
+	$(LIBUV_LIBS)		\
 	$(ZLIB_LIBS)
 
 if HAVE_JEMALLOC
