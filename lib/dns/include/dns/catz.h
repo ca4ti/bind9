@@ -244,6 +244,17 @@ dns_catz_zone_getname(dns_catz_zone_t *zone);
  * \li	'zone' is a valid dns_catz_zone_t.
  */
 
+int
+dns_catz_zone_getlatestmerge_delta(dns_catz_zone_t *zone);
+/*%<
+ * Get the relative difference of the number of member zones between the
+ * previous and the current versions of the catalog zone.  This can be either
+ * a negative or a positive number, or zero.
+ *
+ * Requires:
+ * \li	'zone' is a valid dns_catz_zone_t.
+ */
+
 dns_catz_options_t *
 dns_catz_zone_getdefoptions(dns_catz_zone_t *zone);
 /*%<
@@ -330,6 +341,7 @@ struct dns_catz_zonemodmethods {
 	dns_catz_zoneop_fn_t addzone;
 	dns_catz_zoneop_fn_t modzone;
 	dns_catz_zoneop_fn_t delzone;
+	dns_catz_zoneop_fn_t preproc;
 	void		     *udata;
 };
 

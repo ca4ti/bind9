@@ -2668,6 +2668,8 @@ catz_addmodzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 	ns_cfgctx_t *cfg;
 	dns_zone_t *zone = NULL;
 
+	REQUIRE(ev->entry != NULL);
+
 	cfg = (ns_cfgctx_t *)ev->view->new_zone_config;
 	if (cfg == NULL) {
 		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
@@ -2843,6 +2845,8 @@ catz_delzone_taskaction(isc_task_t *task, isc_event_t *event0) {
 	char cname[DNS_NAME_FORMATSIZE];
 	const char *file;
 
+	REQUIRE(ev->entry != NULL);
+
 	result = isc_task_beginexclusive(task);
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
 
@@ -2909,6 +2913,45 @@ cleanup:
 	isc_event_free(ISC_EVENT_PTR(&ev));
 }
 
+static void
+catz_preproc_taskaction(isc_task_t *task, isc_event_t *event0) {
+	catz_chgzone_event_t *ev = (catz_chgzone_event_t *)event0;
+	isc_result_t result;
+	dns_zone_t *zone = NULL;
+	char cname[DNS_NAME_FORMATSIZE];
+	int delta;
+
+	REQUIRE(ev->entry == NULL);
+
+	result = isc_task_beginexclusive(task);
+	RUNTIME_CHECK(result == ISC_R_SUCCESS);
+
+	dns_name_format(dns_catz_zone_getname(ev->origin), cname,
+			DNS_NAME_FORMATSIZE);
+
+	delta = dns_catz_zone_getlatestmerge_delta(ev->origin);
+	if (delta != 0) {
+		const char *addrem = (delta > 0) ? "additional" : "removed";
+
+		isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
+			      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
+			      "catz: catz_preproc_taskaction: "
+			      "sizing zone task pool based on %s %d zones",
+			      addrem, abs(delta));
+
+		CHECK(dns_zonemgr_incsize(named_g_server->zonemgr, delta));
+	}
+
+cleanup:
+	isc_task_endexclusive(task);
+	if (zone != NULL) {
+		dns_zone_detach(&zone);
+	}
+	dns_catz_zone_detach(&ev->origin);
+	dns_view_detach(&ev->view);
+	isc_event_free(ISC_EVENT_PTR(&ev));
+}
+
 static isc_result_t
 catz_create_chg_task(dns_catz_entry_t *entry, dns_catz_zone_t *origin,
 		     dns_view_t *view, isc_taskmgr_t *taskmgr, void *udata,
@@ -2931,6 +2974,9 @@ catz_create_chg_task(dns_catz_entry_t *entry, dns_catz_zone_t *origin,
 	case DNS_EVENT_CATZDELZONE:
 		action = catz_delzone_taskaction;
 		break;
+	case DNS_EVENT_CATZPREPROC:
+		action = catz_preproc_taskaction;
+		break;
 	default:
 		REQUIRE(0);
 		ISC_UNREACHABLE();
@@ -2945,7 +2991,9 @@ catz_create_chg_task(dns_catz_entry_t *entry, dns_catz_zone_t *origin,
 	event->view = NULL;
 	event->mod = (type == DNS_EVENT_CATZMODZONE);
 
-	dns_catz_entry_attach(entry, &event->entry);
+	if (entry != NULL) {
+		dns_catz_entry_attach(entry, &event->entry);
+	}
 	dns_catz_zone_attach(origin, &event->origin);
 	dns_view_attach(view, &event->view);
 
@@ -2974,6 +3022,13 @@ catz_modzone(dns_catz_entry_t *entry, dns_catz_zone_t *origin, dns_view_t *view,
 	     isc_taskmgr_t *taskmgr, void *udata) {
 	return (catz_create_chg_task(entry, origin, view, taskmgr, udata,
 				     DNS_EVENT_CATZMODZONE));
+}
+
+static isc_result_t
+catz_preproc(dns_catz_entry_t *entry, dns_catz_zone_t *origin, dns_view_t *view,
+	     isc_taskmgr_t *taskmgr, void *udata) {
+	return (catz_create_chg_task(entry, origin, view, taskmgr, udata,
+				     DNS_EVENT_CATZPREPROC));
 }
 
 static isc_result_t
@@ -3113,7 +3168,7 @@ cleanup:
 
 static catz_cb_data_t ns_catz_cbdata;
 static dns_catz_zonemodmethods_t ns_catz_zonemodmethods = {
-	catz_addzone, catz_modzone, catz_delzone, &ns_catz_cbdata
+	catz_addzone, catz_modzone, catz_delzone, catz_preproc, &ns_catz_cbdata
 };
 
 static isc_result_t

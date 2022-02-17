@@ -67,6 +67,7 @@ struct dns_catz_zone {
 	dns_catz_options_t defoptions;
 	dns_catz_options_t zoneoptions;
 	isc_time_t lastupdated;
+	int latestmerge_delta;
 	bool updatepending;
 	uint32_t version;
 
@@ -347,6 +348,13 @@ dns_catz_zone_getname(dns_catz_zone_t *zone) {
 	return (&zone->name);
 }
 
+int
+dns_catz_zone_getlatestmerge_delta(dns_catz_zone_t *zone) {
+	REQUIRE(DNS_CATZ_ZONE_VALID(zone));
+
+	return (zone->latestmerge_delta);
+}
+
 dns_catz_options_t *
 dns_catz_zone_getdefoptions(dns_catz_zone_t *zone) {
 	REQUIRE(DNS_CATZ_ZONE_VALID(zone));
@@ -371,16 +379,46 @@ dns_catz_zones_merge(dns_catz_zone_t *target, dns_catz_zone_t *newzone) {
 	bool delcur = false;
 	char czname[DNS_NAME_FORMATSIZE];
 	char zname[DNS_NAME_FORMATSIZE];
-	dns_catz_zoneop_fn_t addzone, modzone, delzone;
+	unsigned int target_entries_count = 0, newzone_entries_count = 0;
+	unsigned int delta = 0;
+	int prevmerge_delta = 0;
+	dns_catz_zoneop_fn_t addzone, modzone, delzone, preproc;
 
 	REQUIRE(DNS_CATZ_ZONE_VALID(newzone));
 	REQUIRE(DNS_CATZ_ZONE_VALID(target));
+
+	/*
+	 * Calculate the difference of the member zones count between the
+	 * previous version and the new version of the catalog zone.  This
+	 * delta is currently being used for requesting zone mem/task pool
+	 * resize.
+	 *
+	 * Apply some restrictions on the delta, because we need to limit it
+	 * with the range from INT_MIN to INT_MAX.
+	 */
+	prevmerge_delta = target->latestmerge_delta;
+	if (target->entries != NULL) {
+		target_entries_count = isc_ht_count(target->entries);
+	}
+	if (newzone->entries != NULL) {
+		newzone_entries_count = isc_ht_count(newzone->entries);
+	}
+	if (newzone_entries_count > target_entries_count) {
+		delta = newzone_entries_count - target_entries_count;
+		target->latestmerge_delta = (delta > INT_MAX) ? INT_MAX
+							      : (int)delta;
+	} else {
+		delta = target_entries_count - newzone_entries_count;
+		target->latestmerge_delta = (delta > INT_MAX) ? INT_MIN
+							      : -1 * (int)delta;
+	}
 
 	/* TODO verify the new zone first! */
 
 	addzone = target->catzs->zmm->addzone;
 	modzone = target->catzs->zmm->modzone;
 	delzone = target->catzs->zmm->delzone;
+	preproc = target->catzs->zmm->preproc;
 
 	/* Copy zoneoptions from newzone into target. */
 
@@ -509,6 +547,15 @@ dns_catz_zones_merge(dns_catz_zone_t *target, dns_catz_zone_t *newzone) {
 	isc_ht_iter_destroy(&iter1);
 
 	/*
+	 * Then - request to run the pre-processing task.
+	 */
+	result = preproc(NULL, target, target->catzs->view,
+			 target->catzs->taskmgr, target->catzs->zmm->udata);
+	if (result != ISC_R_SUCCESS) {
+		goto cleanup;
+	}
+
+	/*
 	 * Then - walk the old zone; only deleted entries should remain.
 	 */
 	for (result = isc_ht_iter_first(iter2); result == ISC_R_SUCCESS;
@@ -590,6 +637,9 @@ cleanup:
 	}
 	if (tomod != NULL) {
 		isc_ht_destroy(&tomod);
+	}
+	if (result != ISC_R_SUCCESS) {
+		target->latestmerge_delta = prevmerge_delta;
 	}
 	return (result);
 }
