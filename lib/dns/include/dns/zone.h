@@ -1799,12 +1799,11 @@ isc_result_t
 dns_zonemgr_setsize(dns_zonemgr_t *zmgr, int num_zones);
 /*%<
  *	Set the size of the zone manager task pool.  This must be run
- *	before zmgr can be used for managing zones.  Currently, it can only
- *	be run once; the task pool cannot be resized.
+ *	before zmgr can be used for managing zones.  Currently the task pool
+ *	can only be extended, not shrinked.
  *
  * Requires:
  *\li	zmgr is a valid zone manager.
- *\li	zmgr->zonetasks has been initialized.
  */
 
 isc_result_t
