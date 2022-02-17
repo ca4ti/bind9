@@ -363,11 +363,21 @@ dns_catz_add_zone(dns_catz_zones_t *catzs, const dns_name_t *name,
 dns_catz_zone_t *
 dns_catz_get_zone(dns_catz_zones_t *catzs, const dns_name_t *name);
 /*%<
- * Returns a zone named 'name' from collection 'catzs'
+ * Returns a zone named 'name' from collection 'catzs'.
  *
  * Requires:
  * \li	'catzs' is a valid dns_catz_zones_t.
  * \li	'name' is a valid dns_name_t.
+ */
+
+unsigned int
+dns_catz_get_catzs_entries_count(dns_catz_zones_t *catzs);
+/*%<
+ * Returns the number of all member zones in all catalog zones from collection
+ * 'catzs'.
+ *
+ * Requires:
+ * \li	'catzs' is a valid dns_catz_zones_t.
  */
 
 void

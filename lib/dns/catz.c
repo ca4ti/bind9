@@ -770,6 +770,40 @@ dns_catz_get_zone(dns_catz_zones_t *catzs, const dns_name_t *name) {
 	return (found);
 }
 
+unsigned int
+dns_catz_get_catzs_entries_count(dns_catz_zones_t *catzs) {
+	isc_result_t result;
+	isc_ht_iter_t *iter = NULL;
+	unsigned int count = 0;
+
+	REQUIRE(DNS_CATZ_ZONES_VALID(catzs));
+
+	result = isc_ht_iter_create(catzs->zones, &iter);
+	if (result != ISC_R_SUCCESS) {
+		goto cleanup;
+	}
+
+	for (result = isc_ht_iter_first(iter); result == ISC_R_SUCCESS;
+	     result = isc_ht_iter_next(iter))
+	{
+		dns_catz_zone_t *zone = NULL;
+
+		isc_ht_iter_current(iter, (void **)&zone);
+
+		if (zone->active) {
+			count += isc_ht_count(zone->entries);
+		}
+	}
+	INSIST(result == ISC_R_NOMORE);
+
+cleanup:
+	if (iter != NULL) {
+		isc_ht_iter_destroy(&iter);
+	}
+
+	return count;
+}
+
 void
 dns_catz_catzs_attach(dns_catz_zones_t *catzs, dns_catz_zones_t **catzsp) {
 	REQUIRE(DNS_CATZ_ZONES_VALID(catzs));
