@@ -1,3 +1,10 @@
+5814.	[func]		Adjust zone mem/task pools sizes (if needed) after a
+			successful catalog zone update merge process. [GL #3159]
+
+5813.	[func]		Use catalog zones' member zones count when calculating
+			the zone mem/task pools sizes during (re)configuration.
+			[GL #3159]
+
 5812.	[func]		Drop the artificial limit on the number of queries
 			processed in a single TCP read callback. [GL #3141]
 
