@@ -1800,7 +1800,23 @@ dns_zonemgr_setsize(dns_zonemgr_t *zmgr, int num_zones);
 /*%<
  *	Set the size of the zone manager task pool.  This must be run
  *	before zmgr can be used for managing zones.  Currently the task pool
- *	can only be extended, not shrinked.
+ *	can only be extended, not shrinked.  It is also worth noting that
+ *	in the current implementation the distribution in the pool will be
+ *	unbalanced and biased towards the earlier sizes of the pool.
+ *
+ * Requires:
+ *\li	zmgr is a valid zone manager.
+ */
+
+isc_result_t
+dns_zonemgr_incsize(dns_zonemgr_t *zmgr, int num_zones);
+/*%<
+ *	Increase the size of the zone manager task pool.  If num_zones is
+ *	negative, the pool will not be shrinked, but the requested size of the
+ *	resources will be recorded to take into account when requesing another
+ *	increase or decrease in the future calls.  It is also worth noting that
+ *	in the current implementation the distribution in the pool will be
+ *	unbalanced and biased towards the earlier sizes of the pool.
  *
  * Requires:
  *\li	zmgr is a valid zone manager.

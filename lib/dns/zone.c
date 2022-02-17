@@ -598,6 +598,8 @@ struct dns_zonemgr {
 	isc_taskpool_t *loadtasks;
 	isc_task_t *task;
 	isc_pool_t *mctxpool;
+	int num_zones_requested;
+	int num_zones;
 	isc_ratelimiter_t *checkdsrl;
 	isc_ratelimiter_t *notifyrl;
 	isc_ratelimiter_t *refreshrl;
@@ -19162,6 +19164,13 @@ dns_zonemgr_setsize(dns_zonemgr_t *zmgr, int num_zones) {
 
 	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
 
+	zmgr->num_zones_requested = num_zones;
+	if (zmgr->num_zones_requested <= zmgr->num_zones) {
+		return ISC_R_SUCCESS;
+	}
+
+	zmgr->num_zones = num_zones;
+
 	/*
 	 * For anything fewer than 1000 zones we use 10 tasks in
 	 * the task pools.  More than that, and we'll scale at one
@@ -19220,6 +19229,13 @@ dns_zonemgr_setsize(dns_zonemgr_t *zmgr, int num_zones) {
 	}
 
 	return (result);
+}
+
+isc_result_t
+dns_zonemgr_incsize(dns_zonemgr_t *zmgr, int num_zones) {
+	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
+
+	return dns_zonemgr_setsize(zmgr, zmgr->num_zones_requested + num_zones);
 }
 
 static void
