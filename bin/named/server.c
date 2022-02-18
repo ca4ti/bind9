@@ -9148,9 +9148,14 @@ load_configuration(const char *filename, named_server_t *server,
 		INSIST(keystore != NULL);
 		dns_keystore_detach(&keystore);
 	}
-	tmpkeystorelist = server->keystorelist;
-	server->keystorelist = keystorelist;
-	keystorelist = tmpkeystorelist;
+	/*
+	 * Create the built-in key store ("key-directory").
+	 */
+	keystore = NULL;
+	CHECK(cfg_keystore_fromconfig(NULL, named_g_mctx, named_g_lctx,
+				      &keystorelist, &keystore));
+	INSIST(keystore != NULL);
+	dns_keystore_detach(&keystore);
 
 	/*
 	 * Create the DNSSEC key and signing policies (KASP).
@@ -9163,7 +9168,8 @@ load_configuration(const char *filename, named_server_t *server,
 		cfg_obj_t *kconfig = cfg_listelt_value(element);
 		kasp = NULL;
 		CHECK(cfg_kasp_fromconfig(kconfig, NULL, named_g_mctx,
-					  named_g_lctx, &kasplist, &kasp));
+					  named_g_lctx, &keystorelist,
+					  &kasplist, &kasp));
 		INSIST(kasp != NULL);
 		dns_kasp_freeze(kasp);
 		dns_kasp_detach(&kasp);
@@ -9173,17 +9179,24 @@ load_configuration(const char *filename, named_server_t *server,
 	 */
 	kasp = NULL;
 	CHECK(cfg_kasp_fromconfig(NULL, "default", named_g_mctx, named_g_lctx,
-				  &kasplist, &kasp));
+				  &keystorelist, &kasplist, &kasp));
 	INSIST(kasp != NULL);
 	dns_kasp_freeze(kasp);
 	dns_kasp_detach(&kasp);
 
 	kasp = NULL;
 	CHECK(cfg_kasp_fromconfig(NULL, "insecure", named_g_mctx, named_g_lctx,
-				  &kasplist, &kasp));
+				  &keystorelist, &kasplist, &kasp));
 	INSIST(kasp != NULL);
 	dns_kasp_freeze(kasp);
 	dns_kasp_detach(&kasp);
+
+	/*
+	 * Save keystore list and kasp list.
+	 */
+	tmpkeystorelist = server->keystorelist;
+	server->keystorelist = keystorelist;
+	keystorelist = tmpkeystorelist;
 
 	tmpkasplist = server->kasplist;
 	server->kasplist = kasplist;

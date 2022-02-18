@@ -90,7 +90,7 @@ get_string(const cfg_obj_t **maps, const char *option) {
  */
 static isc_result_t
 cfg_kaspkey_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
-		       isc_log_t *logctx) {
+		       isc_log_t *logctx, dns_keystorelist_t *keystorelist) {
 	isc_result_t result;
 	dns_kasp_key_t *key = NULL;
 
@@ -106,8 +106,14 @@ cfg_kaspkey_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
 		key->lifetime = 0; /* unlimited */
 		key->algorithm = DNS_KEYALG_ECDSA256;
 		key->length = -1;
+		result = dns_keystorelist_find(keystorelist, "key-directory",
+					       &key->keystore);
+		if (result != ISC_R_SUCCESS) {
+			goto cleanup;
+		}
 	} else {
 		const char *rolestr = NULL;
+		const char *keydir = NULL;
 		const cfg_obj_t *obj = NULL;
 		isc_consttextregion_t alg;
 
@@ -123,8 +129,24 @@ cfg_kaspkey_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
 
 		obj = cfg_tuple_get(config, "keystorage");
 		if (cfg_obj_isstring(obj)) {
-			key->keystore = isc_mem_strdup(key->mctx,
-						       cfg_obj_asstring(obj));
+			keydir = cfg_obj_asstring(obj);
+		}
+		if (keydir == NULL) {
+			keydir = "key-directory";
+		}
+		result = dns_keystorelist_find(keystorelist, keydir,
+					       &key->keystore);
+		if (result == ISC_R_NOTFOUND) {
+			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+				    "dnssec-policy: keystore %s does not exist",
+				    keydir);
+			result = ISC_R_FAILURE;
+			goto cleanup;
+		} else if (result != ISC_R_SUCCESS) {
+			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+				    "dnssec-policy: bad keystore %s", keydir);
+			result = ISC_R_FAILURE;
+			goto cleanup;
 		}
 
 		key->lifetime = 0; /* unlimited */
@@ -276,8 +298,8 @@ cfg_nsec3param_fromconfig(const cfg_obj_t *config, dns_kasp_t *kasp,
 
 isc_result_t
 cfg_kasp_fromconfig(const cfg_obj_t *config, const char *name, isc_mem_t *mctx,
-		    isc_log_t *logctx, dns_kasplist_t *kasplist,
-		    dns_kasp_t **kaspp) {
+		    isc_log_t *logctx, dns_keystorelist_t *keystorelist,
+		    dns_kasplist_t *kasplist, dns_kasp_t **kaspp) {
 	isc_result_t result;
 	const cfg_obj_t *maps[2];
 	const cfg_obj_t *koptions = NULL;
@@ -354,8 +376,13 @@ cfg_kasp_fromconfig(const cfg_obj_t *config, const char *name, isc_mem_t *mctx,
 		     element = cfg_list_next(element))
 		{
 			cfg_obj_t *kobj = cfg_listelt_value(element);
-			result = cfg_kaspkey_fromconfig(kobj, kasp, logctx);
+			result = cfg_kaspkey_fromconfig(kobj, kasp, logctx,
+							keystorelist);
 			if (result != ISC_R_SUCCESS) {
+				cfg_obj_log(kobj, logctx, ISC_LOG_ERROR,
+					    "dnssec-policy: failed to "
+					    "configure keys (%s)",
+					    isc_result_totext(result));
 				goto cleanup;
 			}
 		}
@@ -396,7 +423,8 @@ cfg_kasp_fromconfig(const cfg_obj_t *config, const char *name, isc_mem_t *mctx,
 		INSIST(dns_kasp_keylist_empty(kasp));
 	} else {
 		/* No keys clause configured, use the "default". */
-		result = cfg_kaspkey_fromconfig(NULL, kasp, logctx);
+		result = cfg_kaspkey_fromconfig(NULL, kasp, logctx,
+						keystorelist);
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup;
 		}
@@ -454,13 +482,17 @@ cfg_keystore_fromconfig(const cfg_obj_t *config, isc_mem_t *mctx,
 	const cfg_obj_t *maps[2];
 	const cfg_obj_t *koptions = NULL;
 	const char *name = NULL;
+	const char *keydirectory = "key-directory";
 	dns_keystore_t *keystore = NULL;
 	int i = 0;
 
-	REQUIRE(config != NULL);
 	REQUIRE(kspp != NULL && *kspp == NULL);
 
-	name = cfg_obj_asstring(cfg_tuple_get(config, "name"));
+	if (config != NULL) {
+		name = cfg_obj_asstring(cfg_tuple_get(config, "name"));
+	} else {
+		name = keydirectory;
+	}
 	INSIST(name != NULL);
 
 	result = dns_keystorelist_find(keystorelist, name, &keystore);
@@ -494,12 +526,11 @@ cfg_keystore_fromconfig(const cfg_obj_t *config, isc_mem_t *mctx,
 	if (config != NULL) {
 		koptions = cfg_tuple_get(config, "options");
 		maps[i++] = koptions;
+		maps[i] = NULL;
+		dns_keystore_setdirectory(keystore,
+					  get_string(maps, "directory"));
+		dns_keystore_setpkcs11uri(keystore, get_string(maps, "uri"));
 	}
-	maps[i] = NULL;
-
-	/* Configuration */
-	dns_keystore_setdirectory(keystore, get_string(maps, "directory"));
-	dns_keystore_setpkcs11uri(keystore, get_string(maps, "uri"));
 
 	/* Append it to the list for future lookups. */
 	ISC_LIST_APPEND(*keystorelist, keystore, link);

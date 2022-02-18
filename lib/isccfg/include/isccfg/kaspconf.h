@@ -27,13 +27,14 @@ ISC_LANG_BEGINDECLS
 
 isc_result_t
 cfg_kasp_fromconfig(const cfg_obj_t *config, const char *name, isc_mem_t *mctx,
-		    isc_log_t *logctx, dns_kasplist_t *kasplist,
-		    dns_kasp_t **kaspp);
+		    isc_log_t *logctx, dns_keystorelist_t *keystorelist,
+		    dns_kasplist_t *kasplist, dns_kasp_t **kaspp);
 /*%<
  * Create and configure a KASP. If 'config' is NULL, a built-in configuration
  * is used, referred to by 'name'. If a 'kasplist' is provided, a lookup
  * happens and if a KASP already exists with the same name, no new KASP is
- * created, and no attach to 'kaspp' happens.
+ * created, and no attach to 'kaspp' happens. The 'keystorelist' is where to
+ * lookup key stores if KASP keys are using them.
  *
  * Requires:
  *
