@@ -18,18 +18,20 @@ set -e
 
 rm -f dig.out.*
 rm -f dsset-*
-rm -f pin
 rm -f keyfromlabel.out.*
 rm -f pkcs11-tool.out.*
 rm -f signer.out.*
 rm -f ns1/*.example.db ns1/*.example.db.signed
+rm -f ns1/*.kasp.db ns1/*.kasp.db.signed
 rm -f ns1/*.kskid1 ns1/*.kskid2 ns1/*.zskid1 ns1/*.zskid2
 rm -f ns1/dig.out.*
 rm -f ns1/K*
+rm -f ns1/keygen.out.*
 rm -f ns1/named.conf ns1/named.run ns1/named.memstats
+rm -f ns1/pin
 rm -f ns1/update.cmd.*
 rm -f ns1/update.log.*
 rm -f ns1/verify.out.*
-rm -f ns1/zone.*.signed.jnl ns1/zone.*.signed.jbk
+rm -f ns1/zone.*.jnl ns1/zone.*.jbk
 
 softhsm2-util --delete-token --token "softhsm2-engine_pkcs11" >/dev/null 2>&1 || echo_i "softhsm2-engine_pkcs11 token not found for cleaning"

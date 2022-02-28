@@ -18,7 +18,7 @@ set -e
 
 softhsm2-util --init-token --free --pin 1234 --so-pin 1234 --label "softhsm2-engine_pkcs11" | awk '/^The token has been initialized and is reassigned to slot/ { print $NF }'
 
-printf '%s' "${HSMPIN:-1234}" > pin
+printf '%s' "${HSMPIN:-1234}" > ns1/pin
 PWD=$(pwd)
 
 copy_setports ns1/named.conf.in ns1/named.conf
@@ -31,7 +31,7 @@ keygen() {
 
 	label="${id}-${zone}"
 	p11id=$(echo "${label}" | sha1sum - | awk '{print $1}')
-	pkcs11-tool --module $SOFTHSM2_MODULE --token-label "softhsm2-engine_pkcs11" -l -k --key-type $type:$bits --label "${label}" --id "${p11id//$'\n'/}" --pin $(cat $PWD/pin) > pkcs11-tool.out.$zone.$id || return 1
+	pkcs11-tool --module $SOFTHSM2_MODULE --token-label "softhsm2-engine_pkcs11" -l -k --key-type $type:$bits --label "${label}" --id "${p11id//$'\n'/}" --pin $(cat $PWD/ns1/pin) > pkcs11-tool.out.$zone.$id || return 1
 }
 
 keyfromlabel() {
@@ -41,7 +41,7 @@ keyfromlabel() {
 	dir="$4"
         shift 4
 
-	$KEYFRLAB -K $dir -E pkcs11 -a $alg -l "token=softhsm2-engine_pkcs11;object=${id}-${zone};pin-source=$PWD/pin" "$@" $zone >> keyfromlabel.out.$zone.$id 2>> /dev/null || return 1
+	$KEYFRLAB -K $dir -E pkcs11 -a $alg -l "token=softhsm2-engine_pkcs11;object=${id}-${zone};pin-source=$PWD/ns1/pin" "$@" $zone >> keyfromlabel.out.$zone.$id 2>> /dev/null || return 1
 	cat keyfromlabel.out.$zone.$id
 }
 
@@ -58,9 +58,10 @@ do
 	type=$(echo "$algtypebits" | cut -f 2 -d :)
 	bits=$(echo "$algtypebits" | cut -f 3 -d :)
 
+	tld="example"
 	if $SHELL ../testcrypto.sh $alg; then
-		zone="$alg.example"
-		zonefile="zone.$alg.example.db"
+		zone="$alg.$tld"
+		zonefile="zone.$alg.$tld.db"
 		ret=0
 
 		echo_i "Generate keys $alg $type:$bits for zone $zone"
@@ -112,11 +113,28 @@ do
 			cp "${ksk2}.key" "${ksk2}.ksk2"
 		)
 
+		echo_i "Add zone $alg.kasp to named.conf"
+		cp $infile ${dir}/zone.${alg}.kasp.db
+
 		echo_i "Add zone $zone to named.conf"
 		cat >> "${dir}/named.conf" <<EOF
 zone "$zone" {
 	type primary;
 	file "${zonefile}.signed";
+	allow-update { any; };
+};
+
+dnssec-policy "$alg" {
+	keys {
+		ksk key-store "hsm" lifetime unlimited algorithm ${alg};
+		zsk key-store "pin" lifetime unlimited algorithm ${alg};
+	};
+};
+
+zone "${alg}.kasp" {
+	type primary;
+	file "zone.${alg}.kasp.db";
+	dnssec-policy "$alg";
 	allow-update { any; };
 };
 
