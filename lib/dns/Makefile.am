@@ -263,6 +263,7 @@ libdns_la_CPPFLAGS =		\
 	$(LIBDNS_CFLAGS)	\
 	$(LIBISC_CFLAGS)	\
 	$(LIBUV_CFLAGS)		\
+	$(GNUTLS_CFLAGS)	\
 	$(OPENSSL_CFLAGS)
 
 libdns_la_LDFLAGS =		\
@@ -272,6 +273,7 @@ libdns_la_LDFLAGS =		\
 libdns_la_LIBADD =		\
 	$(LIBISC_LIBS)		\
 	$(LIBUV_LIBS)		\
+	$(GNUTLS_LIBS)		\
 	$(OPENSSL_LIBS)
 
 if HAVE_JSON_C

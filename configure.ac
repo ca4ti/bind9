@@ -542,6 +542,20 @@ AC_CHECK_FUNCS([sched_yield pthread_yield pthread_yield_np])
 AC_CHECK_FUNCS([pthread_setname_np pthread_set_name_np])
 AC_CHECK_HEADERS([pthread_np.h], [], [], [#include <pthread.h>])
 
+# gnutls
+AC_MSG_CHECKING([for GnuTLS])
+PKG_CHECK_MODULES([GNUTLS], [gnutls >= 3.4.0], [
+    have_gnutls=yes
+    AS_IF([test "$have_gnutls" = yes],
+        [AC_DEFINE([HAVE_GNUTLS], [1], [GnuTLS PKCS #11 support available])])
+  ],
+  [AC_MSG_RESULT([GnuTLS library not found])])
+
+AC_SUBST([GNUTLS_CFLAGS])
+AC_SUBST([GNUTLS_LIBS])
+AM_CONDITIONAL([HAVE_GNUTLS], [test "$have_gnutls" = "yes"])
+
+
 # libuv
 AC_MSG_CHECKING([for libuv])
 PKG_CHECK_MODULES([LIBUV], [libuv >= 1.0.0], [],
@@ -579,7 +593,6 @@ AS_IF([test "$enable_doh" = "yes"],
 	       [AC_MSG_ERROR([Specifying libnghttp2 installation path is not supported, adjust PKG_CONFIG_PATH instead])])])
 
 AM_CONDITIONAL([HAVE_LIBNGHTTP2], [test -n "$LIBNGHTTP2_LIBS"])
-					  
 
 #
 # flockfile is usually provided by pthreads
@@ -1642,6 +1655,9 @@ report() {
     test -z "$HAVE_CMOCKA" || echo "    CMocka Unit Testing Framework (--with-cmocka)"
 
     test "auto" = "$validation_default" && echo "    DNSSEC validation active by default (--enable-auto-validation)"
+    if test "yes" = "$enable_pkcs11"; then
+	echo "    DNSSEC PKCS#11 key generation supported"
+    fi
 
     echo "-------------------------------------------------------------------------------"
 
