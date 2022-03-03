@@ -224,9 +224,11 @@ dns_keystore_keygen(dns_keystore_t *keystore, const dns_name_t *origin,
 			GNUTLS_PKCS11_OBJ_FLAG_LOGIN;
 		gnutls_rnd(GNUTLS_RND_RANDOM, cidbuf, sizeof(cidbuf));
 
+		isc_mutex_lock(&keystore->lock);
 		ret = gnutls_pkcs11_privkey_generate3(url, pk_alg(alg), size,
 						      object, &cid, 0, NULL, 0,
 						      gnufl);
+		isc_mutex_unlock(&keystore->lock);
 
 		if (ret != GNUTLS_E_SUCCESS) {
 			isc_log_write(dns_lctx, DNS_LOGCATEGORY_DNSSEC,
@@ -241,10 +243,12 @@ dns_keystore_keygen(dns_keystore_t *keystore, const dns_name_t *origin,
 		label = isc_mem_get(mctx, len);
 		sprintf(label, "%s;object=%s;", url, object);
 
+		isc_mutex_lock(&keystore->lock);
 		result = dst_key_fromlabel(
 			origin, alg, flags, DNS_KEYPROTO_DNSSEC,
 			dns_rdataclass_in, dns_keystore_engine(keystore), label,
 			NULL, mctx, &newkey);
+		isc_mutex_unlock(&keystore->lock);
 
 		isc_mem_put(mctx, label, len);
 
