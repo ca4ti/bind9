@@ -314,8 +314,8 @@ updatesigs_next_test(void **state) {
 	assert_int_equal(result, ISC_R_SUCCESS);
 
 	isc_stdtime_get(&now);
-	result = dns__zone_findkeys(zone, db, NULL, now, dt_mctx,
-				    DNS_MAXZONEKEYS, zone_keys, &nkeys);
+	result = dns_zone_findkeys(zone, db, NULL, now, dt_mctx,
+				   DNS_MAXZONEKEYS, zone_keys, &nkeys);
 	assert_int_equal(result, ISC_R_SUCCESS);
 	assert_int_equal(nkeys, 2);
 

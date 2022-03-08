@@ -1061,25 +1061,10 @@ static isc_result_t
 find_zone_keys(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver,
 	       isc_mem_t *mctx, unsigned int maxkeys, dst_key_t **keys,
 	       unsigned int *nkeys) {
-	isc_result_t result;
 	isc_stdtime_t now;
-	dns_dbnode_t *node = NULL;
-	const char *directory = dns_zone_getkeydirectory(zone);
-
-	CHECK(dns_db_findnode(db, dns_db_origin(db), false, &node));
 	isc_stdtime_get(&now);
-
-	dns_zone_lock_keyfiles(zone);
-	result = dns_dnssec_findzonekeys(db, ver, node, dns_db_origin(db),
-					 directory, now, mctx, maxkeys, keys,
-					 nkeys);
-	dns_zone_unlock_keyfiles(zone);
-
-failure:
-	if (node != NULL) {
-		dns_db_detachnode(db, &node);
-	}
-	return (result);
+	return (dns_zone_findkeys(zone, db, ver, now, mctx, maxkeys, keys,
+				  nkeys));
 }
 
 /*%
