@@ -663,6 +663,10 @@ dst_key_fromnamedfile(const char *filename, const char *dirname, int type,
 		RETERR(DST_R_INVALIDPRIVATEKEY);
 	}
 
+	if (dirname != NULL) {
+		key->directory = isc_mem_strdup(mctx, dirname);
+	}
+
 	*keyp = key;
 	key = NULL;
 
@@ -1301,6 +1305,9 @@ dst_key_free(dst_key_t **keyp) {
 		if (key->keydata.generic != NULL) {
 			INSIST(key->func->destroy != NULL);
 			key->func->destroy(key);
+		}
+		if (key->directory != NULL) {
+			isc_mem_free(mctx, key->directory);
 		}
 		if (key->engine != NULL) {
 			isc_mem_free(mctx, key->engine);
