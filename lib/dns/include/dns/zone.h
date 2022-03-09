@@ -1741,7 +1741,7 @@ isc_result_t
 dns_zone_setkeydirectory(dns_zone_t *zone, const char *directory);
 /*%<
  *	Sets the name of the directory where private keys used for
- *	online signing of dynamic zones are found.
+ *	online signing or dynamic zones are found.
  *
  * Require:
  *\li	'zone' to be a valid zone.
@@ -1749,6 +1749,16 @@ dns_zone_setkeydirectory(dns_zone_t *zone, const char *directory);
  * Returns:
  *\li	#ISC_R_NOMEMORY
  *\li	#ISC_R_SUCCESS
+ */
+
+void
+dns_zone_setkeystores(dns_zone_t *zone, dns_keystorelist_t *keystores);
+/*%<
+ *	Sets the keystore list where private keys used for
+ *	online signing or dynamic zones are found.
+ *
+ * Require:
+ *\li	'zone' to be a valid zone.
  */
 
 const char *
