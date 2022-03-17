@@ -47,6 +47,12 @@ Known Issues
 New Features
 ~~~~~~~~~~~~
 
+- Add HSM support to `dnssec-policy`. You can now configure keys with a
+  `key-store` that allows you to set the directory to store the key files and
+  set a PKCS#11 URI string. Creating keys via the PKCS#11 interface requires
+  BIND to be linked with the `gnutls` library and an `engine-name` must be set
+  when starting `named`. :gl`#1129`.
+
 - :iscman:`dnssec-verify` and :iscman:`dnssec-signzone` now accept a ``-J`` option to
   specify a journal file to read when loading the zone to be verified or
   signed. :gl:`#2486`
