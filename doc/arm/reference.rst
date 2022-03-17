@@ -272,6 +272,9 @@ The following statements are supported:
     ``key``
         Specifies key information for use in authentication and authorization using TSIG.
 
+    ``key-store``
+        Describes a DNSSEC key store. See :ref:`key-store Grammar <key_store_grammar>` for details.
+
     ``logging``
         Specifies what information the server logs and where the log messages are sent.
 
@@ -465,6 +468,29 @@ TSIG authentication. Truncated hashes are supported by appending the
 minimum number of required bits preceded by a dash, e.g.,
 ``hmac-sha1-80``. The ``secret_string`` is the secret to be used by the
 algorithm, and is treated as a Base64-encoded string.
+
+.. _key_store_grammar:
+
+``key-store`` Statement Grammar
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. include:: ../misc/key-store.grammar.rst
+
+.. _key_store_statement:
+
+``key-store`` Statement Definition and Usage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``key-store`` statement defines how DNSSEC keys should be stored.
+
+The ``directory`` specifies where key files for this key should be stored.
+This is similar to using the zone's ``key-directory``.
+
+The ``uri`` is a string that specifies a PKCS#11 URI Scheme (defined in
+:rfc:`7512`). When set, ``named`` will try to create keys inside the
+corresponding PKCS#11 token. This requires BIND to be built with ``GnuTLS``
+and an ``engine-name`` to be provided to ``named`` on startup (usually
+``pkcs11``).
 
 .. _logging_grammar:
 
@@ -5142,6 +5168,13 @@ retired when the existing key's lifetime ends.
 .. note:: Rolling to a new policy while another key rollover is already
    in progress is not yet supported, and may result in unexpected
    behavior.
+
+.. note:: When changing the ``key-directory`` or the ``key-store``, BIND will
+   be unable to find existing key files. Make sure you copy key files to the
+   new directory before changing the path used in the configuration file.
+   This is also true when changing to a built-in policy, for example to
+   ``insecure``. In this specific case you should move the existing key files
+   to the zone's ``key-directory`` from the new configuration.
 
 The following options can be specified in a ``dnssec-policy`` statement:
 

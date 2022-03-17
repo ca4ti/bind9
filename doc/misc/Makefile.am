@@ -29,6 +29,7 @@ OPTIONS_FILES =				\
 	controls.grammar.rst		\
 	dnssec-policy.grammar.rst	\
 	key.grammar.rst			\
+	key-store.grammar.rst		\
 	logging.grammar.rst		\
 	primaries.grammar.rst		\
 	options.grammar.rst		\
@@ -149,6 +150,9 @@ dnssec-policy.grammar.rst: options.active rst-grammars.pl
 
 key.grammar.rst: options.active rst-grammars.pl
 	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active key > $@
+
+key-store.grammar.rst: options.active rst-grammars.pl
+	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active key-store > $@
 
 logging.grammar.rst: options.active rst-grammars.pl
 	$(AM_V_RST_GRAMMARS)$(PERL) $(srcdir)/rst-grammars.pl options.active logging > $@
