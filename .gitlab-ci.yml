@@ -486,6 +486,8 @@ pylint:
   needs:
     - job: autoreconf
       artifacts: true
+  variables:
+    PYTHONPATH: "${CI_PROJECT_DIR}/bin/tests/system"
   script:
     - *configure
     - pylint --rcfile $CI_PROJECT_DIR/.pylintrc $(git ls-files '*.py' | grep -vE '(ans\.py|dangerfile\.py|^bin/tests/system/)')

@@ -25,8 +25,10 @@ pytest.importorskip('dns')
 import dns.exception
 import dns.resolver
 
+import isctest
 
-def do_work(named_proc, resolver, rndc_cmd, kill_method, n_workers, n_queries):
+
+def do_work(named_proc, resolver, instance, kill_method, n_workers, n_queries):
     """Creates a number of A queries to run in parallel
        in order simulate a slightly more realistic test scenario.
 
@@ -48,8 +50,8 @@ def do_work(named_proc, resolver, rndc_cmd, kill_method, n_workers, n_queries):
        :param resolver: target resolver
        :type resolver: dns.resolver.Resolver
 
-       :param rndc_cmd: rndc command with default arguments
-       :type rndc_cmd: list of strings, e.g. ["rndc", "-p", "23750"]
+       :param instance: the named instance to send RNDC commands to
+       :type instance: isctest.NamedInstance
 
        :kill_method: "rndc" or "sigterm"
        :type kill_method: str
@@ -63,9 +65,13 @@ def do_work(named_proc, resolver, rndc_cmd, kill_method, n_workers, n_queries):
 # pylint: disable-msg=too-many-arguments
 # pylint: disable-msg=too-many-locals
 
-    # helper function, args must be a list or tuple with arguments to rndc.
-    def launch_rndc(args):
-        return subprocess.call(rndc_cmd + args, timeout=10)
+    # helper function, 'command' is the rndc command to run
+    def launch_rndc(command):
+        try:
+            instance.rndc(command, log=False)
+            return 0
+        except isctest.RNDCException:
+            return -1
 
     # We're going to execute queries in parallel by means of a thread pool.
     # dnspython functions block, so we need to circunvent that.
@@ -99,13 +105,13 @@ def do_work(named_proc, resolver, rndc_cmd, kill_method, n_workers, n_queries):
             elif shutdown:  # We attempt to stop named in the middle
                 shutdown = False
                 if kill_method == "rndc":
-                    futures[executor.submit(launch_rndc, ['stop'])] = 'stop'
+                    futures[executor.submit(launch_rndc, 'stop')] = 'stop'
                 else:
                     futures[executor.submit(named_proc.terminate)] = 'kill'
             else:
                 # We attempt to send couple rndc commands while named is
                 # being shutdown
-                futures[executor.submit(launch_rndc, ['status'])] = 'status'
+                futures[executor.submit(launch_rndc, 'status')] = 'status'
 
         ret_code = -1
         for future in as_completed(futures):
@@ -129,7 +135,7 @@ def do_work(named_proc, resolver, rndc_cmd, kill_method, n_workers, n_queries):
             assert ret_code == 0
 
 
-def test_named_shutdown(named_port, control_port):
+def test_named_shutdown(named_port):
     # pylint: disable-msg=too-many-locals
     cfg_dir = os.path.join(os.getcwd(), "resolver")
     assert os.path.isdir(cfg_dir)
@@ -140,16 +146,13 @@ def test_named_shutdown(named_port, control_port):
     named = os.getenv("NAMED")
     assert named is not None
 
-    rndc = os.getenv("RNDC")
-    assert rndc is not None
-
-    # rndc configuration resides in ../common/rndc.conf
-    rndc_cfg = os.path.join("..", "common", "rndc.conf")
-    assert os.path.isfile(rndc_cfg)
-
-    # rndc command with default arguments.
-    rndc_cmd = [rndc, "-c", rndc_cfg, "-p", str(control_port),
-                "-s", "10.53.0.3"]
+    # This test launches and monitors a named instance itself rather than using
+    # bin/tests/system/start.pl, so manually defining a NamedInstance here is
+    # necessary for sending RNDC commands to that instance.  This "custom"
+    # instance listens on 10.53.0.3, so use "ns3" as the identifier passed to
+    # the NamedInstance constructor.
+    ports = isctest.NamedPorts(dns=named_port, rndc=os.getenv('CONTROLPORT'))
+    instance = isctest.NamedInstance('ns3', ports)
 
     # We create a resolver instance that will be used to send queries.
     resolver = dns.resolver.Resolver()
@@ -173,7 +176,7 @@ def test_named_shutdown(named_port, control_port):
                 except (dns.resolver.NoNameservers, dns.exception.Timeout):
                     time.sleep(1)
 
-            do_work(named_proc, resolver, rndc_cmd,
+            do_work(named_proc, resolver, instance,
                     kill_method, n_workers=12, n_queries=16)
 
             # Wait named to exit for a maximum of MAX_TIMEOUT seconds.
