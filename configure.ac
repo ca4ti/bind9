@@ -266,12 +266,13 @@ AM_CONDITIONAL([HAVE_PERLMOD_TIME_HIRES],
 #
 # Python is optional, it is used only by some of the system test scripts.
 #
-AM_PATH_PYTHON([3.4], [], [:])
+AM_PATH_PYTHON([3.6], [], [:])
 AM_CONDITIONAL([HAVE_PYTHON], [test "$PYTHON" != ":"])
 
-AC_PATH_PROGS([PYTEST], [pytest-3 py.test-3 pytest py.test pytest-pypy], [])
-AS_IF([test -z "$PYTEST"],
-      [AC_MSG_WARN([pytest not found, some system tests will be skipped])])
+AS_IF([test "$PYTHON" != ":"],
+      [AC_PATH_PROGS([PYTEST], [pytest-3 py.test-3 pytest py.test pytest-pypy], [])
+       AS_IF([test -z "$PYTEST"],
+            [AC_MSG_WARN([pytest not found, some system tests will be skipped])])])
 AC_SUBST([PYTEST])
 AM_CONDITIONAL([HAVE_PYTEST], [test -n "$PYTEST"])
 
