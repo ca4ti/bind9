@@ -11,6 +11,8 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
+from typing import NamedTuple, Tuple
+
 import os
 import subprocess
 import sys
@@ -204,6 +206,16 @@ def keystate_check(server, zone, key):
         assert val != 0
 
 
+class CheckDSTest(NamedTuple):
+    zone: str
+    logs_to_wait_for: Tuple[str, ...]
+    expected_parent_state: str
+
+
+dspublished_tests = [
+]
+
+
 def test_checkds_dspublished(named_port, servers):
     # DS correctly published in parent.
     zone_check(servers['ns9'], "dspublished.checkds.")
@@ -289,6 +301,10 @@ def test_checkds_dspublished(named_port, servers):
     # TBD: Check with TLS
 
 
+dswithdrawn_tests = [
+]
+
+
 def test_checkds_dswithdrawn(named_port, servers):
     # DS correctly published in single parent.
     zone_check(servers['ns9'], "dswithdrawn.checkds.")
@@ -360,3 +376,23 @@ def test_checkds_dswithdrawn(named_port, servers):
     keystate_check(servers['ns2'], "bad2-dswithdrawn.checkds.", "!DSRemoved")
 
     # TBD: DS withdrawn from all parents, but one has bogus signature.
+
+
+@pytest.mark.parametrize('params', dspublished_tests + dswithdrawn_tests,
+                         ids=lambda t: t.zone)
+def test_checkds(servers, params):
+    # Wait until the provided zone is signed and then verify its DNSSEC data.
+    zone_check(servers['ns9'], params.zone)
+
+    # Wait until all the expected log lines are found in the log file for the
+    # provided server.
+    log_prefix = 'zone {zone_name}/IN (signed): checkds: '
+    for log_string in params.logs_to_wait_for:
+        log_format = log_prefix + log_string
+        log_line = log_format.format(zone_name=params.zone.rstrip('.'))
+        with servers['ns9'].watch_log_from_start() as watcher:
+            watcher.wait_for_line(log_line)
+
+    # Check whether key states on the parent server provided match
+    # expectations.
+    keystate_check(servers['ns2'], params.zone, params.expected_parent_state)
