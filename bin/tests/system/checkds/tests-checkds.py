@@ -213,169 +213,85 @@ class CheckDSTest(NamedTuple):
 
 
 dspublished_tests = [
-]
-
-
-def test_checkds_dspublished(named_port, servers):
     # DS correctly published in parent.
-    zone_check(servers['ns9'], "dspublished.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "dspublished.checkds.", "DSPublish")
-
+    CheckDSTest(zone='dspublished.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',),
+                expected_parent_state='DSPublish'),
     # DS correctly published in parent (reference to parental-agent).
-    zone_check(servers['ns9'], "reference.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone reference.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "reference.checkds.", "DSPublish")
-
+    CheckDSTest(zone='reference.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',),
+                expected_parent_state='DSPublish'),
     # DS not published in parent.
-    zone_check(servers['ns9'], "missing-dspublished.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone missing-dspublished.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.5")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "missing-dspublished.checkds.", "!DSPublish")
-
+    CheckDSTest(zone='missing-dspublished.checkds.',
+                logs_to_wait_for=('empty DS response from 10.53.0.5',),
+                expected_parent_state='!DSPublish'),
     # Badly configured parent.
-    zone_check(servers['ns9'], "bad-dspublished.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad-dspublished.checkds/IN (signed): checkds: "
-                "bad DS response from 10.53.0.6")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "bad-dspublished.checkds.", "!DSPublish")
-
+    CheckDSTest(zone='bad-dspublished.checkds.',
+                logs_to_wait_for=('bad DS response from 10.53.0.6',),
+                expected_parent_state='!DSPublish'),
     # TBD: DS published in parent, but bogus signature.
 
     # DS correctly published in all parents.
-    zone_check(servers['ns9'], "multiple-dspublished.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone multiple-dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone multiple-dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.4")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "multiple-dspublished.checkds.", "DSPublish")
-
+    CheckDSTest(zone='multiple-dspublished.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',
+                                  'DS response from 10.53.0.4',),
+                expected_parent_state='DSPublish'),
     # DS published in only one of multiple parents.
-    zone_check(servers['ns9'], "incomplete-dspublished.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone incomplete-dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone incomplete-dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.4")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone incomplete-dspublished.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.5")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "incomplete-dspublished.checkds.", "!DSPublish")
-
+    CheckDSTest(zone='incomplete-dspublished.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',
+                                  'DS response from 10.53.0.4',
+                                  'empty DS response from 10.53.0.5',),
+                expected_parent_state='!DSPublish'),
     # One of the parents is badly configured.
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad2-dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad2-dspublished.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.4")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad2-dspublished.checkds/IN (signed): checkds: "
-                "bad DS response from 10.53.0.6")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "bad2-dspublished.checkds.", "!DSPublish")
-
+    CheckDSTest(zone='bad2-dspublished.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',
+                                  'DS response from 10.53.0.4',
+                                  'bad DS response from 10.53.0.6',),
+                expected_parent_state='!DSPublish'),
     # TBD: DS published in all parents, but one has bogus signature.
 
     # TBD: Check with TSIG
 
     # TBD: Check with TLS
 
-
-dswithdrawn_tests = [
 ]
 
 
-def test_checkds_dswithdrawn(named_port, servers):
+dswithdrawn_tests = [
     # DS correctly published in single parent.
-    zone_check(servers['ns9'], "dswithdrawn.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.5")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "dswithdrawn.checkds.", "DSRemoved")
-
+    CheckDSTest(zone='dswithdrawn.checkds.',
+                logs_to_wait_for=('empty DS response from 10.53.0.5',),
+                expected_parent_state='DSRemoved'),
     # DS not withdrawn from parent.
-    zone_check(servers['ns9'], "missing-dswithdrawn.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone missing-dswithdrawn.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "missing-dswithdrawn.checkds.", "!DSRemoved")
-
+    CheckDSTest(zone='missing-dswithdrawn.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',),
+                expected_parent_state='!DSRemoved'),
     # Badly configured parent.
-    zone_check(servers['ns9'], "bad-dswithdrawn.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad-dswithdrawn.checkds/IN (signed): checkds: "
-                "bad DS response from 10.53.0.6")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "bad-dswithdrawn.checkds.", "!DSRemoved")
-
+    CheckDSTest(zone='bad-dswithdrawn.checkds.',
+                logs_to_wait_for=('bad DS response from 10.53.0.6',),
+                expected_parent_state='!DSRemoved'),
     # TBD: DS published in parent, but bogus signature.
 
     # DS correctly withdrawn from all parents.
-    zone_check(servers['ns9'], "multiple-dswithdrawn.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone multiple-dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.5")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone multiple-dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.7")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "multiple-dswithdrawn.checkds.", "DSRemoved")
-
+    CheckDSTest(zone='multiple-dswithdrawn.checkds.',
+                logs_to_wait_for=('empty DS response from 10.53.0.5',
+                                  'empty DS response from 10.53.0.7',),
+                expected_parent_state='DSRemoved'),
     # DS withdrawn from only one of multiple parents.
-    zone_check(servers['ns9'], "incomplete-dswithdrawn.checkds.")
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone incomplete-dswithdrawn.checkds/IN (signed): checkds: "
-                "DS response from 10.53.0.2")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone incomplete-dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.5")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone incomplete-dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.7")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "incomplete-dswithdrawn.checkds.", "!DSRemoved")
-
+    CheckDSTest(zone='incomplete-dswithdrawn.checkds.',
+                logs_to_wait_for=('DS response from 10.53.0.2',
+                                  'empty DS response from 10.53.0.5',
+                                  'empty DS response from 10.53.0.7',),
+                expected_parent_state='!DSRemoved'),
     # One of the parents is badly configured.
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad2-dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.5")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad2-dswithdrawn.checkds/IN (signed): checkds: "
-                "empty DS response from 10.53.0.7")
-        watcher.wait_for_line(line)
-    with servers['ns9'].watch_log_from_start() as watcher:
-        line = ("zone bad2-dswithdrawn.checkds/IN (signed): checkds: "
-                "bad DS response from 10.53.0.6")
-        watcher.wait_for_line(line)
-    keystate_check(servers['ns2'], "bad2-dswithdrawn.checkds.", "!DSRemoved")
-
+    CheckDSTest(zone='bad2-dswithdrawn.checkds.',
+                logs_to_wait_for=('empty DS response from 10.53.0.5',
+                                  'empty DS response from 10.53.0.7',
+                                  'bad DS response from 10.53.0.6',),
+                expected_parent_state='!DSRemoved'),
     # TBD: DS withdrawn from all parents, but one has bogus signature.
+
+]
 
 
 @pytest.mark.parametrize('params', dspublished_tests + dswithdrawn_tests,
