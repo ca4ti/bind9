@@ -485,6 +485,8 @@ pylint:
 mypy:
   <<: *precheck_job
   script:
+      # TODO: mypy should be available in the base image
+    - pip3 install mypy==0.941
     - mypy bin/tests/system/isctest.py
 
 tarball-create:
