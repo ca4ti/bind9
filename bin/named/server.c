@@ -9306,6 +9306,14 @@ load_configuration(const char *filename, named_server_t *server,
 	}
 
 	/*
+	 * Zones have been counted; set the zone manager task pool size.
+	 */
+	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
+		      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
+		      "sizing zone task pool based on %d zones", num_zones);
+	CHECK(dns_zonemgr_setsize(named_g_server->zonemgr, num_zones));
+
+	/*
 	 * Configure and freeze all explicit views.  Explicit
 	 * views that have zones were already created at parsing
 	 * time, but views with no zones must be created here.
@@ -9320,10 +9328,6 @@ load_configuration(const char *filename, named_server_t *server,
 		CHECK(configure_view(view, &viewlist, config, vconfig,
 				     &cachelist, &server->kasplist, bindkeys,
 				     named_g_mctx, named_g_aclconfctx, true));
-		if (view->catzs != NULL) {
-			num_zones +=
-				dns_catz_get_catzs_entries_count(view->catzs);
-		}
 		dns_view_freeze(view);
 		dns_view_detach(&view);
 	}
@@ -9338,10 +9342,6 @@ load_configuration(const char *filename, named_server_t *server,
 		CHECK(configure_view(view, &viewlist, config, NULL, &cachelist,
 				     &server->kasplist, bindkeys, named_g_mctx,
 				     named_g_aclconfctx, true));
-		if (view->catzs != NULL) {
-			num_zones +=
-				dns_catz_get_catzs_entries_count(view->catzs);
-		}
 		dns_view_freeze(view);
 		dns_view_detach(&view);
 	}
@@ -9365,14 +9365,6 @@ load_configuration(const char *filename, named_server_t *server,
 		dns_view_detach(&view);
 		view = NULL;
 	}
-
-	/*
-	 * Zones have been counted; set the zone manager task pool size.
-	 */
-	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
-		      NAMED_LOGMODULE_SERVER, ISC_LOG_INFO,
-		      "sizing zone task pool based on %d zones", num_zones);
-	CHECK(dns_zonemgr_setsize(named_g_server->zonemgr, num_zones));
 
 	/* Now combine the two viewlists into one */
 	ISC_LIST_APPENDLIST(viewlist, builtin_viewlist, link);
