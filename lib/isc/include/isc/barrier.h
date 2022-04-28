@@ -15,7 +15,13 @@
 
 #include <isc/util.h>
 
-#if __SANITIZE_THREAD__
+/*
+ * By default we use uv_barrier, but for tsan builds we use pthread_barrier
+ * to get a sanitized implementation. However, macOS lacks pthread_barrier,
+ * so there we always use uv_barrier, and assume libuv has been built with
+ * tsan when necessary.
+ */
+#if __SANITIZE_THREAD__ && !__APPLE__
 
 #include <pthread.h>
 
@@ -26,7 +32,7 @@
 #define isc_barrier_destroy(barrier) pthread_barrier_destroy(barrier)
 #define isc_barrier_wait(barrier)    pthread_barrier_wait(barrier)
 
-#else /* __SANITIZE_THREAD__ */
+#else /* __SANITIZE_THREAD__ && ! __APPLE__ */
 
 #include <isc/uv.h>
 
@@ -66,4 +72,4 @@ typedef uv_barrier_t isc_barrier_t;
 
 #define isc__barrier_destroy(bp) uv_barrier_destroy(bp)
 
-#endif /* __SANITIZE_THREAD__ */
+#endif /* __SANITIZE_THREAD__ && !__APPLE__ */

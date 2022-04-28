@@ -1,3 +1,5 @@
+6036.	[port]		Support for thread sanitizer builds on macOS. [GL !6211]
+
 6035.	[bug]		Refactor the dns_resolver unit to store the fetch
 			contexts and zone counter directly in the hash
 			tables without buckets and implement effective
