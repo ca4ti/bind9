@@ -10662,32 +10662,37 @@ fctx_minimize_qname(fetchctx_t *fctx) {
 		/*
 		 * We want to query for qmin_labels from fctx->name
 		 */
-		dns_fixedname_t fname;
-		dns_name_t *name = dns_fixedname_initname(&fname);
-		dns_name_split(fctx->name, fctx->qmin_labels, NULL, name);
+		dns_name_t name;
+		dns_name_init(&name, NULL);
+		dns_name_split(fctx->name, fctx->qmin_labels, NULL, &name);
 		if ((fctx->options & DNS_FETCHOPT_QMIN_USE_A) != 0) {
-			isc_buffer_t dbuf;
 			dns_fixedname_t tmpname;
 			dns_name_t *tname = dns_fixedname_initname(&tmpname);
-			char ndata[DNS_NAME_MAXWIRE];
 
-			isc_buffer_init(&dbuf, ndata, DNS_NAME_MAXWIRE);
-			dns_fixedname_init(&tmpname);
-			result = dns_name_concatenate(&underscore_name, name,
-						      tname, &dbuf);
+			result = dns_name_concatenate(&underscore_name, &name,
+						      tname, NULL);
 			if (result == ISC_R_SUCCESS) {
 				dns_name_copy(tname, fctx->qminname);
+				fctx->qmintype = dns_rdatatype_a;
+				fctx->minimized = true;
+			} else {
+				/*
+				 * Minimization is done, we'll ask for whole
+				 * qname
+				 */
+				dns_name_copy(fctx->name, fctx->qminname);
+				fctx->qmintype = fctx->type;
+				fctx->minimized = false;
 			}
-			fctx->qmintype = dns_rdatatype_a;
 		} else {
-			dns_name_copy(name, fctx->qminname);
+			dns_name_copy(&name, fctx->qminname);
 			fctx->qmintype = dns_rdatatype_ns;
+			fctx->minimized = true;
 		}
-		fctx->minimized = true;
 	} else {
 		/* Minimization is done, we'll ask for whole qname */
-		fctx->qmintype = fctx->type;
 		dns_name_copy(fctx->name, fctx->qminname);
+		fctx->qmintype = fctx->type;
 		fctx->minimized = false;
 	}
 
