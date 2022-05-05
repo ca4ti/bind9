@@ -641,7 +641,7 @@ static void
 fctx_try(fetchctx_t *fctx, bool retrying, bool badcache);
 static void
 fctx_shutdown(fetchctx_t *fctx);
-static isc_result_t
+static void
 fctx_minimize_qname(fetchctx_t *fctx);
 static void
 fctx_destroy(fetchctx_t *fctx);
@@ -4335,10 +4335,7 @@ resume_qmin(isc_task_t *task, isc_event_t *event) {
 	fctx->ns_ttl = fctx->nameservers.ttl;
 	fctx->ns_ttl_ok = true;
 
-	result = fctx_minimize_qname(fctx);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup;
-	}
+	fctx_minimize_qname(fctx);
 
 	if (!fctx->minimized) {
 		/*
@@ -4952,10 +4949,7 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 		fctx->ip6arpaskip = (options & DNS_FETCHOPT_QMIN_SKIP_IP6A) !=
 					    0 &&
 				    dns_name_issubdomain(fctx->name, &ip6_arpa);
-		result = fctx_minimize_qname(fctx);
-		if (result != ISC_R_SUCCESS) {
-			goto cleanup_mctx;
-		}
+		fctx_minimize_qname(fctx);
 	}
 
 	ISC_LIST_APPEND(bucket->fctxs, fctx, link);
@@ -4968,12 +4962,6 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	*fctxp = fctx;
 
 	return (ISC_R_SUCCESS);
-
-cleanup_mctx:
-	fctx->magic = 0;
-	isc_mem_detach(&fctx->mctx);
-	dns_adb_detach(&fctx->adb);
-	dns_db_detach(&fctx->cache);
 
 cleanup_timer:
 	isc_timer_destroy(&fctx->timer);
@@ -9504,11 +9492,7 @@ rctx_referral(respctx_t *rctx) {
 	if ((fctx->options & DNS_FETCHOPT_QMINIMIZE) != 0) {
 		dns_name_copy(rctx->ns_name, fctx->qmindcname);
 
-		result = fctx_minimize_qname(fctx);
-		if (result != ISC_R_SUCCESS) {
-			rctx->result = result;
-			return (ISC_R_COMPLETE);
-		}
+		fctx_minimize_qname(fctx);
 	}
 
 	result = fcount_incr(fctx, true);
@@ -10558,9 +10542,9 @@ log_fetch(const dns_name_t *name, dns_rdatatype_t type) {
 		      typebuf);
 }
 
-static isc_result_t
+static void
 fctx_minimize_qname(fetchctx_t *fctx) {
-	isc_result_t result = ISC_R_SUCCESS;
+	isc_result_t result;
 	unsigned int dlabels, nlabels;
 	dns_name_t name;
 
@@ -10679,8 +10663,6 @@ fctx_minimize_qname(fetchctx_t *fctx) {
 		      "QNAME minimization - %s minimized, qmintype %d "
 		      "qminname %s",
 		      fctx->minimized ? "" : "not", fctx->qmintype, domainbuf);
-
-	return (ISC_R_SUCCESS);
 }
 
 static fctxbucket_t *
