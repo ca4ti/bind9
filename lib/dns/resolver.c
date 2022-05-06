@@ -10547,6 +10547,9 @@ fctx_minimize_qname(fetchctx_t *fctx) {
 	isc_result_t result;
 	unsigned int dlabels, nlabels;
 	dns_name_t name;
+	dns_fixedname_t tmpname;
+	dns_name_t *tname = dns_fixedname_initname(&tmpname);
+	bool tname_ok = false;
 
 	REQUIRE(VALID_FCTX(fctx));
 
@@ -10619,23 +10622,46 @@ fctx_minimize_qname(fetchctx_t *fctx) {
 			case DNS_R_NCACHENXDOMAIN:
 			case DNS_R_NCACHENXRRSET:
 				fctx->qmin_labels++;
-				break;
+				continue;
 			default:
-				done = true;
 				break;
+			}
+			if ((fctx->options & DNS_FETCHOPT_QMIN_USE_A) != 0) {
+				result = dns_name_concatenate(
+					&underscore_name, &name, tname, NULL);
+				if (result != ISC_R_SUCCESS) {
+					done = true;
+					continue;
+				}
+				result = dns_db_find(fctx->cache, tname, NULL,
+						     dns_rdatatype_a, 0, 0,
+						     NULL, fname, &rdataset,
+						     NULL);
+				if (dns_rdataset_isassociated(&rdataset)) {
+					dns_rdataset_disassociate(&rdataset);
+				}
+				switch (result) {
+				case ISC_R_SUCCESS:
+				case DNS_R_CNAME:
+				case DNS_R_DNAME:
+				case DNS_R_NCACHENXDOMAIN:
+				case DNS_R_NCACHENXRRSET:
+					fctx->qmin_labels++;
+					continue;
+				default:
+					done = true;
+					tname_ok = true;
+					break;
+				}
+			} else {
+				done = true;
 			}
 		} while (!done && fctx->qmin_labels < nlabels);
 	}
 
 	if (fctx->qmin_labels < nlabels) {
 		if ((fctx->options & DNS_FETCHOPT_QMIN_USE_A) != 0) {
-			dns_fixedname_t tmpname;
-			dns_name_t *tname = dns_fixedname_initname(&tmpname);
-
-			dns_fixedname_init(&tmpname);
-			result = dns_name_concatenate(&underscore_name, &name,
-						      tname, NULL);
-			if (result == ISC_R_SUCCESS) {
+			if (tname_ok) {
 				dns_name_copy(tname, fctx->qminname);
 				fctx->qmintype = dns_rdatatype_a;
 				fctx->minimized = true;
