@@ -1,3 +1,6 @@
+6029.	[func]		Apply DNS64 rules internally when making queries.
+			This is controlled by the option 'use-dns64'. [GL #608]
+
 6028.	[performance]	Build-time code generation of DNS RRtype switches
 			is now much faster. [GL !7121]
 
