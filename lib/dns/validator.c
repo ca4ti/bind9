@@ -974,9 +974,9 @@ view_find(dns_validator_t *val, dns_name_t *name, dns_rdatatype_t type) {
 
 	options = DNS_DBFIND_PENDINGOK;
 	foundname = dns_fixedname_initname(&fixedname);
-	result = dns_view_find(val->view, name, type, 0, options, false, false,
-			       NULL, NULL, foundname, &val->frdataset,
-			       &val->fsigrdataset);
+	result = dns_view_find(val->view, val->task, name, type, 0, options,
+			       false, false, NULL, NULL, foundname,
+			       &val->frdataset, &val->fsigrdataset);
 
 	if (result == DNS_R_NXDOMAIN) {
 		goto notfound;

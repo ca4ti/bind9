@@ -106,7 +106,6 @@ struct dns_adb {
 	dns_resolver_t *res;
 
 	isc_taskmgr_t *taskmgr;
-	isc_task_t *task;
 
 	isc_refcount_t references;
 
@@ -338,10 +337,10 @@ maybe_expire_namehooks(dns_adbname_t *, isc_stdtime_t);
 static void
 maybe_expire_entry(dns_adbentry_t **, isc_stdtime_t);
 static isc_result_t
-dbfind_name(dns_adbname_t *, isc_stdtime_t, dns_rdatatype_t);
+dbfind_name(dns_adbname_t *, isc_task_t *task, isc_stdtime_t, dns_rdatatype_t);
 static isc_result_t
-fetch_name(dns_adbname_t *, bool, unsigned int, isc_counter_t *qc,
-	   dns_rdatatype_t);
+fetch_name(isc_task_t *task, dns_adbname_t *, bool, unsigned int,
+	   isc_counter_t *qc, dns_rdatatype_t);
 static void
 destroy(dns_adb_t *);
 static void
@@ -2088,7 +2087,6 @@ destroy(dns_adb_t *adb) {
 	isc_mutex_destroy(&adb->lock);
 	isc_refcount_destroy(&adb->references);
 
-	isc_task_detach(&adb->task);
 	isc_stats_detach(&adb->stats);
 	dns_resolver_detach(&adb->res);
 	dns_view_weakdetach(&adb->view);
@@ -2132,19 +2130,9 @@ dns_adb_create(isc_mem_t *mem, dns_view_t *view, isc_taskmgr_t *taskmgr,
 
 	isc_mutex_init(&adb->lock);
 
-	/*
-	 * Allocate an internal task.
-	 */
-	result = isc_task_create(adb->taskmgr, 0, &adb->task, 0);
-	if (result != ISC_R_SUCCESS) {
-		goto free_lock;
-	}
-
-	isc_task_setname(adb->task, "ADB", adb);
-
 	result = isc_stats_create(adb->mctx, &adb->stats, dns_adbstats_max);
 	if (result != ISC_R_SUCCESS) {
-		goto free_task;
+		goto free_lock;
 	}
 
 	set_adbstat(adb, isc_ht_count(adb->namebuckets), dns_adbstats_nnames);
@@ -2157,9 +2145,6 @@ dns_adb_create(isc_mem_t *mem, dns_view_t *view, isc_taskmgr_t *taskmgr,
 	adb->magic = DNS_ADB_MAGIC;
 	*newadb = adb;
 	return (ISC_R_SUCCESS);
-
-free_task:
-	isc_task_detach(&adb->task);
 
 free_lock:
 	isc_mutex_destroy(&adb->lock);
@@ -2376,7 +2361,7 @@ dns_adb_createfind(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
 	if (!NAME_HAS_V4(adbname) && EXPIRE_OK(adbname->expire_v4, now) &&
 	    WANT_INET(wanted_addresses))
 	{
-		result = dbfind_name(adbname, now, dns_rdatatype_a);
+		result = dbfind_name(adbname, task, now, dns_rdatatype_a);
 		switch (result) {
 		case ISC_R_SUCCESS:
 			/* Found an A; now we proceed to check for AAAA */
@@ -2428,7 +2413,7 @@ dns_adb_createfind(dns_adb_t *adb, isc_task_t *task, isc_taskaction_t action,
 	if (!NAME_HAS_V6(adbname) && EXPIRE_OK(adbname->expire_v6, now) &&
 	    WANT_INET6(wanted_addresses))
 	{
-		result = dbfind_name(adbname, now, dns_rdatatype_aaaa);
+		result = dbfind_name(adbname, task, now, dns_rdatatype_aaaa);
 		switch (result) {
 		case ISC_R_SUCCESS:
 			DP(DEF_LEVEL,
@@ -2491,7 +2476,7 @@ fetch:
 		 * Start V4.
 		 */
 		if (WANT_INET(wanted_fetches) &&
-		    fetch_name(adbname, start_at_zone, depth, qc,
+		    fetch_name(task, adbname, start_at_zone, depth, qc,
 			       dns_rdatatype_a) == ISC_R_SUCCESS)
 		{
 			DP(DEF_LEVEL,
@@ -2504,7 +2489,7 @@ fetch:
 		 * Start V6.
 		 */
 		if (WANT_INET6(wanted_fetches) &&
-		    fetch_name(adbname, start_at_zone, depth, qc,
+		    fetch_name(task, adbname, start_at_zone, depth, qc,
 			       dns_rdatatype_aaaa) == ISC_R_SUCCESS)
 		{
 			DP(DEF_LEVEL,
@@ -3040,7 +3025,8 @@ dns_adb_dumpquota(dns_adb_t *adb, isc_buffer_t **buf) {
 }
 
 static isc_result_t
-dbfind_name(dns_adbname_t *adbname, isc_stdtime_t now, dns_rdatatype_t rdtype) {
+dbfind_name(dns_adbname_t *adbname, isc_task_t *task, isc_stdtime_t now,
+	    dns_rdatatype_t rdtype) {
 	isc_result_t result;
 	dns_rdataset_t rdataset;
 	dns_adb_t *adb = NULL;
@@ -3071,7 +3057,7 @@ dbfind_name(dns_adbname_t *adbname, isc_stdtime_t now, dns_rdatatype_t rdtype) {
 	 * matching static-stub zone without looking into the cache to honor
 	 * the configuration on which server we should send queries to.
 	 */
-	result = dns_view_find(adb->view, &adbname->name, rdtype, now,
+	result = dns_view_find(adb->view, task, &adbname->name, rdtype, now,
 			       NAME_GLUEOK(adbname) ? DNS_DBFIND_GLUEOK : 0,
 			       NAME_HINTOK(adbname),
 			       ((adbname->flags & NAME_STARTATZONE) != 0), NULL,
@@ -3369,8 +3355,8 @@ out:
 }
 
 static isc_result_t
-fetch_name(dns_adbname_t *adbname, bool start_at_zone, unsigned int depth,
-	   isc_counter_t *qc, dns_rdatatype_t type) {
+fetch_name(isc_task_t *task, dns_adbname_t *adbname, bool start_at_zone,
+	   unsigned int depth, isc_counter_t *qc, dns_rdatatype_t type) {
 	isc_result_t result;
 	dns_adbfetch_t *fetch = NULL;
 	dns_adb_t *adb = NULL;
@@ -3420,7 +3406,7 @@ fetch_name(dns_adbname_t *adbname, bool start_at_zone, unsigned int depth,
 	 */
 	result = dns_resolver_createfetch(
 		adb->res, &adbname->name, type, name, nameservers, NULL, NULL,
-		0, options, depth, qc, adb->task, fetch_callback, adbname,
+		0, options, depth, qc, task, fetch_callback, adbname,
 		&fetch->rdataset, NULL, &fetch->fetch);
 	if (result != ISC_R_SUCCESS) {
 		DP(ENTER_LEVEL, "fetch_name: createfetch failed with %s",

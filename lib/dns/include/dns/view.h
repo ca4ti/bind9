@@ -103,7 +103,6 @@ struct dns_view {
 
 	isc_mutex_t lock;
 	bool	    frozen;
-	isc_task_t *task;
 	bool	    cacheshared;
 
 	/* Configurable data. */
@@ -543,11 +542,11 @@ dns_view_thaw(dns_view_t *view);
  */
 
 isc_result_t
-dns_view_find(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
-	      isc_stdtime_t now, unsigned int options, bool use_hints,
-	      bool use_static_stub, dns_db_t **dbp, dns_dbnode_t **nodep,
-	      dns_name_t *foundname, dns_rdataset_t *rdataset,
-	      dns_rdataset_t *sigrdataset);
+dns_view_find(dns_view_t *view, isc_task_t *task, const dns_name_t *name,
+	      dns_rdatatype_t type, isc_stdtime_t now, unsigned int options,
+	      bool use_hints, bool use_static_stub, dns_db_t **dbp,
+	      dns_dbnode_t **nodep, dns_name_t *foundname,
+	      dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset);
 /*%<
  * Find an rdataset whose owner name is 'name', and whose type is
  * 'type'.
@@ -633,8 +632,8 @@ dns_view_find(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
 isc_result_t
 dns_view_simplefind(dns_view_t *view, const dns_name_t *name,
 		    dns_rdatatype_t type, isc_stdtime_t now,
-		    unsigned int options, bool use_hints,
-		    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset);
+		    unsigned int options, dns_rdataset_t *rdataset,
+		    dns_rdataset_t *sigrdataset);
 /*%<
  * Find an rdataset whose owner name is 'name', and whose type is
  * 'type'.

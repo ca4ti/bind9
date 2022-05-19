@@ -331,8 +331,7 @@ struct fetchctx {
 	isc_mem_t *mctx;
 	isc_stdtime_t now;
 
-	isc_task_t *restask;
-	unsigned int tid;
+	isc_task_t *task;
 
 	/* Atomic */
 	isc_refcount_t references;
@@ -543,7 +542,6 @@ struct dns_resolver {
 	isc_ht_t *zonebuckets;
 	isc_rwlock_t zonehash_lock;
 	unsigned int ntasks;
-	isc_task_t **tasks;
 	uint32_t lame_ttl;
 	ISC_LIST(alternate_t) alternates;
 	uint16_t udpsize;
@@ -3388,10 +3386,10 @@ findname(fetchctx_t *fctx, const dns_name_t *name, in_port_t port,
 	 * See what we know about this address.
 	 */
 	fctx_addref(fctx);
-	result = dns_adb_createfind(fctx->adb, fctx->restask, fctx_finddone,
-				    fctx, name, fctx->name, fctx->type, options,
-				    now, NULL, res->view->dstport,
-				    fctx->depth + 1, fctx->qc, &find);
+	result = dns_adb_createfind(fctx->adb, fctx->task, fctx_finddone, fctx,
+				    name, fctx->name, fctx->type, options, now,
+				    NULL, res->view->dstport, fctx->depth + 1,
+				    fctx->qc, &find);
 
 	isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
 		      DNS_LOGMODULE_RESOLVER, ISC_LOG_DEBUG(3),
@@ -4195,8 +4193,8 @@ fctx_try(fetchctx_t *fctx, bool retrying, bool badcache) {
 		result = dns_resolver_createfetch(
 			fctx->res, fctx->qminname, fctx->qmintype, fctx->domain,
 			&fctx->nameservers, NULL, NULL, 0, options, 0, fctx->qc,
-			fctx->restask, resume_qmin, fctx, &fctx->qminrrset,
-			NULL, &fctx->qminfetch);
+			fctx->task, resume_qmin, fctx, &fctx->qminrrset, NULL,
+			&fctx->qminfetch);
 		if (result != ISC_R_SUCCESS) {
 			fctx_unref(fctx);
 			fctx_done_detach(&fctx, DNS_R_SERVFAIL);
@@ -4428,6 +4426,7 @@ fctx_destroy(fetchctx_t *fctx) {
 
 	isc_timer_destroy(&fctx->timer);
 
+	isc_task_detach(&fctx->task);
 	dns_resolver_detach(&fctx->res);
 
 	isc_mem_free(fctx->mctx, fctx->info);
@@ -4460,7 +4459,7 @@ fctx_shutdown(fetchctx_t *fctx) {
 	if (fctx->state != fetchstate_init) {
 		FCTXTRACE("posting control event");
 		cevent = &fctx->control_event;
-		isc_task_send(fctx->restask, &cevent);
+		isc_task_send(fctx->task, &cevent);
 	}
 }
 
@@ -4686,20 +4685,15 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	    const dns_name_t *domain, dns_rdataset_t *nameservers,
 	    const isc_sockaddr_t *client, unsigned int options,
 	    fctxbucket_t *bucket, unsigned int depth, isc_counter_t *qc,
-	    fetchctx_t **fctxp) {
+	    isc_task_t *task, fetchctx_t **fctxp) {
 	fetchctx_t *fctx = NULL;
 	isc_result_t result;
 	isc_result_t iresult;
 	isc_interval_t interval;
 	unsigned int findoptions = 0;
 	char buf[DNS_NAME_FORMATSIZE + DNS_RDATATYPE_FORMATSIZE + 1];
-	int tid = isc_nm_tid();
 	uint_fast32_t nfctx;
 	size_t p;
-
-	if (tid == ISC_NETMGR_TID_UNKNOWN) {
-		tid = 0;
-	}
 
 	/*
 	 * Caller must be holding the lock for 'bucket'
@@ -4712,8 +4706,6 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 		.qmintype = type,
 		.options = options,
 		.bucket = bucket,
-		.tid = tid,
-		.restask = res->tasks[tid],
 		.state = fetchstate_init,
 		.depth = depth,
 		.qmin_labels = 1,
@@ -4723,6 +4715,7 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	};
 
 	dns_resolver_attach(res, &fctx->res);
+	isc_task_attach(task, &fctx->task);
 
 	if (qc != NULL) {
 		isc_counter_attach(qc, &fctx->qc);
@@ -4901,7 +4894,7 @@ fctx_create(dns_resolver_t *res, const dns_name_t *name, dns_rdatatype_t type,
 	 * lifetime. It will be made active when the fetch is
 	 * started.
 	 */
-	isc_timer_create(res->timermgr, fctx->restask, fctx_expired, fctx,
+	isc_timer_create(res->timermgr, fctx->task, fctx_expired, fctx,
 			 &fctx->timer);
 
 	/*
@@ -4992,6 +4985,7 @@ cleanup_nameservers:
 	isc_counter_detach(&fctx->qc);
 
 cleanup_fetch:
+	isc_task_detach(&fctx->task);
 	dns_resolver_detach(&fctx->res);
 	isc_mem_put(res->mctx, fctx, sizeof(*fctx));
 
@@ -6362,7 +6356,7 @@ cache_name(fetchctx_t *fctx, dns_name_t *name, dns_message_t *message,
 						fctx, message, addrinfo, name,
 						rdataset->type, rdataset,
 						sigrdataset, valoptions,
-						fctx->restask);
+						fctx->task);
 				}
 			} else if (CHAINING(rdataset)) {
 				if (rdataset->type == dns_rdatatype_cname) {
@@ -6469,7 +6463,7 @@ cache_name(fetchctx_t *fctx, dns_name_t *name, dns_message_t *message,
 
 		result = valcreate(fctx, message, addrinfo, name, vtype,
 				   valrdataset, valsigrdataset, valoptions,
-				   fctx->restask);
+				   fctx->task);
 	}
 
 	if (result == ISC_R_SUCCESS && have_answer) {
@@ -6689,7 +6683,7 @@ ncache_message(fetchctx_t *fctx, dns_message_t *message,
 		 * Do negative response validation.
 		 */
 		result = valcreate(fctx, message, addrinfo, name, fctx->type,
-				   NULL, NULL, valoptions, fctx->restask);
+				   NULL, NULL, valoptions, fctx->task);
 		/*
 		 * If validation is necessary, return now.  Otherwise
 		 * continue to process the message, letting the
@@ -9734,7 +9728,7 @@ rctx_chaseds(respctx_t *rctx, dns_message_t *message,
 	fctx_addref(fctx);
 	result = dns_resolver_createfetch(
 		fctx->res, fctx->nsname, dns_rdatatype_ns, NULL, NULL, NULL,
-		NULL, 0, fctx->options, 0, NULL, fctx->restask, resume_dslookup,
+		NULL, 0, fctx->options, 0, NULL, fctx->task, resume_dslookup,
 		fctx, &fctx->nsrrset, NULL, &fctx->nsfetch);
 	if (result != ISC_R_SUCCESS) {
 		if (result == DNS_R_DUPLICATE) {
@@ -10098,11 +10092,6 @@ destroy(dns_resolver_t *res) {
 	isc_mutex_destroy(&res->primelock);
 	isc_mutex_destroy(&res->lock);
 
-	for (size_t i = 0; i < res->ntasks; i++) {
-		isc_task_detach(&res->tasks[i]);
-	}
-	isc_mem_put(res->mctx, res->tasks, res->ntasks * sizeof(res->tasks[0]));
-
 	RWLOCK(&res->hash_lock, isc_rwlocktype_write);
 	isc_ht_iter_create(res->buckets, &it);
 	for (result = isc_ht_iter_first(it); result == ISC_R_SUCCESS;
@@ -10202,7 +10191,6 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 		    dns_dispatch_t *dispatchv4, dns_dispatch_t *dispatchv6,
 		    dns_resolver_t **resp) {
 	isc_result_t result = ISC_R_SUCCESS;
-	char name[sizeof("res4294967295")];
 	dns_resolver_t *res = NULL;
 	isc_task_t *task = NULL;
 
@@ -10249,23 +10237,6 @@ dns_resolver_create(dns_view_t *view, isc_taskmgr_t *taskmgr,
 				   &res->badcache);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup_res;
-	}
-
-	res->tasks = isc_mem_get(view->mctx,
-				 res->ntasks * sizeof(res->tasks[0]));
-	memset(res->tasks, 0, res->ntasks * sizeof(res->tasks[0]));
-	for (uint32_t i = 0; i < res->ntasks; i++) {
-		/*
-		 * Since we have a pool of tasks we bind them to task
-		 * queues to spread the load evenly
-		 */
-		result = isc_task_create(taskmgr, 0, &res->tasks[i], i);
-		if (result != ISC_R_SUCCESS) {
-			goto cleanup_tasks;
-		}
-
-		snprintf(name, sizeof(name), "res%" PRIu32, i);
-		isc_task_setname(res->tasks[i], name, res);
 	}
 
 	isc_ht_init(&res->buckets, view->mctx, RES_DOMAIN_HASH_BITS,
@@ -10321,15 +10292,6 @@ cleanup_primelock:
 
 	isc_rwlock_destroy(&res->hash_lock);
 	isc_ht_destroy(&res->buckets);
-
-cleanup_tasks:
-	for (size_t i = 0; i < res->ntasks; i++) {
-		if (res->tasks[i] != NULL) {
-			isc_task_detach(&res->tasks[i]);
-		}
-	}
-	isc_mem_put(view->mctx, res->tasks,
-		    res->ntasks * sizeof(res->tasks[0]));
 
 	dns_badcache_destroy(&res->badcache);
 
@@ -10391,7 +10353,7 @@ prime_done(isc_task_t *task, isc_event_t *event) {
 }
 
 void
-dns_resolver_prime(dns_resolver_t *res) {
+dns_resolver_prime(dns_resolver_t *res, isc_task_t *task) {
 	bool want_priming = false;
 	dns_rdataset_t *rdataset;
 	isc_result_t result;
@@ -10424,7 +10386,7 @@ dns_resolver_prime(dns_resolver_t *res) {
 		INSIST(res->primefetch == NULL);
 		result = dns_resolver_createfetch(
 			res, dns_rootname, dns_rdatatype_ns, NULL, NULL, NULL,
-			NULL, 0, DNS_FETCHOPT_NOFORWARD, 0, NULL, res->tasks[0],
+			NULL, 0, DNS_FETCHOPT_NOFORWARD, 0, NULL, task,
 			prime_done, res, rdataset, NULL, &res->primefetch);
 		UNLOCK(&res->primelock);
 
@@ -10782,7 +10744,8 @@ dns_resolver_createfetch(dns_resolver_t *res, const dns_name_t *name,
 
 	if (fctx == NULL) {
 		result = fctx_create(res, name, type, domain, nameservers,
-				     client, options, bucket, depth, qc, &fctx);
+				     client, options, bucket, depth, qc, task,
+				     &fctx);
 		if (result != ISC_R_SUCCESS) {
 			goto unlock;
 		}
@@ -10811,7 +10774,7 @@ dns_resolver_createfetch(dns_resolver_t *res, const dns_name_t *name,
 			ISC_EVENT_INIT(event, sizeof(*event), 0, NULL,
 				       DNS_EVENT_FETCHCONTROL, fctx_start, fctx,
 				       NULL, NULL, NULL);
-			isc_task_send(fctx->restask, &event);
+			isc_task_send(fctx->task, &event);
 		} else {
 			dodestroy = true;
 		}

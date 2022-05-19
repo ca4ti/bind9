@@ -88,7 +88,7 @@ setup_server(void **state) {
 	}
 
 	result = ns_interfacemgr_create(mctx, sctx, taskmgr, timermgr, netmgr,
-					dispatchmgr, maintask, NULL, false,
+					dispatchmgr, NULL, false,
 					&interfacemgr);
 	if (result != ISC_R_SUCCESS) {
 		return (-1);

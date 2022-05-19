@@ -74,7 +74,6 @@ struct ns_interfacemgr {
 	isc_mem_t *mctx;	  /*%< Memory context */
 	ns_server_t *sctx;	  /*%< Server context */
 	isc_taskmgr_t *taskmgr;	  /*%< Task manager */
-	isc_task_t *task;	  /*%< Task */
 	isc_timermgr_t *timermgr; /*%< Timer manager */
 	isc_nm_t *nm;		  /*%< Net manager */
 	uint32_t ncpus;		  /*%< Number of workers */
@@ -276,12 +275,10 @@ isc_result_t
 ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 		       isc_taskmgr_t *taskmgr, isc_timermgr_t *timermgr,
 		       isc_nm_t *nm, dns_dispatchmgr_t *dispatchmgr,
-		       isc_task_t *task, dns_geoip_databases_t *geoip,
-		       bool scan, ns_interfacemgr_t **mgrp) {
+		       dns_geoip_databases_t *geoip, bool scan,
+		       ns_interfacemgr_t **mgrp) {
 	isc_result_t result;
 	ns_interfacemgr_t *mgr = NULL;
-
-	UNUSED(task);
 
 	REQUIRE(mctx != NULL);
 	REQUIRE(mgrp != NULL);
@@ -302,11 +299,6 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 
 	isc_mutex_init(&mgr->lock);
 
-	result = isc_task_create(taskmgr, 0, &mgr->task, 0);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup_lock;
-	}
-
 	atomic_init(&mgr->shuttingdown, false);
 
 	ISC_LIST_INIT(mgr->interfaces);
@@ -317,7 +309,7 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 	 */
 	result = ns_listenlist_create(mctx, &mgr->listenon4);
 	if (result != ISC_R_SUCCESS) {
-		goto cleanup_task;
+		goto cleanup_lock;
 	}
 	ns_listenlist_attach(mgr->listenon4, &mgr->listenon6);
 
@@ -365,8 +357,6 @@ ns_interfacemgr_create(isc_mem_t *mctx, ns_server_t *sctx,
 cleanup_listenon:
 	ns_listenlist_detach(&mgr->listenon4);
 	ns_listenlist_detach(&mgr->listenon6);
-cleanup_task:
-	isc_task_detach(&mgr->task);
 cleanup_lock:
 	isc_mutex_destroy(&mgr->lock);
 	ns_server_detach(&mgr->sctx);
@@ -394,7 +384,6 @@ ns_interfacemgr_destroy(ns_interfacemgr_t *mgr) {
 	if (mgr->sctx != NULL) {
 		ns_server_detach(&mgr->sctx);
 	}
-	isc_task_detach(&mgr->task);
 	mgr->magic = 0;
 	isc_mem_putanddetach(&mgr->mctx, mgr, sizeof(*mgr));
 }

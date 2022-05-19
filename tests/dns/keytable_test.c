@@ -583,9 +583,6 @@ ISC_RUN_TEST_IMPL(dns_keytable_nta) {
 	result = dns_test_makeview("view", false, &myview);
 	assert_int_equal(result, ISC_R_SUCCESS);
 
-	result = isc_task_create(taskmgr, 0, &myview->task, 0);
-	assert_int_equal(result, ISC_R_SUCCESS);
-
 	result = dns_view_initsecroots(myview, mctx);
 	assert_int_equal(result, ISC_R_SUCCESS);
 	result = dns_view_getsecroots(myview, &keytable);

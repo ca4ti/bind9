@@ -225,7 +225,7 @@ dns_resolver_freeze(dns_resolver_t *res);
  */
 
 void
-dns_resolver_prime(dns_resolver_t *res);
+dns_resolver_prime(dns_resolver_t *res, isc_task_t *task);
 /*%<
  * Prime resolver.
  *

@@ -315,9 +315,6 @@ destroy(dns_view_t *view) {
 	if (view->requestmgr != NULL) {
 		dns_requestmgr_detach(&view->requestmgr);
 	}
-	if (view->task != NULL) {
-		isc_task_detach(&view->task);
-	}
 	if (view->hints != NULL) {
 		dns_db_detach(&view->hints);
 	}
@@ -636,17 +633,10 @@ dns_view_createresolver(dns_view_t *view, isc_taskmgr_t *taskmgr,
 	REQUIRE(!view->frozen);
 	REQUIRE(view->resolver == NULL);
 
-	result = isc_task_create(taskmgr, 0, &view->task, 0);
-	if (result != ISC_R_SUCCESS) {
-		return (result);
-	}
-	isc_task_setname(view->task, "view", view);
-
 	result = dns_resolver_create(view, taskmgr, ndisp, nm, timermgr,
 				     options, dispatchmgr, dispatchv4,
 				     dispatchv6, &view->resolver);
 	if (result != ISC_R_SUCCESS) {
-		isc_task_detach(&view->task);
 		return (result);
 	}
 
@@ -833,11 +823,11 @@ dns_view_findzone(dns_view_t *view, const dns_name_t *name,
 }
 
 isc_result_t
-dns_view_find(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
-	      isc_stdtime_t now, unsigned int options, bool use_hints,
-	      bool use_static_stub, dns_db_t **dbp, dns_dbnode_t **nodep,
-	      dns_name_t *foundname, dns_rdataset_t *rdataset,
-	      dns_rdataset_t *sigrdataset) {
+dns_view_find(dns_view_t *view, isc_task_t *task, const dns_name_t *name,
+	      dns_rdatatype_t type, isc_stdtime_t now, unsigned int options,
+	      bool use_hints, bool use_static_stub, dns_db_t **dbp,
+	      dns_dbnode_t **nodep, dns_name_t *foundname,
+	      dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset) {
 	isc_result_t result;
 	dns_db_t *db, *zdb;
 	dns_dbnode_t *node, *znode;
@@ -855,6 +845,7 @@ dns_view_find(dns_view_t *view, const dns_name_t *name, dns_rdatatype_t type,
 	REQUIRE(type != dns_rdatatype_rrsig);
 	REQUIRE(rdataset != NULL); /* XXXBEW - remove this */
 	REQUIRE(nodep == NULL || *nodep == NULL);
+	REQUIRE(task != NULL || !use_hints);
 
 	/*
 	 * Initialize.
@@ -1010,7 +1001,7 @@ db_find:
 			 * We just used a hint.  Let the resolver know it
 			 * should consider priming.
 			 */
-			dns_resolver_prime(view->resolver);
+			dns_resolver_prime(view->resolver, task);
 			dns_db_attach(view->hints, &db);
 			result = DNS_R_HINT;
 		} else if (result == DNS_R_NXRRSET) {
@@ -1070,15 +1061,15 @@ cleanup:
 isc_result_t
 dns_view_simplefind(dns_view_t *view, const dns_name_t *name,
 		    dns_rdatatype_t type, isc_stdtime_t now,
-		    unsigned int options, bool use_hints,
-		    dns_rdataset_t *rdataset, dns_rdataset_t *sigrdataset) {
+		    unsigned int options, dns_rdataset_t *rdataset,
+		    dns_rdataset_t *sigrdataset) {
 	isc_result_t result;
 	dns_fixedname_t foundname;
 
 	dns_fixedname_init(&foundname);
-	result = dns_view_find(view, name, type, now, options, use_hints, false,
-			       NULL, NULL, dns_fixedname_name(&foundname),
-			       rdataset, sigrdataset);
+	result = dns_view_find(
+		view, NULL, name, type, now, options, false, false, NULL, NULL,
+		dns_fixedname_name(&foundname), rdataset, sigrdataset);
 	if (result == DNS_R_NXDOMAIN) {
 		/*
 		 * The rdataset and sigrdataset of the relevant NSEC record
