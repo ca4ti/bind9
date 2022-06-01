@@ -175,6 +175,40 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
 n=$((n+1))
+echo_i "query for .good is properly minimized when qname-minimization is in relaxed-ns mode ($n)"
+ret=0
+$CLEANQL
+$RNDCCMD 10.53.0.8 flush
+$DIG $DIGOPTS icky.icky.icky.ptang.zoop.boing.good. @10.53.0.8 > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "icky.icky.icky.ptang.zoop.boing.good. 1	IN A	192.0.2.1" dig.out.test$n > /dev/null || ret=1
+sleep 1
+sort ans2/query.log > ans2/query.log.sorted
+cat << __EOF | diff ans2/query.log.sorted - > /dev/null || ret=1
+ADDR a.bit.longer.ns.name.good.
+ADDR a.bit.longer.ns.name.good.
+ADDR ns2.good.
+ADDR ns3.good.
+ADDR ns3.good.
+NS boing.good.
+NS good.
+NS zoop.boing.good.
+__EOF
+cat << __EOF | diff ans3/query.log - > /dev/null || ret=1
+NS zoop.boing.good.
+NS ptang.zoop.boing.good.
+NS icky.ptang.zoop.boing.good.
+__EOF
+cat << __EOF | diff ans4/query.log - > /dev/null || ret=1
+NS icky.ptang.zoop.boing.good.
+NS icky.icky.ptang.zoop.boing.good.
+ADDR icky.icky.icky.ptang.zoop.boing.good.
+__EOF
+for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
 echo_i "query for .bad fails when qname-minimization is in strict mode ($n)"
 ret=0
 $CLEANQL
@@ -217,6 +251,36 @@ ADDR _.icky.ptang.zoop.boing.bad.
 __EOF
 cat << __EOF | diff ans4/query.log - > /dev/null || ret=1
 ADDR _.icky.icky.ptang.zoop.boing.bad.
+ADDR icky.icky.icky.ptang.zoop.boing.bad.
+__EOF
+for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "query for .bad succeeds when qname-minimization is in relaxed-ns mode ($n)"
+ret=0
+$CLEANQL
+$RNDCCMD 10.53.0.8 flush
+$DIG $DIGOPTS icky.icky.icky.ptang.zoop.boing.bad. @10.53.0.8 > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "icky.icky.icky.ptang.zoop.boing.bad. 1 IN A	192.0.2.1" dig.out.test$n > /dev/null || ret=1
+sleep 1
+sort ans2/query.log > ans2/query.log.sorted
+cat << __EOF | diff ans2/query.log.sorted - > /dev/null || ret=1
+ADDR a.bit.longer.ns.name.bad.
+ADDR a.bit.longer.ns.name.bad.
+ADDR icky.icky.icky.ptang.zoop.boing.bad.
+ADDR ns2.bad.
+ADDR ns3.bad.
+ADDR ns3.bad.
+NS bad.
+NS boing.bad.
+__EOF
+cat << __EOF | diff ans3/query.log - > /dev/null || ret=1
+ADDR icky.icky.icky.ptang.zoop.boing.bad.
+__EOF
+cat << __EOF | diff ans4/query.log - > /dev/null || ret=1
 ADDR icky.icky.icky.ptang.zoop.boing.bad.
 __EOF
 for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
@@ -270,9 +334,43 @@ status=$((status+ret))
 $RNDCCMD 10.53.0.7 flush
 
 n=$((n+1))
-echo_i "information that minimization was unsuccessful for .ugly is logged ($n)"
+echo_i "information that minimization was unsuccessful for .ugly is logged in relaxed mode ($n)"
 ret=0
 wait_for_log 5 "success resolving 'icky.icky.icky.ptang.zoop.boing.ugly/A' after disabling qname minimization" ns7/named.run > /dev/null || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "query for .ugly succeeds when qname-minimization is in relaxed-ns mode ($n)"
+ret=0
+$CLEANQL
+$RNDCCMD 10.53.0.8 flush
+$DIG $DIGOPTS icky.icky.icky.ptang.zoop.boing.ugly. @10.53.0.8 > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "icky.icky.icky.ptang.zoop.boing.ugly. 1	IN A	192.0.2.1" dig.out.test$n > /dev/null || ret=1
+sleep 1
+sort ans2/query.log > ans2/query.log.sorted
+cat << __EOF | diff ans2/query.log.sorted - > /dev/null || ret=1
+ADDR a.bit.longer.ns.name.ugly.
+ADDR a.bit.longer.ns.name.ugly.
+ADDR icky.icky.icky.ptang.zoop.boing.ugly.
+ADDR ns2.ugly.
+ADDR ns3.ugly.
+ADDR ns3.ugly.
+NS boing.ugly.
+NS ugly.
+__EOF
+echo "ADDR icky.icky.icky.ptang.zoop.boing.ugly." | diff ans3/query.log - > /dev/null || ret=1
+echo "ADDR icky.icky.icky.ptang.zoop.boing.ugly." | diff ans4/query.log - > /dev/null || ret=1
+for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+$RNDCCMD 10.53.0.8 flush
+
+n=$((n+1))
+echo_i "information that minimization was unsuccessful for .ugly is logged in relaxed-ns mode ($n)"
+ret=0
+wait_for_log 5 "success resolving 'icky.icky.icky.ptang.zoop.boing.ugly/A' after disabling qname minimization" ns8/named.run > /dev/null || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
@@ -472,6 +570,33 @@ for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
+n=$((n+1))
+echo_i "query for .stale is properly minimized when qname-minimization is in relaxed-ns mode ($n)"
+ret=0
+$CLEANQL
+$RNDCCMD 10.53.0.8 flush
+$DIG $DIGOPTS @10.53.0.8 txt a.b.stale. > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "a\.b\.stale\..*1.*IN.*TXT.*hooray" dig.out.test$n > /dev/null || ret=1
+sleep 1
+sort ans2/query.log > ans2/query.log.sorted
+cat << __EOF | diff ans2/query.log.sorted - > /dev/null || ret=1
+ADDR ns.b.stale.
+ADDR ns2.stale.
+NS b.stale.
+NS stale.
+__EOF
+test -f  ans3/query.log && ret=1
+sort ans4/query.log > ans4/query.log.sorted
+cat << __EOF | diff ans4/query.log.sorted - > /dev/null || ret=1
+ADDR ns.b.stale.
+NS b.stale.
+TXT a.b.stale.
+__EOF
+for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
 echo_i "sleep 2, allow entries in cache to go stale"
 sleep 2
 
@@ -528,6 +653,29 @@ __EOF
 test -f  ans3/query.log && ret=1
 sort ans4/query.log > ans4/query.log.sorted
 cat << __EOF | diff ans4/query.log.sorted - > /dev/null || ret=1
+TXT a.b.stale.
+__EOF
+for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "query for .stale is properly minimized when qname-minimization is in relaxed-ns mode (stale cache) ($n)"
+ret=0
+$CLEANQL
+$DIG $DIGOPTS @10.53.0.8 txt a.b.stale. > dig.out.test$n
+grep "status: NOERROR" dig.out.test$n > /dev/null || ret=1
+grep "a\.b\.stale\..*1.*IN.*TXT.*hooray" dig.out.test$n > /dev/null || ret=1
+sleep 1
+sort ans2/query.log > ans2/query.log.sorted
+cat << __EOF | diff ans2/query.log.sorted - > /dev/null || ret=1
+NS b.stale.
+NS stale.
+__EOF
+test -f  ans3/query.log && ret=1
+sort ans4/query.log > ans4/query.log.sorted
+cat << __EOF | diff ans4/query.log.sorted - > /dev/null || ret=1
+NS b.stale.
 TXT a.b.stale.
 __EOF
 for ans in ans2 ans3 ans4; do mv -f $ans/query.log query-$ans-$n.log 2>/dev/null || true; done
