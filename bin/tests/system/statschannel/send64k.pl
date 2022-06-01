@@ -31,14 +31,14 @@ while ($n = read(STDIN, $buf, 64000)) {
 	$sock->syswrite($buf, $n);
 }
 
-#get the response with with a 15 second timeout
+#get the response with with a 30 second timeout
 my $rin;
 my $rout;
 my $n;
 do {
         $rin = '';
         vec($rin, fileno($sock), 1) = 1;
-	$n = select($rout = $rin, undef, undef, 15);
+	$n = select($rout = $rin, undef, undef, 30);
 	$n = $sock->sysread($buf, 64000) if ($n > 0);
 	print STDOUT $buf if ($n > 0);
 } while ($n > 0);

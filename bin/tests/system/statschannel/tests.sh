@@ -416,11 +416,12 @@ done
 time1=$($PERL -e 'print time(), "\n";')
 ${PERL} send64k.pl 10.53.0.3 ${EXTRAPORT1} < send.in$n  > send.out$n
 time2=$($PERL -e 'print time(), "\n";')
-test $((time2 - time1)) -lt 5 || ret=1
+time_delta=$((time2 - time1))
+test $time_delta -lt 5 || ret=1
 # we expect 91 of the 500 requests to be processed.
 lines=$(grep "^HTTP/1.1" send.out$n | wc -l)
 test $lines = 91 || ret=1
-if [ $ret != 0 ]; then echo_i "failed"; fi
+if [ $ret != 0 ]; then echo_i "failed (time_delta=$time_delta lines=$lines)"; fi
 status=`expr $status + $ret`
 n=`expr $n + 1`
 
