@@ -1435,12 +1435,27 @@ default is used.
    This option controls QNAME minimization behavior in the BIND
    resolver. When set to ``strict``, BIND follows the QNAME
    minimization algorithm to the letter, as specified in :rfc:`7816`.
-   Setting this option to ``relaxed`` causes BIND to fall back to
-   normal (non-minimized) query mode when it receives either NXDOMAIN or
-   other unexpected responses (e.g., SERVFAIL, improper zone cut,
-   REFUSED) to a minimized query. ``disabled`` disables QNAME
-   minimization completely. ``off`` is a synonym for ``disabled``. The current default is ``relaxed``, but it
-   may be changed to ``strict`` in a future release.
+   Setting this option to ``relaxed`` (``relaxed-a``) or ``relaxed-ns``
+   causes BIND to fall back to normal (non-minimized) query mode
+   when it receives either NXDOMAIN or other unexpected responses
+   (e.g., SERVFAIL, improper zone cut, REFUSED) to a minimized
+   query. ``disabled`` disables QNAME minimization completely.
+   ``off`` is a synonym for ``disabled``. The current default is
+   ``relaxed``, but it may be changed to ``strict`` in a future
+   release.
+
+   In ``relaxed`` (``relaxed-a``) mode named uses ``_.<domain>`` A
+   queries to elicit referrals from the authorative servers for
+   ``<domain>`` as it walks down the tree.  In ``relaxed-ns`` mode
+   named makes NS queries for ``<domain>`` as it walks down the
+   tree.  There are caveats for both methods.  ``relaxed`` will not
+   learn every intermediate delegation point when parent and child
+   zones are hosted by the same servers leading to redundant queries
+   being made.  ``relaxed-ns`` mode will cause named to learn the
+   NS RRset from the child zone and if the delegation is not being
+   properly managed (i.e. being kept consistent between child and
+   parent) can result in some zones becoming unresolvable if the
+   child's NS RRset is ``bad``.
 
 .. namedconf:statement:: tkey-gssapi-keytab
    :tags: security

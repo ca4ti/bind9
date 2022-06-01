@@ -116,6 +116,7 @@ struct dns_view {
 	bool		      recursion;
 	bool		      qminimization;
 	bool		      qmin_strict;
+	bool		      qmin_use_a;
 	bool		      auth_nxdomain;
 	bool		      minimal_any;
 	dns_minimaltype_t     minimalresponses;

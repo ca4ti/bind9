@@ -2988,8 +2988,9 @@ static cfg_type_t cfg_type_optional_keyref = {
 	doc_optional_keyvalue, &cfg_rep_string,		&key_kw
 };
 
-static const char *qminmethod_enums[] = { "strict", "relaxed", "disabled",
-					  "off", NULL };
+static const char *qminmethod_enums[] = { "strict",	"relaxed",  "relaxed-a",
+					  "relaxed-ns", "disabled", "off",
+					  NULL };
 
 static cfg_type_t cfg_type_qminmethod = { "qminmethod",	     cfg_parse_enum,
 					  cfg_print_ustring, cfg_doc_enum,

@@ -221,7 +221,7 @@ options {
 	preferred-glue <string>;
 	prefetch <integer> [ <integer> ];
 	provide-ixfr <boolean>;
-	qname-minimization ( strict | relaxed | disabled | off );
+	qname-minimization ( strict | relaxed | relaxed-a | relaxed-ns | disabled | off );
 	query-source ( ( [ address ] ( <ipv4_address> | * ) [ port ( <integer> | * ) ] ) | ( [ [ address ] ( <ipv4_address> | * ) ] port ( <integer> | * ) ) ) [ dscp <integer> ];
 	query-source-v6 ( ( [ address ] ( <ipv6_address> | * ) [ port ( <integer> | * ) ] ) | ( [ [ address ] ( <ipv6_address> | * ) ] port ( <integer> | * ) ) ) [ dscp <integer> ];
 	querylog <boolean>;
@@ -504,7 +504,7 @@ view <string> [ <class> ] {
 	preferred-glue <string>;
 	prefetch <integer> [ <integer> ];
 	provide-ixfr <boolean>;
-	qname-minimization ( strict | relaxed | disabled | off );
+	qname-minimization ( strict | relaxed | relaxed-a | relaxed-ns | disabled | off );
 	query-source ( ( [ address ] ( <ipv4_address> | * ) [ port ( <integer> | * ) ] ) | ( [ [ address ] ( <ipv4_address> | * ) ] port ( <integer> | * ) ) ) [ dscp <integer> ];
 	query-source-v6 ( ( [ address ] ( <ipv6_address> | * ) [ port ( <integer> | * ) ] ) | ( [ [ address ] ( <ipv6_address> | * ) ] port ( <integer> | * ) ) ) [ dscp <integer> ];
 	rate-limit {

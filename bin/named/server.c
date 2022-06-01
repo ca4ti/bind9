@@ -5180,12 +5180,23 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	if (!strcmp(qminmode, "strict")) {
 		view->qminimization = true;
 		view->qmin_strict = true;
+		view->qmin_use_a = false;
 	} else if (!strcmp(qminmode, "relaxed")) {
 		view->qminimization = true;
 		view->qmin_strict = false;
+		view->qmin_use_a = true;
+	} else if (!strcmp(qminmode, "relaxed-a")) {
+		view->qminimization = true;
+		view->qmin_strict = false;
+		view->qmin_use_a = true;
+	} else if (!strcmp(qminmode, "relaxed-ns")) {
+		view->qminimization = true;
+		view->qmin_strict = false;
+		view->qmin_use_a = false;
 	} else { /* "disabled" or "off" */
 		view->qminimization = false;
 		view->qmin_strict = false;
+		view->qmin_use_a = false;
 	}
 
 	obj = NULL;
