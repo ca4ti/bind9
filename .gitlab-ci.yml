@@ -12,8 +12,7 @@ variables:
   OPENSSL_CONF: "/var/tmp/etc/openssl.cnf"
 
   GIT_DEPTH: 1
-  BUILD_PARALLEL_JOBS: 6
-  TEST_PARALLEL_JOBS: 6
+  PARALLEL_JOBS_DEFAULT: 6
 
   CONFIGURE: ./configure
   CLANG: clang-13
@@ -275,7 +274,7 @@ stages:
   script:
     - *configure
     - *check_readline_setup
-    - make -j${BUILD_PARALLEL_JOBS:-1} -k all V=1
+    - make -j${PARALLEL_JOBS} -k all V=1
     - test -z "${RUN_MAKE_INSTALL}" || make DESTDIR="${INSTALL_PATH}" install
     - test -z "${RUN_MAKE_INSTALL}" || DESTDIR="${INSTALL_PATH}" sh util/check-make-install
     - if [[ "${CFLAGS}" == *"-fsanitize=address"* ]]; then ( ! grep -F AddressSanitizer config.log ); fi
@@ -308,7 +307,7 @@ stages:
     - *setup_interfaces
   script:
     - cd bin/tests/system
-    - make -j${TEST_PARALLEL_JOBS:-1} -k check V=1
+    - make -j${PARALLEL_JOBS} -k check V=1
     - if git rev-parse > /dev/null 2>&1; then ( ! grep "^I:.*:file.*not removed$" *.log ); fi
   after_script:
     - (source bin/tests/system/conf.sh; $PYTHON bin/tests/convert-trs-to-junit.py . > junit.xml)
@@ -352,7 +351,7 @@ stages:
   before_script:
     - *retrieve_out_of_tree_workspace
   script:
-    - make -j${TEST_PARALLEL_JOBS:-1} -k unit V=1
+    - make -j${PARALLEL_JOBS} -k unit V=1
   after_script:
     - (source bin/tests/system/conf.sh; $PYTHON bin/tests/convert-trs-to-junit.py . > junit.xml)
     - *save_out_of_tree_workspace
@@ -392,7 +391,7 @@ stages:
   stage: docs
   script:
     - *configure
-    - make -j${BUILD_PARALLEL_JOBS:-1} -k doc V=1
+    - make -j${PARALLEL_JOBS} -k doc V=1
     - qpdf --check doc/arm/_build/latex/Bv9ARM.pdf
     - find doc/man/ -maxdepth 1 -name "*.[0-9]" -exec mandoc -T lint "{}" \; | ( ! grep -v -e "skipping paragraph macro. sp after" -e "unknown font, skipping request. ft C" )
 
@@ -502,9 +501,9 @@ tarball-create:
     - make maintainer-clean
     - autoreconf -fi
     - ./configure --enable-maintainer-mode
-    - make -j${BUILD_PARALLEL_JOBS:-1} all V=1
+    - make -j${PARALLEL_JOBS} all V=1
     - if test "$(git status --porcelain | grep -Ev '\?\?' | wc -l)" -gt "0"; then git status --short; git diff > diff.patch; exit 1; fi
-    - make -j${BUILD_PARALLEL_JOBS:-1} dist V=1
+    - make -j${PARALLEL_JOBS} dist V=1
   artifacts:
     paths:
       - diff.patch
@@ -733,7 +732,7 @@ unit:gcc:bullseye:amd64cross32:
                   --keep-cc
                   --status-bugs
                   --keep-going
-                  -o scan-build.reports make -j${BUILD_PARALLEL_JOBS:-1} all V=1
+                  -o scan-build.reports make -j${PARALLEL_JOBS} all V=1
 
 scan-build:
   <<: *default_triggering_rules
@@ -940,6 +939,7 @@ system:gcc:asan:
   variables:
     SOFTHSM2_MODULE: "/lib64/libsofthsm2.so"
     LSAN_OPTIONS: "suppressions=$CI_PROJECT_DIR/suppr-lsan.txt"
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
   <<: *fedora_35_amd64_image
   <<: *system_test_job
   needs:
@@ -965,6 +965,8 @@ clang:asan:
 system:clang:asan:
   <<: *base_image
   <<: *system_test_job
+  variables:
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
   needs:
     - job: clang:asan
       artifacts: true
@@ -990,6 +992,7 @@ gcc:tsan:
 
 system:gcc:tsan:
   variables:
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
     SOFTHSM2_MODULE: "/lib64/libsofthsm2.so"
     TSAN_OPTIONS: ${TSAN_OPTIONS_COMMON}
   <<: *fedora_35_amd64_image
@@ -1018,6 +1021,7 @@ clang:tsan:
 
 system:clang:tsan:
   variables:
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
     TSAN_OPTIONS: ${TSAN_OPTIONS_COMMON}
   <<: *base_image
   <<: *system_test_tsan_job
@@ -1063,6 +1067,7 @@ clang:freebsd12:amd64:
   variables:
     CFLAGS: "${CFLAGS_COMMON}"
     EXTRA_CONFIGURE: "${WITH_READLINE_EDITLINE}"
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
     USER: gitlab-runner
   <<: *freebsd_12_amd64_image
   <<: *build_job
@@ -1071,8 +1076,8 @@ system:clang:freebsd12:amd64:
   <<: *freebsd_12_amd64_image
   <<: *system_test_job
   variables:
+    PARALLEL_JOBS: 4
     USER: gitlab-runner
-    TEST_PARALLEL_JOBS: 4
   needs:
     - job: clang:freebsd12:amd64
       artifacts: true
@@ -1080,6 +1085,8 @@ system:clang:freebsd12:amd64:
 unit:clang:freebsd12:amd64:
   <<: *freebsd_12_amd64_image
   <<: *unit_test_job
+  variables:
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
   needs:
     - job: clang:freebsd12:amd64
       artifacts: true
@@ -1090,6 +1097,7 @@ clang:freebsd13:amd64:
   variables:
     CFLAGS: "${CFLAGS_COMMON}"
     EXTRA_CONFIGURE: "${WITH_READLINE_LIBEDIT}"
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
     USER: gitlab-runner
   <<: *freebsd_13_amd64_image
   <<: *build_job
@@ -1098,8 +1106,8 @@ system:clang:freebsd13:amd64:
   <<: *freebsd_13_amd64_image
   <<: *system_test_job
   variables:
+    PARALLEL_JOBS: 4
     USER: gitlab-runner
-    TEST_PARALLEL_JOBS: 4
   needs:
     - job: clang:freebsd13:amd64
       artifacts: true
@@ -1107,6 +1115,8 @@ system:clang:freebsd13:amd64:
 unit:clang:freebsd13:amd64:
   <<: *freebsd_13_amd64_image
   <<: *unit_test_job
+  variables:
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
   needs:
     - job: clang:freebsd13:amd64
       artifacts: true
@@ -1116,8 +1126,9 @@ unit:clang:freebsd13:amd64:
 clang:openbsd:amd64:
   variables:
     CC: clang
-    USER: gitlab-runner
     EXTRA_CONFIGURE: "--disable-dnstap"
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
+    USER: gitlab-runner
   <<: *openbsd_amd64_image
   <<: *build_job
 
@@ -1125,6 +1136,7 @@ system:clang:openbsd:amd64:
   <<: *openbsd_amd64_image
   <<: *system_test_job
   variables:
+    PARALLEL_JOBS: 4
     USER: gitlab-runner
   needs:
     - job: clang:openbsd:amd64
@@ -1139,6 +1151,7 @@ unit:clang:openbsd:amd64:
   <<: *openbsd_amd64_image
   <<: *unit_test_job
   variables:
+    PARALLEL_JOBS: "${PARALLEL_JOBS_DEFAULT}"
     USER: gitlab-runner
   needs:
     - job: clang:openbsd:amd64
@@ -1194,7 +1207,7 @@ release:
   - test -d cov-analysis-linux64-2021.12.1
 
 .coverity_build: &coverity_build
-  - cov-analysis-linux64-2021.12.1/bin/cov-build --dir cov-int sh -c 'make -j${BUILD_PARALLEL_JOBS:-1} -k all V=1'
+  - cov-analysis-linux64-2021.12.1/bin/cov-build --dir cov-int sh -c 'make -j${PARALLEL_JOBS} -k all V=1'
   - tar --create --gzip --file=cov-int.tar.gz cov-int/
   - curl -v https://scan.coverity.com/builds?project=$COVERITY_SCAN_PROJECT_NAME
         --form token=$COVERITY_SCAN_TOKEN
@@ -1249,13 +1262,13 @@ respdiff:
   script:
     - autoreconf -fi
     - *configure
-    - make -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - make -j${PARALLEL_JOBS} V=1
     - *setup_interfaces
     - git clone --depth 1 https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.isc.org/isc-private/bind-qa.git
     - git clone --branch "${BIND_BASELINE_VERSION}" --depth 1 https://gitlab.isc.org/isc-projects/bind9.git refserver
     - cd refserver/
     - ./configure --with-randomdev=/dev/urandom
-    - make -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - make -j${PARALLEL_JOBS} V=1
     - cd ../bind-qa/bind9/respdiff
     - bash respdiff.sh -s named -q "${PWD}/100k_mixed.txt" -c 3 -w "${PWD}/rspworkdir" "${CI_PROJECT_DIR}" "${CI_PROJECT_DIR}/refserver"
   needs: []
@@ -1280,7 +1293,7 @@ respdiff-third-party:
   script:
     - autoreconf -fi
     - *configure
-    - make -j${BUILD_PARALLEL_JOBS:-1} V=1
+    - make -j${PARALLEL_JOBS} V=1
     - *setup_interfaces
     - git clone --depth 1 https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.isc.org/isc-private/bind-qa.git
     - cd bind-qa/bind9/respdiff
@@ -1302,7 +1315,7 @@ respdiff-third-party:
   script:
     - *configure
     - *setup_interfaces
-    - make -j${BUILD_PARALLEL_JOBS:-1} -k all V=1
+    - make -j${PARALLEL_JOBS} -k all V=1
     - make DESTDIR="${INSTALL_PATH}" install
     - git clone --depth 1 https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.isc.org/isc-private/bind-qa.git
     - cd bind-qa/bind9/stress
