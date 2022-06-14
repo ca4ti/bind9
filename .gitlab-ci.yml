@@ -116,7 +116,7 @@ stages:
   <<: *linux_amd64
 
 .oraclelinux-8-amd64: &oraclelinux_8_amd64_image
-  image: "$CI_REGISTRY_IMAGE:oraclelinux-8-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:oraclelinux-8-amd64"
   <<: *linux_amd64
 
 # Debian
