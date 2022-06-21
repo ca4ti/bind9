@@ -196,7 +196,7 @@ def test_send_timeout(named_port):
 
         # Send and receive 28 large (~32k) DNS queries that should
         # fill the default maximum 208k TCP send buffer
-        for n in range(28):
+        for n in range(2000):
             (sbytes, stime) = dns.query.send_tcp(sock, msg, timeout())
 
         # configure idle interval is 5 seconds, sleep 6 to make sure we are
