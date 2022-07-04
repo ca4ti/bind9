@@ -157,13 +157,16 @@ doc-local: man
 clean-local::
 	-rm -rf $(SPHINXBUILDDIR)
 
-if MAINTAINER_MODE
 
 CLEANFILES +=				\
 	manpages.stamp
 
+if MAINTAINER_MODE
+
 MAINTAINERCLEANFILES =			\
 	$(MANPAGES_IN)
+
+endif MAINTAINER_MODE
 
 #
 # Build rules for generating pre-generated manpages
@@ -209,5 +212,3 @@ $(MANPAGES_IN): manpages.stamp
           fi; \
         fi
 endif HAVE_SPHINX_BUILD
-
-endif MAINTAINER_MODE
