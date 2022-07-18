@@ -286,9 +286,7 @@ task_ready(isc_task_t *task) {
 	XTRACE("task_ready");
 
 	isc_task_attach(task, &(isc_task_t *){ NULL });
-	LOCK(&task->lock);
 	isc_nm_task_enqueue(manager->netmgr, task, task->tid);
-	UNLOCK(&task->lock);
 }
 
 void
@@ -708,9 +706,7 @@ isc_taskmgr_setexcltask(isc_taskmgr_t *mgr, isc_task_t *task) {
 	REQUIRE(VALID_MANAGER(mgr));
 	REQUIRE(VALID_TASK(task));
 
-	LOCK(&task->lock);
 	REQUIRE(task->tid == 0);
-	UNLOCK(&task->lock);
 
 	LOCK(&mgr->lock);
 	if (mgr->excl != NULL) {
