@@ -20,11 +20,14 @@
 #include <openssl/opensslv.h>
 
 #include <isc/fips.h>
+#include <isc/mem.h>
 #include <isc/net.h>
 #include <isc/print.h>
 #include <isc/util.h>
 
 #include <dns/edns.h>
+
+#include <dst/dst.h>
 
 static void
 usage(void) {
@@ -41,6 +44,7 @@ usage(void) {
 	fprintf(stderr, "\t--have-geoip2\n");
 	fprintf(stderr, "\t--have-libxml2\n");
 	fprintf(stderr, "\t--ipv6only=no\n");
+	fprintf(stderr, "\t--rsasha1\n");
 	fprintf(stderr, "\t--tsan\n");
 	fprintf(stderr, "\t--with-dlz-filesystem\n");
 	fprintf(stderr, "\t--with-libidn2\n");
@@ -182,6 +186,13 @@ main(int argc, char **argv) {
 #else  /* defined(IPPROTO_IPV6) && defined(IPV6_V6ONLY) */
 		return (1);
 #endif /* defined(IPPROTO_IPV6) && defined(IPV6_V6ONLY) */
+	}
+
+	if (strcasecmp(argv[1], "--rsasha1") == 0) {
+		isc_mem_t *mctx = NULL;
+		isc_mem_create(&mctx);
+		dst_lib_init(mctx, NULL);
+		return (dst_algorithm_supported(DST_ALG_RSASHA1) ? 0 : 1);
 	}
 
 	if (strcmp(argv[1], "--with-dlz-filesystem") == 0) {
