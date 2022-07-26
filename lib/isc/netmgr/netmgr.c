@@ -2333,6 +2333,11 @@ isc__nmsocket_reset(isc_nmsocket_t *sock) {
 		 */
 		REQUIRE(sock->parent == NULL);
 		break;
+#ifdef HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+		isc__nmsocket_tls_reset(sock);
+		return;
+#endif /* HAVE_LIBNGHTTP2 */
 	default:
 		UNREACHABLE();
 		break;
@@ -2551,6 +2556,10 @@ isc_nm_bad_request(isc_nmhandle_t *handle) {
 		return;
 	case isc_nm_tcpdnssocket:
 	case isc_nm_tlsdnssocket:
+	case isc_nm_tcpsocket:
+#if HAVE_LIBNGHTTP2
+	case isc_nm_tlssocket:
+#endif /* HAVE_LIBNGHTTP2 */
 		REQUIRE(sock->parent == NULL);
 		isc__nmsocket_reset(sock);
 		return;
@@ -2558,10 +2567,6 @@ isc_nm_bad_request(isc_nmhandle_t *handle) {
 	case isc_nm_httpsocket:
 		isc__nm_http_bad_request(handle);
 		return;
-#endif /* HAVE_LIBNGHTTP2 */
-	case isc_nm_tcpsocket:
-#if HAVE_LIBNGHTTP2
-	case isc_nm_tlssocket:
 #endif /* HAVE_LIBNGHTTP2 */
 	default:
 		UNREACHABLE();
