@@ -181,6 +181,7 @@ else
     echowarn "I:$systest:Prerequisites missing, skipping test."
     echowarn "R:$systest:SKIPPED";
     echoend "E:$systest:$(date_with_args)"
+    rm -f "$systest/.prepared"
     exit 77
 fi
 
@@ -195,6 +196,7 @@ if ! $restart; then
             exit 1
         fi
     fi
+    rm -f "$systest/.prepared"
 fi
 
 # Set up any dynamically generated test data
@@ -342,6 +344,10 @@ else
             find "${systest}/" \( -type d -empty \) -delete 2>/dev/null
         fi
     fi
+    rm -f "$systest/.prepared"
+    rm -rf "$systest/.pytest_cache"
+    rm -rf __pycache__
+    rm -rf "$systest/__pycache__"
 fi
 
 NAMED_RUN_LINES_THRESHOLD=200000
