@@ -45,6 +45,8 @@ check_PROGRAMS =		\
 	zonemgr_test		\
 	zt_test
 
+DISTCLEANFILES = zone.data
+
 CLEANFILES =
 
 if HAVE_PERL
