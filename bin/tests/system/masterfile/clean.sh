@@ -16,5 +16,5 @@ rm -f */named.memstats
 rm -f */named.conf
 rm -f */named.run
 rm -f ns*/named.lock
-rm -f checkzone.out*
+rm -f checkzone.out4
 rm -f ns*/managed-keys.bind*

@@ -67,7 +67,7 @@ rm -f ns3/secure.optout.example.db
 rm -f ns3/settime.out.*
 rm -f ns3/sync.example.db
 rm -f ns3/ttl*.db
-rm -f nsupdate.out
+rm -f nsupdate.out nsupdate.out.test*
 rm -f settime.out.*
 rm -f signing.out.*
 rm -f sync.key

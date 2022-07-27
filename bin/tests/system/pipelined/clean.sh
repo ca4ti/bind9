@@ -17,3 +17,4 @@ rm -f ./*/named.run*
 rm -f raw* output* ./*.out.*
 rm -f ns*/named.lock
 rm -f ns*/managed-keys.bind*
+rm -f ans*/ans.run

@@ -32,3 +32,4 @@ rm -f ns3/named.run.prev
 rm -f dnsrps*.conf dnsrpzd*
 rm -f ns*/session.key
 rm -f ns*/managed-keys.bind* ns*/*.mkeys*
+rm -f ans*/ans.run

@@ -24,3 +24,4 @@ rm -f ./ns*/managed-keys.bind*
 rm -f ./ns1/root.db ./ns1/root.db.signed
 rm -f ./ns*/trusted.conf
 rm -f ./ns1/K* ./ns1/dsset-*
+rm -f ans*/query.log

@@ -25,8 +25,8 @@ rm -f ns*/named.lock
 rm -f ns1/query_log
 rm -f ns1/named_iso8601
 rm -f ns1/named_iso8601_utc
-rm -f ns1/rndc.out.test*
-rm -f ns1/dig.out.test*
+rm -f rndc.out.test*
+rm -f dig.out.test*
 rm -f ns1/named_vers
 rm -f ns1/named_vers.*
 rm -f ns1/named_ts

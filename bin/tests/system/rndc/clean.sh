@@ -29,6 +29,6 @@ rm -f ns4/key?.conf
 rm -f ns6/huge.zone.db
 rm -f ns7/include.db ns7/test.db ns7/*.jnl
 rm -f ns7/named_dump.db*
-rm -f nsupdate.out.*.test*
+rm -f nsupdate.out.*.test* nsupdate.out.test*
 rm -f python.out.*.test*
-rm -f rndc.out.*.test*
+rm -f rndc.out.*.test* rndc.out.test*

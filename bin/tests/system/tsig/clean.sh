@@ -24,3 +24,4 @@ rm -f Kexample.net.*
 rm -f keygen.out?
 rm -f ns*/managed-keys.bind*
 rm -f packet.out
+rm -f ans*/ans.run
