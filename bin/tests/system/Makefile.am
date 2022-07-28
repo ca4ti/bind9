@@ -5,7 +5,7 @@ EXTRA_DIST = .
 # Source tarballs must not contain configure/build artifacts.
 dist-hook:
 	git clean -n -x -d | \
-	        grep -v "Makefile.in$$" | \
+	        grep -v -e "Makefile.in$$" -e "^Would remove \.\/$$" | \
 	        sed -n "s|^Would remove \(.*\)|$(distdir)/\1|p" | \
 	        xargs -I{} rm -rf "{}"
 
