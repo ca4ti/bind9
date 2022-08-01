@@ -3,7 +3,7 @@ include $(top_srcdir)/Makefile.top
 EXTRA_DIST = .
 
 # Source tarballs must not contain configure/build artifacts.
-dist-hook:
+dist-hook: delete_system_tests_helpers
 	git clean -n -x -d | \
 	        grep -v -e "Makefile.in$$" -e "^Would remove \.\/$$" | \
 	        sed -n "s|^Would remove \(.*\)|$(distdir)/\1|p" | \
@@ -223,6 +223,34 @@ check:
 	exit 1
 endif !HAVE_PERL
 
+SYSTEM_TEST_HELPERS =			\
+	ckdnsrps.sh			\
+	conftest.py			\
+	digcomp.pl			\
+	ditch.pl			\
+	fromhex.pl			\
+	kasp.sh				\
+	packet.pl			\
+	pytest_custom_markers.py	\
+	start.pl			\
+	stop.pl				\
+	testcrypto.sh			\
+	common
+
+copy_system_tests_helpers:
+	if [ "${srcdir}" != "${builddir}" ]; then \
+	  for f in $(SYSTEM_TEST_HELPERS); do \
+	    cp -a "${srcdir}/$$f" "${builddir}"; \
+	  done; \
+	fi
+
+delete_system_tests_helpers:
+	if [ "${srcdir}" != "${builddir}" ]; then \
+	  for f in $(SYSTEM_TEST_HELPERS); do \
+	    rm -rf "${builddir}/$$f"; \
+	  done; \
+	fi
+
 LOG_DRIVER_V = $(LOG_DRIVER_V_@AM_V@)
 LOG_DRIVER_V_ = $(LOG_DRIVER_V_@AM_DEFAULT_V@)
 LOG_DRIVER_V_0 = --verbose no
@@ -234,6 +262,6 @@ AM_LOG_DRIVER_FLAGS = $(LOG_DRIVER_V)
 LOG_COMPILER = $(builddir)/run.sh
 AM_LOG_FLAGS = -r
 
-$(TESTS): run.sh
+$(TESTS): copy_system_tests_helpers run.sh
 
 test-local: check
