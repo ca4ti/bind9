@@ -34,6 +34,25 @@ date_with_args() (
     date "+%Y-%m-%dT%T%z"
 )
 
+clean_outstanding_files() {
+    if [ "${srcdir}" = "${builddir}" ]; then
+        if test -d ${srcdir}/../../../.git; then
+            git status -su --ignored "${systest}/" 2>/dev/null | \
+            sed -n -e 's|^?? \(.*\)|I:'"${systest}"':file \1 not removed|p' \
+                -e 's|^!! \(.*/named.run\)$|I:'"${systest}"':file \1 not removed|p' \
+                -e 's|^!! \(.*/named.memstats\)$|I:'"${systest}"':file \1 not removed|p'
+        fi
+    else
+        if test -d ${srcdir}/../../../../.git; then
+            git -C "${srcdir}/${systest}" ls-files | sed "s|^|${systest}/|" > "${systest}/gitfiles.txt"
+            find "${systest}/" -type f ! -name .prepared ! -name Makefile > "${systest}/testfiles.txt"
+            grep -F -x -v -f "${systest}/gitfiles.txt" "${systest}/testfiles.txt"
+            rm -f "${systest}/gitfiles.txt" "${systest}/testfiles.txt"
+        fi | xargs rm -f
+        find "${systest}/" \( -type d -empty \) -delete 2>/dev/null
+    fi
+}
+
 stopservers=true
 # baseport == 0 means random
 baseport=0
@@ -182,6 +201,7 @@ else
     echowarn "R:$systest:SKIPPED";
     echoend "E:$systest:$(date_with_args)"
     rm -f "$systest/.prepared"
+    clean_outstanding_files
     exit 77
 fi
 
@@ -313,36 +333,13 @@ elif [ "$sanitizer_summaries" -ne 0 ]; then
     echoinfo "I:$systest:$sanitizer_summaries sanitizer report(s) found"
 fi
 
-print_outstanding_files() {
-    if test -d ${srcdir}/../../../.git; then
-        git status -su --ignored "${systest}/" 2>/dev/null | \
-        sed -n -e 's|^?? \(.*\)|I:'"${systest}"':file \1 not removed|p' \
-            -e 's|^!! \(.*/named.run\)$|I:'"${systest}"':file \1 not removed|p' \
-            -e 's|^!! \(.*/named.memstats\)$|I:'"${systest}"':file \1 not removed|p'
-    fi
-}
-
-print_outstanding_files_oot() {
-    if test -d ${srcdir}/../../../.git; then
-        git -C "${srcdir}/${systest}" ls-files | sed "s|^|${systest}/|" > gitfiles.txt
-        find "${systest}/" -type f ! -name .prepared ! -name Makefile > testfiles.txt
-        grep -F -x -v -f gitfiles.txt testfiles.txt
-        rm -f gitfiles.txt testfiles.txt
-    fi
-}
-
 if [ $status -ne 0 ]; then
     echofail "R:$systest:FAIL"
 else
     echopass "R:$systest:PASS"
     if $clean && ! $restart; then
         ( cd "${systest}" && $SHELL clean.sh "$@" )
-        if [ "${srcdir}" = "${builddir}" ]; then
-            print_outstanding_files
-        else
-            print_outstanding_files_oot | xargs rm -f
-            find "${systest}/" \( -type d -empty \) -delete 2>/dev/null
-        fi
+        clean_outstanding_files
     fi
     rm -f "$systest/.prepared"
     rm -rf "$systest/.pytest_cache"
