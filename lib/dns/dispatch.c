@@ -1869,15 +1869,15 @@ dns_dispatch_connect(dns_dispentry_t *resp) {
 			UNLOCK(&disp->lock);
 			dns_dispatch_attach(disp, &(dns_dispatch_t *){ NULL });
 			if (transport_type == DNS_TRANSPORT_TLS) {
-				isc_nm_tlsdnsconnect(
+				isc_nm_streamdnsconnect(
 					disp->mgr->nm, &disp->local,
 					&disp->peer, tcp_connected, disp,
 					resp->timeout, tlsctx, sess_cache);
 			} else {
-				isc_nm_tcpdnsconnect(disp->mgr->nm,
-						     &disp->local, &disp->peer,
-						     tcp_connected, disp,
-						     resp->timeout);
+				isc_nm_streamdnsconnect(
+					disp->mgr->nm, &disp->local,
+					&disp->peer, tcp_connected, disp,
+					resp->timeout, NULL, NULL);
 			}
 			break;
 
