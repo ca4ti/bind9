@@ -32,7 +32,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 dnssec-signzone \- DNSSEC zone signing tool
 .SH SYNOPSIS
 .sp
-\fBdnssec\-signzone\fP [\fB\-a\fP] [\fB\-c\fP class] [\fB\-d\fP directory] [\fB\-D\fP] [\fB\-E\fP engine] [\fB\-e\fP end\-time] [\fB\-f\fP output\-file] [\fB\-g\fP] [\fB\-h\fP] [\fB\-i\fP interval] [\fB\-I\fP input\-format] [\fB\-j\fP jitter] [\fB\-K\fP directory] [\fB\-k\fP key] [\fB\-L\fP serial] [\fB\-M\fP maxttl] [\fB\-N\fP soa\-serial\-format] [\fB\-o\fP origin] [\fB\-O\fP output\-format] [\fB\-P\fP] [\fB\-Q\fP] [\fB\-q\fP] [\fB\-R\fP] [\fB\-S\fP] [\fB\-s\fP start\-time] [\fB\-T\fP ttl] [\fB\-t\fP] [\fB\-u\fP] [\fB\-v\fP level] [\fB\-V\fP] [\fB\-X\fP extended end\-time] [\fB\-x\fP] [\fB\-z\fP] [\fB\-3\fP salt] [\fB\-H\fP iterations] [\fB\-A\fP] {zonefile} [key...]
+\fBdnssec\-signzone\fP [\fB\-a\fP] [\fB\-c\fP class] [\fB\-d\fP directory] [\fB\-D\fP] [\fB\-E\fP engine] [\fB\-e\fP end\-time] [\fB\-f\fP output\-file] [\fB\-F\fP] [\fB\-g\fP] [\fB\-h\fP] [\fB\-i\fP interval] [\fB\-I\fP input\-format] [\fB\-j\fP jitter] [\fB\-K\fP directory] [\fB\-k\fP key] [\fB\-L\fP serial] [\fB\-M\fP maxttl] [\fB\-N\fP soa\-serial\-format] [\fB\-o\fP origin] [\fB\-O\fP output\-format] [\fB\-P\fP] [\fB\-Q\fP] [\fB\-q\fP] [\fB\-R\fP] [\fB\-S\fP] [\fB\-s\fP start\-time] [\fB\-T\fP ttl] [\fB\-t\fP] [\fB\-u\fP] [\fB\-v\fP level] [\fB\-V\fP] [\fB\-X\fP extended end\-time] [\fB\-x\fP] [\fB\-z\fP] [\fB\-3\fP salt] [\fB\-H\fP iterations] [\fB\-A\fP] {zonefile} [key...]
 .SH DESCRIPTION
 .sp
 \fBdnssec\-signzone\fP signs a zone; it generates NSEC and RRSIG records
@@ -82,6 +82,13 @@ operations, such as a secure key store used for signing, when applicable.
 When BIND 9 is built with OpenSSL, this needs to be set to the OpenSSL
 engine identifier that drives the cryptographic accelerator or
 hardware service module (usually \fBpkcs11\fP).
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-F
+This options turns on FIPS (US Federal Information Processing Standards)
+mode if the underlying crytographic library supports running in FIPS
+mode.
 .UNINDENT
 .INDENT 0.0
 .TP
