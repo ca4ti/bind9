@@ -46,8 +46,6 @@
 
 static const char *program = "named-checkconf";
 
-static bool loadplugins = true;
-
 isc_log_t *logc = NULL;
 
 #define CHECK(r)                             \
@@ -64,7 +62,7 @@ usage(void);
 static void
 usage(void) {
 	fprintf(stderr,
-		"usage: %s [-chijlvz] [-p [-x]] [-t directory] "
+		"usage: %s [-achijlvz] [-p [-x]] [-t directory] "
 		"[named.conf]\n",
 		program);
 	exit(1);
@@ -579,13 +577,14 @@ main(int argc, char **argv) {
 	bool print = false;
 	bool nodeprecate = false;
 	unsigned int flags = 0;
+	unsigned int checkflags = BIND_CHECK_PLUGINS | BIND_CHECK_ALGORITHMS;
 
 	isc_commandline_errprint = false;
 
 	/*
 	 * Process memory debugging argument first.
 	 */
-#define CMDLINE_FLAGS "cdhijlm:t:pvxz"
+#define CMDLINE_FLAGS "acdhijlm:t:pvxz"
 	while ((c = isc_commandline_parse(argc, argv, CMDLINE_FLAGS)) != -1) {
 		switch (c) {
 		case 'm':
@@ -612,8 +611,12 @@ main(int argc, char **argv) {
 
 	while ((c = isc_commandline_parse(argc, argv, CMDLINE_FLAGS)) != EOF) {
 		switch (c) {
+		case 'a':
+			checkflags &= ~BIND_CHECK_ALGORITHMS;
+			break;
+
 		case 'c':
-			loadplugins = false;
+			checkflags |= BIND_CHECK_PLUGINS;
 			break;
 
 		case 'd':
@@ -715,7 +718,7 @@ main(int argc, char **argv) {
 		exit(1);
 	}
 
-	result = bind9_check_namedconf(config, loadplugins, logc, mctx);
+	result = bind9_check_namedconf(config, checkflags, logc, mctx);
 	if (result != ISC_R_SUCCESS) {
 		exit_status = 1;
 	}

@@ -21,7 +21,7 @@ named-checkconf - named configuration file syntax checking tool
 Synopsis
 ~~~~~~~~
 
-:program:`named-checkconf` [**-chjlvz**] [**-p** [**-x** ]] [**-t** directory] {filename}
+:program:`named-checkconf` [**-achjlvz**] [**-p** [**-x** ]] [**-t** directory] {filename}
 
 Description
 ~~~~~~~~~~~
@@ -39,6 +39,13 @@ However, :program:`named-checkconf` can be run on these files explicitly.
 
 Options
 ~~~~~~~
+
+.. option:: -a
+
+   Don't check the `dnssec-policy`'s DNSSEC key algorithms against
+   those supported by the crypto provider.  This is useful when checking
+   a `named.conf` intended to be run on another machine with possibly a
+   different set of supported DNSSEC key algorithms.
 
 .. option:: -h
 
