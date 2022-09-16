@@ -129,7 +129,7 @@ stages:
   <<: *linux_amd64
 
 .debian-sid-amd64: &debian_sid_amd64_image
-  image: "$CI_REGISTRY_IMAGE:debian-sid-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:debian-sid-amd64"
   <<: *linux_amd64
 
 # openSUSE Tumbleweed
