@@ -11,9 +11,19 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
+import logging
 import os
 
 import pytest
+
+
+# Configure logging to file on DEBUG level
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s:%(name)s %(message)s",
+    level=logging.DEBUG,
+    filename="pytest.log",
+    filemode="w",
+)
 
 
 @pytest.fixture(scope="session")
