@@ -13,6 +13,7 @@
 
 import logging
 import os
+import random
 
 import pytest
 
@@ -26,21 +27,57 @@ logging.basicConfig(
 )
 
 
-@pytest.fixture(scope="session")
-def named_port():
-    return int(os.environ.get("PORT", default=5300))
+@pytest.fixture(scope="module")  # TODO update scope
+def named_port(ports):
+    return int(ports.get("PORT", 5300))
 
 
-@pytest.fixture(scope="session")
-def named_tlsport():
-    return int(os.environ.get("TLSPORT", default=8853))
+@pytest.fixture(scope="module")
+def named_tlsport(ports):
+    return int(ports.get("TLSPORT", 8853))
 
 
-@pytest.fixture(scope="session")
-def named_httpsport():
-    return int(os.environ.get("HTTPSPORT", default=4443))
+@pytest.fixture(scope="module")
+def named_httpsport(ports):
+    return int(ports.get("HTTPSPORT", 4443))
 
 
-@pytest.fixture(scope="session")
-def control_port():
-    return int(os.environ.get("CONTROLPORT", default=9953))
+@pytest.fixture(scope="module")
+def control_port(ports):
+    return int(ports.get("CONTROLPORT", 9953))
+
+
+@pytest.fixture(scope="module")
+def net_ns():
+    return False  # TODO create / manage a network/PID namespace
+
+
+@pytest.fixture(scope="module")
+def base_port(net_ns):
+    """Determine test base port based on whether we are in a network namespace
+    or not. The base port is randomized over time to discover potential
+    issues."""
+    # TODO randomize ports over time - to discover potential issues
+    if net_ns:
+        return 5300
+    # TODO re-implement get_ports.sh logic in Python
+    return random.randint(5001, 25000)
+
+
+@pytest.fixture(scope="module")
+def ports(base_port):
+    return {
+        "PORT": str(base_port),
+        "TLSPORT": str(base_port + 1),
+        "HTTPPORT": str(base_port + 2),
+        "HTTPSPORT": str(base_port + 3),
+        "EXTRAPORT1": str(base_port + 4),
+        "EXTRAPORT2": str(base_port + 5),
+        "EXTRAPORT3": str(base_port + 6),
+        "EXTRAPORT4": str(base_port + 7),
+        "EXTRAPORT5": str(base_port + 8),
+        "EXTRAPORT6": str(base_port + 9),
+        "EXTRAPORT7": str(base_port + 10),
+        "EXTRAPORT8": str(base_port + 11),
+        "CONTROLPORT": str(base_port + 12),
+    }
