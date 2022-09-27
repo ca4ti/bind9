@@ -1792,6 +1792,15 @@ default is used.
               suffix ::;
           };
 
+.. namedconf:statement:: use-dns64
+   :tags: server
+   :short: tells the server whether to apply DNS64 transformations when making lookups
+
+   If :any:`use-dns64` is set to ``yes``, then DNS64 address
+   transformations will be applied to recursive queries that would
+   be made over IPv4 using the current DNS64 rules.  This allows
+   the server to perform lookups through a NAT64. The default is ``no``.
+
 .. namedconf:statement:: ipv4only-enable
    :tags: query
    :short: Enables automatic IPv4 zones if a :any:`dns64` block is configured.
