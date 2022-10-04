@@ -1547,7 +1547,7 @@ dns_rpz_new_zone(dns_rpz_zones_t *rpzs, dns_rpz_zone_t **rpzp) {
 	 * simplifies update_from_db().
 	 */
 
-	isc_ht_init(&rpz->nodes, rpzs->mctx, 1, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&rpz->nodes, rpzs->mctx, 1);
 
 	dns_name_init(&rpz->origin, NULL);
 	dns_name_init(&rpz->client_ip, NULL);
@@ -1914,7 +1914,7 @@ update_rpz_cb(void *data) {
 		goto cleanup;
 	}
 
-	isc_ht_init(&newnodes, rpz->rpzs->mctx, 1, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&newnodes, rpz->rpzs->mctx, 1);
 
 	result = update_nodes(rpz, newnodes);
 	if (result != ISC_R_SUCCESS) {

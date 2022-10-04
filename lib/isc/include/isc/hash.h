@@ -40,9 +40,9 @@ isc_hash_set_initializer(const void *initializer);
 #define isc_hash_function isc_hash64
 
 uint32_t
-isc_hash32(const void *data, const size_t length, const bool case_sensitive);
+isc_hash32(const void *data, const size_t length);
 uint64_t
-isc_hash64(const void *data, const size_t length, const bool case_sensitive);
+isc_hash64(const void *data, const size_t length);
 /*!<
  * \brief Calculate a hash over data.
  *

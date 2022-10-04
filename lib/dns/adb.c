@@ -1602,19 +1602,23 @@ get_namebucket(dns_adb_t *adb, const dns_name_t *name,
 	       dns_adbnamebucket_t **nbucketp) {
 	isc_result_t result;
 	dns_adbnamebucket_t *nbucket = NULL;
+	dns_fixedname_t downcase;
+	isc_buffer_t *key = &downcase.buffer;
 
 	REQUIRE(nbucketp != NULL && *nbucketp == NULL);
 
+	dns_fixedname_initdowncase(&downcase, name);
+
 	RWLOCK(&adb->names_lock, isc_rwlocktype_write);
-	result = isc_ht_find(adb->namebuckets, name->ndata, name->length,
-			     (void **)&nbucket);
+	result = isc_ht_find(adb->namebuckets, isc_buffer_base(key),
+			     isc_buffer_usedlength(key), (void **)&nbucket);
 	if (result == ISC_R_NOTFOUND) {
 		/*
 		 * Allocate a new bucket and add it to the hash table.
 		 */
 		nbucket = new_adbnamebucket(adb);
-		result = isc_ht_add(adb->namebuckets, name->ndata, name->length,
-				    nbucket);
+		result = isc_ht_add(adb->namebuckets, isc_buffer_base(key),
+				    isc_buffer_usedlength(key), nbucket);
 	}
 	RWUNLOCK(&adb->names_lock, isc_rwlocktype_write);
 	INSIST(result == ISC_R_SUCCESS);
@@ -2124,10 +2128,10 @@ dns_adb_create(isc_mem_t *mem, dns_view_t *view, isc_taskmgr_t *taskmgr,
 	dns_resolver_attach(view->resolver, &adb->res);
 	isc_mem_attach(mem, &adb->mctx);
 
-	isc_ht_init(&adb->namebuckets, adb->mctx, 1, ISC_HT_CASE_INSENSITIVE);
+	isc_ht_init(&adb->namebuckets, adb->mctx, 1);
 	isc_rwlock_init(&adb->names_lock, 0, 0);
 
-	isc_ht_init(&adb->entrybuckets, adb->mctx, 1, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&adb->entrybuckets, adb->mctx, 1);
 	isc_rwlock_init(&adb->entries_lock, 0, 0);
 
 	isc_mutex_init(&adb->lock);

@@ -246,9 +246,9 @@ isc_sockaddr_hash(const isc_sockaddr_t *sockaddr, bool address_only) {
 	memmove(buf, s, length);
 	if (!address_only) {
 		memmove(buf + length, &p, sizeof(p));
-		h = isc_hash_function(buf, length + sizeof(p), true);
+		h = isc_hash_function(buf, length + sizeof(p));
 	} else {
-		h = isc_hash_function(buf, length, true);
+		h = isc_hash_function(buf, length);
 	}
 
 	return (h);

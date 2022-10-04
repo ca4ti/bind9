@@ -79,4 +79,7 @@ dns_fixedname_name(dns_fixedname_t *fixed);
 dns_name_t *
 dns_fixedname_initname(dns_fixedname_t *fixed);
 
+void
+dns_fixedname_initdowncase(dns_fixedname_t *fixed, const dns_name_t *source);
+
 ISC_LANG_ENDDECLS

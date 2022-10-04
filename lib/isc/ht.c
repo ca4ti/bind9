@@ -51,7 +51,6 @@ struct isc_ht {
 	unsigned int magic;
 	isc_mem_t *mctx;
 	size_t count;
-	bool case_sensitive;
 	size_t size[2];
 	uint8_t hashbits[2];
 	isc_ht_node_t **table[2];
@@ -234,19 +233,15 @@ hashtable_free(isc_ht_t *ht, const uint8_t idx) {
 }
 
 void
-isc_ht_init(isc_ht_t **htp, isc_mem_t *mctx, uint8_t bits,
-	    unsigned int options) {
+isc_ht_init(isc_ht_t **htp, isc_mem_t *mctx, uint8_t bits) {
 	isc_ht_t *ht = NULL;
-	bool case_sensitive = ((options & ISC_HT_CASE_INSENSITIVE) == 0);
 
 	REQUIRE(htp != NULL && *htp == NULL);
 	REQUIRE(mctx != NULL);
 	REQUIRE(bits >= 1 && bits <= HT_MAX_BITS);
 
 	ht = isc_mem_get(mctx, sizeof(*ht));
-	*ht = (isc_ht_t){
-		.case_sensitive = case_sensitive,
-	};
+	*ht = (isc_ht_t){ 0 };
 
 	isc_mem_attach(mctx, &ht->mctx);
 
@@ -317,7 +312,7 @@ isc_ht_add(isc_ht_t *ht, const unsigned char *key, const uint32_t keysize,
 		maybe_rehash(ht, ht->count);
 	}
 
-	hashval = isc_hash32(key, keysize, ht->case_sensitive);
+	hashval = isc_hash32(key, keysize);
 
 	if (isc__ht_find(ht, key, keysize, hashval, ht->hindex) != NULL) {
 		return (ISC_R_EXISTS);
@@ -365,7 +360,7 @@ isc_ht_find(const isc_ht_t *ht, const unsigned char *key,
 	REQUIRE(key != NULL && keysize > 0);
 	REQUIRE(valuep == NULL || *valuep == NULL);
 
-	hashval = isc_hash32(key, keysize, ht->case_sensitive);
+	hashval = isc_hash32(key, keysize);
 
 	node = isc__ht_find(ht, key, keysize, hashval, ht->hindex);
 	if (node == NULL) {
@@ -421,7 +416,7 @@ isc_ht_delete(isc_ht_t *ht, const unsigned char *key, const uint32_t keysize) {
 	}
 
 	hindex = ht->hindex;
-	hashval = isc_hash32(key, keysize, ht->case_sensitive);
+	hashval = isc_hash32(key, keysize);
 nexttable:
 	result = isc__ht_delete(ht, key, keysize, hashval, hindex);
 

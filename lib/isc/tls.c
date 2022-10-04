@@ -1185,7 +1185,7 @@ isc_tlsctx_cache_new(isc_mem_t *mctx) {
 	isc_refcount_init(&nc->references, 1);
 	isc_mem_attach(mctx, &nc->mctx);
 
-	isc_ht_init(&nc->data, mctx, 5, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&nc->data, mctx, 5);
 	isc_rwlock_init(&nc->rwlock, 0, 0);
 
 	return (nc);
@@ -1475,7 +1475,7 @@ isc_tlsctx_client_session_cache_new(isc_mem_t *mctx, isc_tlsctx_t *ctx,
 	isc_mem_attach(mctx, &nc->mctx);
 	isc_tlsctx_attach(ctx, &nc->ctx);
 
-	isc_ht_init(&nc->buckets, mctx, 5, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&nc->buckets, mctx, 5);
 	ISC_LIST_INIT(nc->lru_entries);
 	isc_mutex_init(&nc->lock);
 

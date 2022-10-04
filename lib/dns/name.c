@@ -398,6 +398,19 @@ dns_name_internalwildcard(const dns_name_t *name) {
 	return (false);
 }
 
+static unsigned int
+name_hash(uint8_t *key, size_t keylen, bool case_sensitive) {
+	uint8_t key_s[DNS_NAME_MAXWIRE];
+
+	if (!case_sensitive) {
+		/* label lengths are < 64 so tolower() does not affect them */
+		isc_ascii_lowercopy(key_s, key, keylen);
+		key = key_s;
+	}
+
+	return (isc_hash32(key, keylen));
+}
+
 unsigned int
 dns_name_hash(const dns_name_t *name, bool case_sensitive) {
 	unsigned int length;
@@ -411,12 +424,9 @@ dns_name_hash(const dns_name_t *name, bool case_sensitive) {
 		return (0);
 	}
 
-	length = name->length;
-	if (length > 16) {
-		length = 16;
-	}
+	length = ISC_MIN(name->length, 16);
 
-	return (isc_hash32(name->ndata, length, case_sensitive));
+	return (name_hash(name->ndata, length, case_sensitive));
 }
 
 unsigned int
@@ -430,7 +440,7 @@ dns_name_fullhash(const dns_name_t *name, bool case_sensitive) {
 		return (0);
 	}
 
-	return (isc_hash32(name->ndata, name->length, case_sensitive));
+	return (name_hash(name->ndata, name->length, case_sensitive));
 }
 
 dns_namereln_t

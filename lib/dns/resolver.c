@@ -1626,15 +1626,19 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 	zonebucket_t *zbucket = NULL;
 	fctxcount_t *counter = NULL;
 	isc_rwlocktype_t ltype = isc_rwlocktype_read;
+	dns_fixedname_t downcase;
+	isc_buffer_t *key = &downcase.buffer;
 
 	REQUIRE(fctx != NULL);
 	res = fctx->res;
 	REQUIRE(res != NULL);
 	INSIST(fctx->zbucket == NULL);
 
+	dns_fixedname_initdowncase(&downcase, fctx->domain);
+
 	RWLOCK(&res->zonehash_lock, ltype);
-	result = isc_ht_find(res->zonebuckets, fctx->domain->ndata,
-			     fctx->domain->length, (void **)&zbucket);
+	result = isc_ht_find(res->zonebuckets, isc_buffer_base(key),
+			     isc_buffer_usedlength(key), (void **)&zbucket);
 	if (result != ISC_R_SUCCESS) {
 		RWUNLOCK(&res->zonehash_lock, ltype);
 		zbucket = isc_mem_get(res->mctx, sizeof(*zbucket));
@@ -1644,15 +1648,15 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 
 		ltype = isc_rwlocktype_write;
 		RWLOCK(&res->zonehash_lock, ltype);
-		result = isc_ht_add(res->zonebuckets, fctx->domain->ndata,
-				    fctx->domain->length, zbucket);
+		result = isc_ht_add(res->zonebuckets, isc_buffer_base(key),
+				    isc_buffer_usedlength(key), zbucket);
 		if (result != ISC_R_SUCCESS) {
 			/* Another thread must have created it */
 			isc_mutex_destroy(&zbucket->lock);
 			isc_mem_put(res->mctx, zbucket, sizeof(*zbucket));
 			result = isc_ht_find(
-				res->zonebuckets, fctx->domain->ndata,
-				fctx->domain->length, (void **)&zbucket);
+				res->zonebuckets, isc_buffer_base(key),
+				isc_buffer_usedlength(key), (void **)&zbucket);
 		}
 	}
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
@@ -2452,8 +2456,7 @@ compute_cc(const resquery_t *query, uint8_t *cookie, const size_t len) {
 	size_t buflen = add_serveraddr(buf, sizeof(buf), query);
 
 	uint8_t digest[ISC_SIPHASH24_TAG_LENGTH] ISC_NONSTRING = { 0 };
-	isc_siphash24(query->fctx->res->view->secret, buf, buflen, true,
-		      digest);
+	isc_siphash24(query->fctx->res->view->secret, buf, buflen, digest);
 	memmove(cookie, digest, CLIENT_COOKIE_SIZE);
 }
 
@@ -10299,12 +10302,10 @@ dns_resolver_create(dns_view_t *view, isc_loopmgr_t *loopmgr,
 		isc_task_setname(res->tasks[i], name, res);
 	}
 
-	isc_ht_init(&res->buckets, view->mctx, RES_DOMAIN_HASH_BITS,
-		    ISC_HT_CASE_INSENSITIVE);
+	isc_ht_init(&res->buckets, view->mctx, RES_DOMAIN_HASH_BITS);
 	isc_rwlock_init(&res->hash_lock, 0, 0);
 
-	isc_ht_init(&res->zonebuckets, view->mctx, RES_DOMAIN_HASH_BITS,
-		    ISC_HT_CASE_INSENSITIVE);
+	isc_ht_init(&res->zonebuckets, view->mctx, RES_DOMAIN_HASH_BITS);
 	isc_rwlock_init(&res->zonehash_lock, 0, 0);
 
 	if (dispatchv4 != NULL) {
@@ -10657,10 +10658,14 @@ get_fctxbucket(dns_resolver_t *res, const dns_name_t *domain) {
 	isc_result_t result;
 	isc_rwlocktype_t ltype = isc_rwlocktype_read;
 	fctxbucket_t *bucket = NULL;
+	dns_fixedname_t downcase;
+	isc_buffer_t *key = &downcase.buffer;
+
+	dns_fixedname_initdowncase(&downcase, domain);
 
 	RWLOCK(&res->hash_lock, ltype);
-	result = isc_ht_find(res->buckets, domain->ndata, domain->length,
-			     (void **)&bucket);
+	result = isc_ht_find(res->buckets, isc_buffer_base(key),
+			     isc_buffer_usedlength(key), (void **)&bucket);
 	if (result != ISC_R_SUCCESS) {
 		RWUNLOCK(&res->hash_lock, ltype);
 		bucket = isc_mem_get(res->mctx, sizeof(*bucket));
@@ -10672,16 +10677,17 @@ get_fctxbucket(dns_resolver_t *res, const dns_name_t *domain) {
 
 		ltype = isc_rwlocktype_write;
 		RWLOCK(&res->hash_lock, ltype);
-		result = isc_ht_add(res->buckets, domain->ndata, domain->length,
-				    bucket);
+		result = isc_ht_add(res->buckets, isc_buffer_base(key),
+				    isc_buffer_usedlength(key), bucket);
 		if (result == ISC_R_SUCCESS) {
 			inc_stats(res, dns_resstatscounter_buckets);
 		} else {
 			/* Another thread must have created it */
 			isc_mutex_destroy(&bucket->lock);
 			isc_mem_put(res->mctx, bucket, sizeof(*bucket));
-			result = isc_ht_find(res->buckets, domain->ndata,
-					     domain->length, (void **)&bucket);
+			result = isc_ht_find(res->buckets, isc_buffer_base(key),
+					     isc_buffer_usedlength(key),
+					     (void **)&bucket);
 		}
 	}
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);

@@ -42,26 +42,20 @@ ISC_RUN_TEST_IMPL(isc_hash_function) {
 	UNUSED(state);
 
 	/* Immutability of hash function */
-	h1 = isc_hash_function(NULL, 0, true);
-	h2 = isc_hash_function(NULL, 0, true);
+	h1 = isc_hash_function(NULL, 0);
+	h2 = isc_hash_function(NULL, 0);
 
 	assert_int_equal(h1, h2);
 
 	/* Hash function characteristics */
-	h1 = isc_hash_function("Hello world", 12, true);
-	h2 = isc_hash_function("Hello world", 12, true);
-
-	assert_int_equal(h1, h2);
-
-	/* Case */
-	h1 = isc_hash_function("Hello world", 12, false);
-	h2 = isc_hash_function("heLLo WorLd", 12, false);
+	h1 = isc_hash_function("Hello world", 12);
+	h2 = isc_hash_function("Hello world", 12);
 
 	assert_int_equal(h1, h2);
 
 	/* Unequal */
-	h1 = isc_hash_function("Hello world", 12, true);
-	h2 = isc_hash_function("heLLo WorLd", 12, true);
+	h1 = isc_hash_function("Hello world", 12);
+	h2 = isc_hash_function("heLLo WorLd", 12);
 
 	assert_int_not_equal(h1, h2);
 }
@@ -73,15 +67,15 @@ ISC_RUN_TEST_IMPL(isc_hash_initializer) {
 
 	UNUSED(state);
 
-	h1 = isc_hash_function("Hello world", 12, true);
-	h2 = isc_hash_function("Hello world", 12, true);
+	h1 = isc_hash_function("Hello world", 12);
+	h2 = isc_hash_function("Hello world", 12);
 
 	assert_int_equal(h1, h2);
 
 	isc_hash_set_initializer(isc_hash_get_initializer());
 
 	/* Hash value must not change */
-	h2 = isc_hash_function("Hello world", 12, true);
+	h2 = isc_hash_function("Hello world", 12);
 
 	assert_int_equal(h1, h2);
 }

@@ -256,7 +256,7 @@ add_trace_entry(isc_mem_t *mctx, const void *ptr, size_t size FLARG) {
 	 */
 	hash = (uintptr_t)ptr >> 3;
 #else
-	hash = isc_hash_function(&ptr, sizeof(ptr), true);
+	hash = isc_hash_function(&ptr, sizeof(ptr));
 #endif
 	idx = hash % DEBUG_TABLE_COUNT;
 
@@ -301,7 +301,7 @@ delete_trace_entry(isc_mem_t *mctx, const void *ptr, size_t size,
 	 */
 	hash = (uintptr_t)ptr >> 3;
 #else
-	hash = isc_hash_function(&ptr, sizeof(ptr), true);
+	hash = isc_hash_function(&ptr, sizeof(ptr));
 #endif
 	idx = hash % DEBUG_TABLE_COUNT;
 

@@ -15,7 +15,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <isc/ascii.h>
 #include <isc/endian.h>
 #include <isc/siphash.h>
 #include <isc/util.h>
@@ -77,9 +76,6 @@
 	(((uint32_t)((p)[0])) | ((uint32_t)((p)[1]) << 8) | \
 	 ((uint32_t)((p)[2]) << 16) | ((uint32_t)((p)[3]) << 24))
 
-#define U8TO32_ONE(case_sensitive, byte) \
-	(uint32_t)(case_sensitive ? byte : isc__ascii_tolower1(byte))
-
 #define U64TO8_LE(p, v)                  \
 	U32TO8_LE((p), (uint32_t)((v))); \
 	U32TO8_LE((p) + 4, (uint32_t)((v) >> 32));
@@ -90,12 +86,9 @@
 	 ((uint64_t)((p)[4]) << 32) | ((uint64_t)((p)[5]) << 40) | \
 	 ((uint64_t)((p)[6]) << 48) | ((uint64_t)((p)[7]) << 56))
 
-#define U8TO64_ONE(case_sensitive, byte) \
-	(uint64_t)(case_sensitive ? byte : isc__ascii_tolower1(byte))
-
 void
 isc_siphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
-	      bool case_sensitive, uint8_t *out) {
+	      uint8_t *out) {
 	REQUIRE(k != NULL);
 	REQUIRE(out != NULL);
 
@@ -113,8 +106,7 @@ isc_siphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
 	const size_t left = inlen & 7;
 
 	for (; in != end; in += 8) {
-		uint64_t m = case_sensitive ? U8TO64_LE(in)
-					    : isc_ascii_tolower8(U8TO64_LE(in));
+		uint64_t m = U8TO64_LE(in);
 
 		v3 ^= m;
 
@@ -127,25 +119,25 @@ isc_siphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
 
 	switch (left) {
 	case 7:
-		b |= U8TO64_ONE(case_sensitive, in[6]) << 48;
+		b |= ((uint64_t)in[6]) << 48;
 		FALLTHROUGH;
 	case 6:
-		b |= U8TO64_ONE(case_sensitive, in[5]) << 40;
+		b |= ((uint64_t)in[5]) << 40;
 		FALLTHROUGH;
 	case 5:
-		b |= U8TO64_ONE(case_sensitive, in[4]) << 32;
+		b |= ((uint64_t)in[4]) << 32;
 		FALLTHROUGH;
 	case 4:
-		b |= U8TO64_ONE(case_sensitive, in[3]) << 24;
+		b |= ((uint64_t)in[3]) << 24;
 		FALLTHROUGH;
 	case 3:
-		b |= U8TO64_ONE(case_sensitive, in[2]) << 16;
+		b |= ((uint64_t)in[2]) << 16;
 		FALLTHROUGH;
 	case 2:
-		b |= U8TO64_ONE(case_sensitive, in[1]) << 8;
+		b |= ((uint64_t)in[1]) << 8;
 		FALLTHROUGH;
 	case 1:
-		b |= U8TO64_ONE(case_sensitive, in[0]);
+		b |= ((uint64_t)in[0]);
 		FALLTHROUGH;
 	case 0:
 		break;
@@ -174,7 +166,7 @@ isc_siphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
 
 void
 isc_halfsiphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
-		  bool case_sensitive, uint8_t *out) {
+		  uint8_t *out) {
 	REQUIRE(k != NULL);
 	REQUIRE(out != NULL);
 
@@ -192,9 +184,7 @@ isc_halfsiphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
 	const int left = inlen & 3;
 
 	for (; in != end; in += 4) {
-		uint32_t m = case_sensitive ? U8TO32_LE(in)
-					    : isc_ascii_tolower4(U8TO32_LE(in));
-
+		uint32_t m = U8TO32_LE(in);
 		v3 ^= m;
 
 		for (size_t i = 0; i < cROUNDS; ++i) {
@@ -206,13 +196,13 @@ isc_halfsiphash24(const uint8_t *k, const uint8_t *in, const size_t inlen,
 
 	switch (left) {
 	case 3:
-		b |= U8TO32_ONE(case_sensitive, in[2]) << 16;
+		b |= ((uint32_t)in[2]) << 16;
 		FALLTHROUGH;
 	case 2:
-		b |= U8TO32_ONE(case_sensitive, in[1]) << 8;
+		b |= ((uint32_t)in[1]) << 8;
 		FALLTHROUGH;
 	case 1:
-		b |= U8TO32_ONE(case_sensitive, in[0]);
+		b |= ((uint32_t)in[0]);
 		FALLTHROUGH;
 	case 0:
 		break;

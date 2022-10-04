@@ -1192,7 +1192,7 @@ compute_cookie(ns_client_t *client, uint32_t when, uint32_t nonce,
 			UNREACHABLE();
 		}
 
-		isc_siphash24(secret, input, inputlen, true, digest);
+		isc_siphash24(secret, input, inputlen, digest);
 		isc_buffer_putmem(buf, digest, 8);
 		break;
 	}

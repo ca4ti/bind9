@@ -9514,8 +9514,8 @@ rehash_gluetable(rbtdb_version_t *version) {
 		rbtdb_glue_table_node_t *nextgluenode;
 		for (gluenode = oldtable[i]; gluenode != NULL;
 		     gluenode = nextgluenode) {
-			uint32_t hash = isc_hash32(
-				&gluenode->node, sizeof(gluenode->node), true);
+			uint32_t hash = isc_hash32(&gluenode->node,
+						   sizeof(gluenode->node));
 			uint32_t idx = isc_hash_bits32(hash, newbits);
 			nextgluenode = gluenode->next;
 			gluenode->next = version->glue_table[idx];
@@ -9711,7 +9711,7 @@ rdataset_addglue(dns_rdataset_t *rdataset, dns_dbversion_t *version,
 	 * the node pointer is a fixed value that won't change for a DB
 	 * version and can be compared directly.
 	 */
-	hash = isc_hash_function(&node, sizeof(node), true);
+	hash = isc_hash_function(&node, sizeof(node));
 
 restart:
 	/*

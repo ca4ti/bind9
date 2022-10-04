@@ -74,29 +74,27 @@ isc_hash_set_initializer(const void *initializer) {
 }
 
 uint64_t
-isc_hash64(const void *data, const size_t length, const bool case_sensitive) {
+isc_hash64(const void *data, const size_t length) {
 	uint64_t hval;
 
 	REQUIRE(length == 0 || data != NULL);
 
 	isc_once_do(&isc_hash_once, isc_hash_initialize);
 
-	isc_siphash24(isc_hash_key, data, length, case_sensitive,
-		      (uint8_t *)&hval);
+	isc_siphash24(isc_hash_key, data, length, (uint8_t *)&hval);
 
 	return (hval);
 }
 
 uint32_t
-isc_hash32(const void *data, const size_t length, const bool case_sensitive) {
+isc_hash32(const void *data, const size_t length) {
 	uint32_t hval;
 
 	REQUIRE(length == 0 || data != NULL);
 
 	isc_once_do(&isc_hash_once, isc_hash_initialize);
 
-	isc_halfsiphash24(isc_hash_key, data, length, case_sensitive,
-			  (uint8_t *)&hval);
+	isc_halfsiphash24(isc_hash_key, data, length, (uint8_t *)&hval);
 
 	return (hval);
 }

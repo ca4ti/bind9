@@ -463,9 +463,9 @@ dns_catz_zones_merge(dns_catz_zone_t *target, dns_catz_zone_t *newzone) {
 
 	dns_name_format(&target->name, czname, DNS_NAME_FORMATSIZE);
 
-	isc_ht_init(&toadd, target->catzs->mctx, 1, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&toadd, target->catzs->mctx, 1);
 
-	isc_ht_init(&tomod, target->catzs->mctx, 1, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&tomod, target->catzs->mctx, 1);
 
 	isc_ht_iter_create(newzone->entries, &iter1);
 
@@ -527,14 +527,18 @@ dns_catz_zones_merge(dns_catz_zone_t *target, dns_catz_zone_t *newzone) {
 		if (zt_find_result == ISC_R_SUCCESS) {
 			dns_catz_coo_t *coo = NULL;
 			char pczname[DNS_NAME_FORMATSIZE];
+			dns_fixedname_t nkey;
+
+			dns_fixedname_initdowncase(&nkey, &nentry->name);
 
 			/*
 			 * Change of ownership (coo) processing, if required
 			 */
 			parentcatz = dns_zone_get_parentcatz(zone);
 			if (parentcatz != NULL && parentcatz != target &&
-			    isc_ht_find(parentcatz->coos, nentry->name.ndata,
-					nentry->name.length,
+			    isc_ht_find(parentcatz->coos,
+					isc_buffer_base(&nkey.buffer),
+					isc_buffer_usedlength(&nkey.buffer),
 					(void **)&coo) == ISC_R_SUCCESS &&
 			    dns_name_equal(&coo->name, &target->name))
 			{
@@ -742,7 +746,7 @@ dns_catz_new_zones(dns_catz_zones_t **catzsp, dns_catz_zonemodmethods_t *zmm,
 
 	isc_refcount_init(&new_zones->refs, 1);
 
-	isc_ht_init(&new_zones->zones, mctx, 4, ISC_HT_CASE_SENSITIVE);
+	isc_ht_init(&new_zones->zones, mctx, 4);
 
 	isc_mem_attach(mctx, &new_zones->mctx);
 	new_zones->zmm = zmm;
@@ -791,8 +795,8 @@ dns_catz_new_zone(dns_catz_zones_t *catzs, dns_catz_zone_t **zonep,
 	dns_name_init(&new_zone->name, NULL);
 	dns_name_dup(name, catzs->mctx, &new_zone->name);
 
-	isc_ht_init(&new_zone->entries, catzs->mctx, 4, ISC_HT_CASE_SENSITIVE);
-	isc_ht_init(&new_zone->coos, catzs->mctx, 4, ISC_HT_CASE_INSENSITIVE);
+	isc_ht_init(&new_zone->entries, catzs->mctx, 4);
+	isc_ht_init(&new_zone->coos, catzs->mctx, 4);
 
 	new_zone->updatetimer = NULL;
 	isc_time_settoepoch(&new_zone->lastupdated);
@@ -1097,6 +1101,7 @@ catz_process_coo(dns_catz_zone_t *zone, dns_label_t *mhash,
 	dns_catz_entry_t *entry = NULL;
 	dns_catz_coo_t *ncoo = NULL;
 	dns_catz_coo_t *ocoo = NULL;
+	dns_fixedname_t key;
 
 	REQUIRE(DNS_CATZ_ZONE_VALID(zone));
 	REQUIRE(mhash != NULL);
@@ -1150,7 +1155,9 @@ catz_process_coo(dns_catz_zone_t *zone, dns_label_t *mhash,
 		goto cleanup;
 	}
 
-	result = isc_ht_find(zone->coos, entry->name.ndata, entry->name.length,
+	dns_fixedname_initdowncase(&key, &entry->name);
+	result = isc_ht_find(zone->coos, isc_buffer_base(&key.buffer),
+			     isc_buffer_usedlength(&key.buffer),
 			     (void **)&ocoo);
 	if (result == ISC_R_SUCCESS) {
 		/* The change of ownership permission was already registered. */
@@ -1158,8 +1165,8 @@ catz_process_coo(dns_catz_zone_t *zone, dns_label_t *mhash,
 	}
 
 	catz_coo_new(zone->catzs->mctx, &ptr.ptr, &ncoo);
-	result = isc_ht_add(zone->coos, entry->name.ndata, entry->name.length,
-			    ncoo);
+	result = isc_ht_add(zone->coos, isc_buffer_base(&key.buffer),
+			    isc_buffer_usedlength(&key.buffer), ncoo);
 	if (result != ISC_R_SUCCESS) {
 		catz_coo_detach(zone, &ncoo);
 	}
