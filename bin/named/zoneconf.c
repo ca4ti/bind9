@@ -1589,8 +1589,14 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		if (use_kasp) {
 			seconds = (uint32_t)dns_kasp_sigvalidity(kasp);
 			dns_zone_setsigvalidityinterval(zone, seconds);
+			if (raw != NULL) {
+				dns_zone_setsigvalidityinterval(raw, seconds);
+			}
 			seconds = (uint32_t)dns_kasp_sigrefresh(kasp);
 			dns_zone_setsigresigninginterval(zone, seconds);
+			if (raw != NULL) {
+				dns_zone_setsigresigninginterval(raw, seconds);
+			}
 		} else {
 			obj = NULL;
 			result = named_config_get(maps, "sig-validity-interval",
@@ -1605,6 +1611,9 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 				seconds *= 86400;
 			}
 			dns_zone_setsigvalidityinterval(zone, seconds);
+			if (raw != NULL) {
+				dns_zone_setsigvalidityinterval(raw, seconds);
+			}
 
 			resign = cfg_tuple_get(obj, "re-sign");
 			if (cfg_obj_isvoid(resign)) {
@@ -1620,6 +1629,9 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 				seconds = cfg_obj_asuint32(resign);
 			}
 			dns_zone_setsigresigninginterval(zone, seconds);
+			if (raw != NULL) {
+				dns_zone_setsigresigninginterval(raw, seconds);
+			}
 		}
 
 		obj = NULL;
@@ -1628,21 +1640,33 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 			filename = cfg_obj_asstring(obj);
 			RETERR(dns_zone_setkeydirectory(zone, filename));
 		}
+		if (raw != NULL) {
+			RETERR(dns_zone_setkeydirectory(raw, filename));
+		}
 
 		obj = NULL;
 		result = named_config_get(maps, "sig-signing-signatures", &obj);
 		INSIST(result == ISC_R_SUCCESS && obj != NULL);
 		dns_zone_setsignatures(zone, cfg_obj_asuint32(obj));
+		if (raw != NULL) {
+			dns_zone_setsignatures(raw, cfg_obj_asuint32(obj));
+		}
 
 		obj = NULL;
 		result = named_config_get(maps, "sig-signing-nodes", &obj);
 		INSIST(result == ISC_R_SUCCESS && obj != NULL);
 		dns_zone_setnodes(zone, cfg_obj_asuint32(obj));
+		if (raw != NULL) {
+			dns_zone_setnodes(raw, cfg_obj_asuint32(obj));
+		}
 
 		obj = NULL;
 		result = named_config_get(maps, "sig-signing-type", &obj);
 		INSIST(result == ISC_R_SUCCESS && obj != NULL);
 		dns_zone_setprivatetype(zone, cfg_obj_asuint32(obj));
+		if (raw != NULL) {
+			dns_zone_setprivatetype(raw, cfg_obj_asuint32(obj));
+		}
 
 		obj = NULL;
 		result = named_config_get(maps, "update-check-ksk", &obj);
@@ -1670,6 +1694,10 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		INSIST(result == ISC_R_SUCCESS && obj != NULL);
 		RETERR(dns_zone_setrefreshkeyinterval(zone,
 						      cfg_obj_asuint32(obj)));
+		if (raw != NULL) {
+			RETERR(dns_zone_setrefreshkeyinterval(
+				raw, cfg_obj_asuint32(obj)));
+		}
 
 		obj = NULL;
 		result = cfg_map_get(zoptions, "auto-dnssec", &obj);
