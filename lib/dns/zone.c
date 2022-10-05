@@ -16459,10 +16459,14 @@ sync_secure_journal(dns_zone_t *zone, dns_zone_t *raw, dns_journal_t *journal,
 			continue;
 		}
 
+		/*
+		 * Skip DNSSEC records that BIND maintains with inline-signing.
+		 * Allow DNSKEY because users should be able to update
+		 * the zone with a DNSKEY from a different provider.
+		 */
 		if (rdata->type == dns_rdatatype_nsec ||
 		    rdata->type == dns_rdatatype_rrsig ||
 		    rdata->type == dns_rdatatype_nsec3 ||
-		    rdata->type == dns_rdatatype_dnskey ||
 		    rdata->type == dns_rdatatype_nsec3param)
 		{
 			continue;
