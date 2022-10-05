@@ -1,3 +1,6 @@
+5993.	[bug]		Fix inline-signing bugs related to the multisigner
+			model (RFC 8901). [GL #2710]
+
 5992.	[func]		Introduce the new isc_mem_*x() APIs that takes extra
 			flags as the last argument.  Currently ISC_MEM_ZERO
 			and ISC_MEM_ALIGN(n) flags have been implemented that
