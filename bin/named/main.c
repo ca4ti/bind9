@@ -685,6 +685,9 @@ printversion(bool verbose) {
 	cfg_parser_destroy(&parser);
 	isc_mem_detach(&mctx);
 #endif /* HAVE_GEOIP2 */
+	int x = INT_MAX;
+	x += 1; // Integer overflow here
+	printf("x = %i\n", x);
 }
 
 static void
