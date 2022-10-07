@@ -259,6 +259,7 @@ zone "noksk.example" {
 	file "noksk.example.db";
 	allow-update { any; };
 	auto-dnssec maintain;
+	zonemd-check no;
 };
 
 zone "sync.example" {
