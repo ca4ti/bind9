@@ -2866,6 +2866,18 @@ Boolean Options
       NSEC records; synthesis from NSEC3 is planned for the future. This
       will also be controlled by :any:`synth-from-dnssec`.
 
+.. namedconf:statement:: zonemd-check
+   :tags: zone
+   :short: Controls whether the zone's contents is checked against the ZONEMD record.
+
+.. namedconf:statement:: zonemd-dnssec-only
+   :tags: zone
+   :short: Restrict ZONEMD checks to DNSSEC signed zones
+
+.. namedconf:statement:: zonemd-required
+   :tags: zone
+   :short: Controls whether a ZONEMD record is required to be present in the zone.
+
 Forwarding
 ^^^^^^^^^^
 
@@ -7297,6 +7309,15 @@ Zone Options
 
 :any:`dnssec-secure-to-insecure`
    See the description of :any:`dnssec-secure-to-insecure` in :ref:`boolean_options`.
+
+:any:`zonemd-check`
+   See the description of :any:`zonemd-check` in :ref:`boolean_options`.
+
+:any:`zonemd-dnssec-only`
+   See the description of :any:`zonemd-dnssec-only` in :ref:`boolean_options`.
+
+:any:`zonemd-required`
+   See the description of :any:`zonemd-required` in :ref:`boolean_options`.
 
 .. _dynamic_update_policies:
 
