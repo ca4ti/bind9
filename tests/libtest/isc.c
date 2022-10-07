@@ -39,6 +39,7 @@ isc_loopmgr_t *loopmgr = NULL;
 isc_taskmgr_t *taskmgr = NULL;
 isc_nm_t *netmgr = NULL;
 unsigned int workers = -1;
+bool debug = false;
 
 int
 setup_mctx(void **state __attribute__((__unused__))) {

@@ -11,8 +11,6 @@
  * information regarding copyright ownership.
  */
 
-#if HAVE_CMOCKA
-
 #include <sched.h> /* IWYU pragma: keep */
 #include <setjmp.h>
 #include <stdarg.h>
@@ -32,50 +30,23 @@
 #include <dns/rdata.h>
 #include <dns/zonemd.h>
 
-#include "dnstest.h"
-
-static bool debug = false;
-
-static int
-_setup(void **state) {
-	isc_result_t result;
-
-	UNUSED(state);
-
-	result = dns_test_begin(NULL, false);
-	assert_int_equal(result, ISC_R_SUCCESS);
-
-	return (0);
-}
-
-static int
-_teardown(void **state) {
-	UNUSED(state);
-
-	dns_test_end();
-
-	return (0);
-}
+#include <tests/dns.h>
 
 /*
  * Individual unit tests
  */
 
 /* zonemd_buildrdata */
-static void
-zonemd_buildrdata(void **state) {
+ISC_RUN_TEST_IMPL(zonemd_buildrdata) {
 	dns_db_t *db = NULL;
 	dns_rdata_t rdata = DNS_RDATA_INIT;
 	isc_buffer_t target;
-	isc_mem_t *mctx = NULL;
 	isc_result_t result;
 	unsigned char buf[DNS_ZONEMD_BUFFERSIZE];
 	char text[1024] = { 0 };
 	dns_rdata_zonemd_t zonemd;
 
 	UNUSED(state);
-
-	isc_mem_create(&mctx);
 
 	result = dns_test_loaddb(&db, dns_dbtype_zone, "example",
 				 "testdata/zonemd/rfc8976.A.1.db");
@@ -265,63 +236,10 @@ zonemd_buildrdata(void **state) {
 			    zonemd.length);
 	dns_rdata_reset(&rdata);
 	dns_db_detach(&db);
-
-	isc_mem_detach(&mctx);
 }
 
-int
-main(int argc, char **argv) {
-	const struct CMUnitTest tests[] = {
-		cmocka_unit_test(zonemd_buildrdata),
-	};
-	struct CMUnitTest selected[sizeof(tests) / sizeof(tests[0])];
-	size_t i;
-	int c;
+ISC_TEST_LIST_START
+ISC_TEST_ENTRY(zonemd_buildrdata)
+ISC_TEST_LIST_END
 
-	memset(selected, 0, sizeof(selected));
-
-	while ((c = isc_commandline_parse(argc, argv, "dlt:")) != -1) {
-		switch (c) {
-		case 'd':
-			debug = true;
-			break;
-		case 'l':
-			for (i = 0; i < (sizeof(tests) / sizeof(tests[0])); i++)
-			{
-				if (tests[i].name != NULL) {
-					fprintf(stdout, "%s\n", tests[i].name);
-				}
-			}
-			return (0);
-		case 't':
-			if (!cmocka_add_test_byname(
-				    tests, isc_commandline_argument, selected))
-			{
-				fprintf(stderr, "unknown test '%s'\n",
-					isc_commandline_argument);
-				exit(1);
-			}
-			break;
-		default:
-			break;
-		}
-	}
-
-	if (selected[0].name != NULL) {
-		return (cmocka_run_group_tests(selected, _setup, _teardown));
-	} else {
-		return (cmocka_run_group_tests(tests, _setup, _teardown));
-	}
-}
-
-#else /* HAVE_CMOCKA */
-
-#include <stdio.h>
-
-int
-main(void) {
-	printf("1..0 # Skipped: cmocka not available\n");
-	return (SKIPPED_TEST_EXIT_CODE);
-}
-
-#endif /* if HAVE_CMOCKA */
+ISC_TEST_MAIN
