@@ -22517,6 +22517,16 @@ dns_zone_getraw(dns_zone_t *zone, dns_zone_t **raw) {
 	UNLOCK(&zone->lock);
 }
 
+bool
+dns_zone_israw(dns_zone_t *zone) {
+	bool result;
+	REQUIRE(DNS_ZONE_VALID(zone));
+	LOCK(&zone->lock);
+	result = zone->secure != NULL;
+	UNLOCK(&zone->lock);
+	return (result);
+}
+
 struct keydone {
 	isc_event_t event;
 	bool all;
