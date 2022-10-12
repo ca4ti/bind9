@@ -1057,58 +1057,27 @@ failure:
 }
 
 static isc_result_t
-find_zone_keys(dns_zone_t *zone, isc_mem_t *mctx, unsigned int maxkeys,
-	       dst_key_t **keys, unsigned int *nkeys) {
-	dns_dnsseckeylist_t keylist;
-	dns_dnsseckey_t *key = NULL;
-	dns_dnsseckey_t *key_next = NULL;
+find_zone_keys(dns_zone_t *zone, dns_db_t *db, dns_dbversion_t *ver,
+	       isc_mem_t *mctx, unsigned int maxkeys, dst_key_t **keys,
+	       unsigned int *nkeys) {
 	isc_result_t result;
-	unsigned int count = 0;
 	isc_stdtime_t now;
+	dns_dbnode_t *node = NULL;
+	const char *directory = dns_zone_getkeydirectory(zone);
+
+	CHECK(dns_db_findnode(db, dns_db_origin(db), false, &node));
 	isc_stdtime_get(&now);
 
-	ISC_LIST_INIT(keylist);
-
 	dns_zone_lock_keyfiles(zone);
-	result = dns_dnssec_findmatchingkeys(dns_zone_getorigin(zone),
-					     dns_zone_getkeydirectory(zone),
-					     now, mctx, &keylist);
+	result = dns_dnssec_findzonekeys(db, ver, node, dns_db_origin(db),
+					 directory, now, mctx, maxkeys, keys,
+					 nkeys);
 	dns_zone_unlock_keyfiles(zone);
 
-	if (result != ISC_R_SUCCESS) {
-		goto failure;
-	}
-
-	/* Add new 'dnskeys' to 'keys' */
-	count = 0;
-	for (dns_dnsseckey_t *k = ISC_LIST_HEAD(keylist); k != NULL;
-	     k = key_next) {
-		key_next = ISC_LIST_NEXT(k, link);
-
-		if (count >= maxkeys) {
-			goto failure;
-		}
-
-		/* Detect inactive keys */
-		if (!dns_dnssec_keyactive(k->key, now)) {
-			dst_key_setinactive(k->key, true);
-		}
-
-		keys[count] = k->key;
-		k->key = NULL;
-		ISC_LIST_UNLINK(keylist, k, link);
-		dns_dnsseckey_destroy(mctx, &k);
-		count++;
-	}
-
 failure:
-	while (!ISC_LIST_EMPTY(keylist)) {
-		key = ISC_LIST_HEAD(keylist);
-		ISC_LIST_UNLINK(keylist, key, link);
-		dns_dnsseckey_destroy(mctx, &key);
+	if (node != NULL) {
+		dns_db_detachnode(db, &node);
 	}
-
-	*nkeys = count;
 	return (result);
 }
 
@@ -1581,8 +1550,9 @@ dns_update_signaturesinc(dns_update_log_t *log, dns_zone_t *zone, dns_db_t *db,
 		state->nkeys = 0;
 		state->build_nsec3 = false;
 
-		result = find_zone_keys(zone, diff->mctx, DNS_MAXZONEKEYS,
-					state->zone_keys, &state->nkeys);
+		result = find_zone_keys(zone, db, newver, diff->mctx,
+					DNS_MAXZONEKEYS, state->zone_keys,
+					&state->nkeys);
 		if (result != ISC_R_SUCCESS) {
 			update_log(log, zone, ISC_LOG_ERROR,
 				   "could not get zone keys for secure "
