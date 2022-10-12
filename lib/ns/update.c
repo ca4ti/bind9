@@ -3403,7 +3403,9 @@ update_action(isc_task_t *task, isc_event_t *event) {
 
 		CHECK(rollback_private(db, privatetype, ver, &diff));
 
-		CHECK(add_signing_records(db, privatetype, ver, &diff));
+		if (!dns_zone_israw(zone)) {
+			CHECK(add_signing_records(db, privatetype, ver, &diff));
+		}
 
 		CHECK(add_nsec3param_records(client, zone, db, ver, &diff));
 
@@ -3416,7 +3418,9 @@ update_action(isc_task_t *task, isc_event_t *event) {
 			 */
 			CHECK(dns_nsec3param_deletechains(db, ver, zone, true,
 							  &diff));
-		} else if (has_dnskey && isdnssec(db, ver, privatetype)) {
+		} else if (!dns_zone_israw(zone) && has_dnskey &&
+			   isdnssec(db, ver, privatetype))
+		{
 			dns_update_log_t log;
 			uint32_t interval =
 				dns_zone_getsigvalidityinterval(zone);
