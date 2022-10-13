@@ -361,6 +361,24 @@ dnssec_verify
 #
 
 n=$((n+1))
+echo_i "update zone ${ZONE} at ns4 with ZSK from provider ns5"
+ret=0
+set_server "ns4" "10.53.0.4"
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
+echo update add $(cat "ns5/${ZONE}.zsk")
+echo send
+) | $NSUPDATE
+echo_i "check zone ${ZONE} DNSKEY RRset after update ($n)"
+retry_quiet 10 zsks_are_published || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+# Verify again.
+dnssec_verify
+
+n=$((n+1))
 echo_i "update zone ${ZONE} at ns5 with ZSK from provider ns4"
 ret=0
 set_server "ns5" "10.53.0.5"
@@ -432,6 +450,31 @@ echo send
 echo_i "check zone ${ZONE} CDS RRset after update ($n)"
 retry_quiet 10 records_published CDS 2 || ret=1
 test "$ret" -eq 0 || echo_i "failed"
+
+#
+# Check inline-update-policy
+#
+
+n=$((n+1))
+echo_i "Check inline-update-policy rejection ($n)"
+ret=0
+set_server "ns4" "10.53.0.4"
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
+echo update add ${ZONE} 0 TXT should be rejected
+echo send
+) | $NSUPDATE 2> nsupdate.err.$n
+grep "update failed: REFUSED" nsupdate.err.$n || ret=1
+dig_with_opts ${ZONE} @10.53.0.4 TXT > dig.out.ns4.$n
+grep "status: NOERROR" dig.out.ns4.$n || ret=1
+grep "ANSWER: 0," dig.out.ns4.$n || ret=1
+retry_quiet 10 zsks_are_published || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+# Verify again.
+dnssec_verify
 status=$((status+ret))
 
 echo_i "exit status: $status"
