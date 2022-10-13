@@ -50,3 +50,12 @@ zone "model2.multisigner." {
 	dnssec-policy model2;
 	inline-signing yes;
 };
+
+zone "model2.secondary." {
+	type secondary;
+	primaries { 10.53.0.3; };
+	allow-inline-update { key inline-update; };
+	file "model2.secondary.db";
+	dnssec-policy model2;
+	inline-signing yes;
+};

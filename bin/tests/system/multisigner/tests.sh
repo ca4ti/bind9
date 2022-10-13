@@ -309,5 +309,130 @@ retry_quiet 10 records_published CDS 2 || ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+#
+# Check secondary server behaviour
+#
+set_zone "model2.secondary"
+set_policy "model2" "2" "3600"
+
+# Key properties and states.
+key_clear        "KEY1"
+set_keyrole      "KEY1" "ksk"
+set_keylifetime  "KEY1" "0"
+set_keyalgorithm "KEY1" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY1" "yes"
+set_zonesigning  "KEY1" "no"
+set_keystate     "KEY1" "GOAL"         "omnipresent"
+set_keystate     "KEY1" "STATE_DNSKEY" "omnipresent"
+set_keystate     "KEY1" "STATE_KRRSIG" "omnipresent"
+set_keystate     "KEY1" "STATE_DS"     "omnipresent"
+
+key_clear        "KEY2"
+set_keyrole      "KEY2" "zsk"
+set_keylifetime  "KEY2" "0"
+set_keyalgorithm "KEY2" "13" "ECDSAP256SHA256" "256"
+set_keysigning   "KEY2" "no"
+set_zonesigning  "KEY2" "yes"
+set_keystate     "KEY2" "GOAL"         "omnipresent"
+set_keystate     "KEY2" "STATE_DNSKEY" "omnipresent"
+set_keystate     "KEY2" "STATE_ZRRSIG" "omnipresent"
+
+key_clear "KEY3"
+key_clear "KEY4"
+
+set_server "ns4" "10.53.0.4"
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+set_keytimes_model2
+check_keytimes
+check_apex
+dnssec_verify
+
+set_server "ns5" "10.53.0.5"
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+set_keytimes_model2
+check_keytimes
+check_apex
+dnssec_verify
+
+#
+# Update DNSKEY RRset.
+#
+
+n=$((n+1))
+echo_i "update zone ${ZONE} at ns5 with ZSK from provider ns4"
+ret=0
+set_server "ns5" "10.53.0.5"
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
+echo update add $(cat "ns4/${ZONE}.zsk")
+echo send
+) | $NSUPDATE
+echo_i "check zone ${ZONE} DNSKEY RRset after update ($n)"
+retry_quiet 10 zsks_are_published || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+# Verify again.
+dnssec_verify
+
+#
+# Update CDNSKEY RRset.
+#
+
+# Retrieve CDNSKEY records from the other provider.
+dig_with_opts ${ZONE} @10.53.0.4 CDNSKEY > dig.out.ns4.secondarycdnskey
+awk '$4 == "CDNSKEY" {print}' dig.out.ns4.secondarycdnskey > secondarycdnskey.ns4
+
+n=$((n+1))
+echo_i "update zone ${ZONE} at ns5 with CDNSKEY from provider ns4"
+ret=0
+set_server "ns5" "10.53.0.5"
+# Initially there should be one CDNSKEY.
+retry_quiet 10 records_published CDNSKEY 1 || ret=1
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
+echo update add $(cat "secondarycdnskey.ns4")
+echo send
+) | $NSUPDATE
+# Now there should be two CDNSKEY records (we test that BIND does not
+# skip it during DNSSEC maintenance).
+echo_i "check zone ${ZONE} CDNSKEY RRset after update ($n)"
+retry_quiet 10 records_published CDNSKEY 2 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+#
+# Update CDS RRset.
+#
+
+# Retrieve CDS records from the other provider.
+dig_with_opts ${ZONE} @10.53.0.4 CDS > dig.out.ns4.secondarycds
+awk '$4 == "CDS" {print}' dig.out.ns4.secondarycds > secondarycds.ns4
+
+n=$((n+1))
+echo_i "update zone ${ZONE} at ns5 with CDS from provider ns4"
+ret=0
+set_server "ns5" "10.53.0.5"
+# Initially there should be one CDS.
+retry_quiet 10 records_published CDS 1 || ret=1
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
+echo update add $(cat "secondarycds.ns4")
+echo send
+) | $NSUPDATE
+# Now there should be two CDS records (we test that BIND does not
+# skip it during DNSSEC maintenance).
+echo_i "check zone ${ZONE} CDS RRset after update ($n)"
+retry_quiet 10 records_published CDS 2 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1

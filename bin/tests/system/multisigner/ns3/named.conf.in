@@ -44,3 +44,12 @@ zone "model2.multisigner." {
 	dnssec-policy model2;
 	inline-signing no;
 };
+
+/*
+ * Hidden primary
+ */
+zone "model2.secondary." {
+	type primary;
+	allow-update { any; };
+	file "model2.secondary.db";
+};

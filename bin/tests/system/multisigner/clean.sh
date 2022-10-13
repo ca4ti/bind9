@@ -20,6 +20,8 @@ rm -f created.key-*
 rm -f dig.out.*
 rm -f python.out.*
 rm -f rndc.dnssec.status.out.*
+rm -f secondarycdnskey.ns*
+rm -f secondarycds.ns*
 rm -f unused.key-*
 
 rm -f ns*/*.jbk
@@ -31,6 +33,7 @@ rm -f ns*/K*
 rm -f ns*/keygen.out.*
 rm -f ns*/managed-keys*
 rm -f ns*/model2.multisigner.db
+rm -f ns*/model2.secondary.db
 rm -f ns*/named.conf
 rm -f ns*/named.memstats
 rm -f ns*/named.run
