@@ -20,6 +20,8 @@ zone="model2.multisigner"
 echo_i "setting up zone: $zone"
 zonefile="${zone}.db"
 
+cp "${zonefile}.in" "$zonefile"
+
 O="OMNIPRESENT"
 ksktimes="-P now -A now -P sync now"
 zsktimes="-P now -A now"

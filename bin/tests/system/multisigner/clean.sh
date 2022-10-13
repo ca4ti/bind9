@@ -30,6 +30,7 @@ rm -f ns*/*.zsk
 rm -f ns*/K*
 rm -f ns*/keygen.out.*
 rm -f ns*/managed-keys*
+rm -f ns*/model2.multisigner.db
 rm -f ns*/named.conf
 rm -f ns*/named.memstats
 rm -f ns*/named.run

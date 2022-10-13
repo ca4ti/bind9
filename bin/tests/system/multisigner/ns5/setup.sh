@@ -14,20 +14,20 @@
 # shellcheck source=conf.sh
 . ../../conf.sh
 
-echo_i "ns3/setup.sh"
+echo_i "ns5/setup.sh"
 
 zone="model2.multisigner"
 echo_i "setting up zone: $zone"
 zonefile="${zone}.db"
 
-cp "${zonefile}.in" "${zonefile}"
+cp "${zonefile}.in" "$zonefile"
 
 O="OMNIPRESENT"
 ksktimes="-P now -A now -P sync now"
 zsktimes="-P now -A now"
 KSK=$($KEYGEN  -a $DEFAULT_ALGORITHM -f KSK  -L 3600 $ksktimes $zone 2> keygen.out.$zone.1)
 ZSK=$($KEYGEN -a $DEFAULT_ALGORITHM -L 3600 $zsktimes $zone 2> keygen.out.$zone.2)
-$SETTIME -s -g $O -k $O now -r $O now -d $O now "$KSK" > settime.out.$zone.1 2>&1
-$SETTIME -s -g $O -k $O now -z $O now           "$ZSK" > settime.out.$zone.2 2>&1
+$SETTIME -s -g $O -k $O now -r $O now -d $O now  "$KSK" > settime.out.$zone.1 2>&1
+$SETTIME -s -g $O -k $O now -z $O now            "$ZSK" > settime.out.$zone.2 2>&1
 # ZSK will be added to the other provider with nsupdate.
 cat "${ZSK}.key" | grep -v ";.*" > "${zone}.zsk"

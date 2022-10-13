@@ -82,6 +82,13 @@ check_keytimes
 check_apex
 dnssec_verify
 
+set_server "ns5" "10.53.0.5"
+check_keys
+check_dnssecstatus "$SERVER" "$POLICY" "$ZONE"
+set_keytimes_model2
+check_keytimes
+check_apex
+dnssec_verify
 
 #
 # Update DNSKEY RRset.
@@ -123,6 +130,25 @@ set_server "ns4" "10.53.0.4"
 (
 echo zone "${ZONE}"
 echo server "${SERVER}" "${PORT}"
+echo update add $(cat "ns3/${ZONE}.zsk")
+echo send
+) | $NSUPDATE
+echo_i "check zone ${ZONE} DNSKEY RRset after update ($n)"
+retry_quiet 10 zsks_are_published || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+# Verify again.
+dnssec_verify
+
+
+n=$((n+1))
+echo_i "update zone ${ZONE} at ns5 with ZSK from provider ns3"
+ret=0
+set_server "ns5" "10.53.0.5"
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
 echo update add $(cat "ns3/${ZONE}.zsk")
 echo send
 ) | $NSUPDATE
@@ -193,6 +219,26 @@ retry_quiet 10 records_published CDNSKEY 2 || ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
+n=$((n+1))
+echo_i "update zone ${ZONE} at ns5 with CDNSKEY from provider ns3"
+ret=0
+set_server "ns5" "10.53.0.5"
+# Initially there should be one CDNSKEY.
+retry_quiet 10 records_published CDNSKEY 1 || ret=1
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
+echo update add $(cat "cdnskey.ns3")
+echo send
+) | $NSUPDATE
+# Now there should be two CDNSKEY records (we test that BIND does not
+# skip it during DNSSEC maintenance).
+echo_i "check zone ${ZONE} CDNSKEY RRset after update ($n)"
+retry_quiet 10 records_published CDNSKEY 2 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
 
 #
 # Update CDS RRset.
@@ -233,6 +279,26 @@ retry_quiet 10 records_published CDS 1 || ret=1
 (
 echo zone "${ZONE}"
 echo server "${SERVER}" "${PORT}"
+echo update add $(cat "cds.ns3")
+echo send
+) | $NSUPDATE
+# Now there should be two CDS records (we test that BIND does not
+# skip it during DNSSEC maintenance).
+echo_i "check zone ${ZONE} CDS RRset after update ($n)"
+retry_quiet 10 records_published CDS 2 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "update zone ${ZONE} at ns5 with CDS from provider ns3"
+ret=0
+set_server "ns5" "10.53.0.5"
+# Initially there should be one CDS.
+retry_quiet 10 records_published CDS 1 || ret=1
+(
+echo zone "${ZONE}"
+echo server "${SERVER}" "${PORT}"
+echo key ${DEFAULT_HMAC}:inline-update 1234abcd8765
 echo update add $(cat "cds.ns3")
 echo send
 ) | $NSUPDATE
