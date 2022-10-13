@@ -3423,8 +3423,6 @@ findname(fetchctx_t *fctx, const dns_name_t *name, in_port_t port,
 	if (dns_name_issubdomain(name, fctx->domain)) {
 		options |= DNS_ADBFIND_STARTATZONE;
 	}
-	options |= DNS_ADBFIND_GLUEOK;
-	options |= DNS_ADBFIND_HINTOK;
 
 	/*
 	 * See what we know about this address.
