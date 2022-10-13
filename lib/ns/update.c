@@ -3495,6 +3495,10 @@ update_action(isc_task_t *task, isc_event_t *event) {
 		 */
 		dns_zone_notify(zone);
 
+		if (dns_zone_israw(zone)) {
+			goto common;
+		}
+
 		/*
 		 * Cause the zone to be signed with the key that we
 		 * have just added or have the corresponding signatures
