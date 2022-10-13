@@ -3052,6 +3052,15 @@ for details on how to specify IP address lists.
 
    Updates are written to the zone's filename that is set in :any:`file`.
 
+.. namedconf:statement:: allow-inline-update
+   :tags: transfer
+   :short: Defines an :any:`address_match_list` of hosts that are allowed to submit dynamic updates the signed instance of inline zones.
+
+   A simple access control list.
+   When set in the :any:`zone` statement for a inline zine, specifies
+   which clients are allowed to update the signed instance of the
+   inline zone.  The default is to deny updates from all clients.
+
 .. namedconf:statement:: allow-update-forwarding
    :tags: transfer
    :short: Defines an :any:`address_match_list` of hosts that are allowed to submit dynamic updates to a secondary server for transmission to a primary.
@@ -7541,6 +7550,14 @@ the zone's filename, unless :any:`inline-signing` is enabled.
            TKEY token (remainder of packet)
 
        The daemon replies with a four-byte value in network byte order, containing either 0 or 1; 0 indicates that the specified update is not permitted, and 1 indicates that it is.
+
+.. namedconf:statement:: inline-update-policy
+   :tags: transfer
+   :short: Sets fine-grained rules to allow or deny dynamic updates (DDNS), based on requester identity, updated content, etc.
+
+   This is identical to :any:`update-policy` but applies to the signed
+   instance of an inline zone.  The client must also be in the
+   :any:`allow-inline-update` acl for this to take effect.
 
 .. _multiple_views:
 
