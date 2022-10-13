@@ -58,6 +58,7 @@ logging {
 managed-keys { <string> ( static-key | initial-key | static-ds | initial-ds ) <integer> <integer> <integer> <quoted_string>; ... }; // may occur multiple times, deprecated
 
 options {
+	allow-inline-update { <address_match_element>; ... };
 	allow-new-zones <boolean>;
 	allow-notify { <address_match_element>; ... };
 	allow-query { <address_match_element>; ... };
@@ -372,6 +373,7 @@ trust-anchors { <string> ( static-key | initial-key | static-ds | initial-ds ) <
 trusted-keys { <string> <integer> <integer> <integer> <quoted_string>; ... }; // may occur multiple times, deprecated
 
 view <string> [ <class> ] {
+	allow-inline-update { <address_match_element>; ... };
 	allow-new-zones <boolean>;
 	allow-notify { <address_match_element>; ... };
 	allow-query { <address_match_element>; ... };

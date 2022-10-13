@@ -1736,13 +1736,19 @@ ns_update_start(ns_client_t *client, isc_nmhandle_t *handle,
 	}
 
 	/*
-	 * If there is a raw (unsigned) zone associated with this
-	 * zone then it processes the UPDATE request.
+	 * If there is a raw (unsigned) zone associated with this zone check
+	 * the allow-inline-update to see if the UPDATE should be applied to
+	 * the signed zone instance or the raw zone.
 	 */
 	dns_zone_getraw(zone, &raw);
 	if (raw != NULL) {
-		dns_zone_detach(&zone);
-		dns_zone_attach(raw, &zone);
+		result = checkupdateacl(client, dns_zone_getupdateacl(zone),
+					"update inline zone", zonename, false,
+					false);
+		if (result != ISC_R_SUCCESS) {
+			dns_zone_detach(&zone);
+			dns_zone_attach(raw, &zone);
+		}
 		dns_zone_detach(&raw);
 	}
 

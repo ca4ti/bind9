@@ -59,7 +59,8 @@ typedef enum {
 	allow_query_on,
 	allow_transfer,
 	allow_update,
-	allow_update_forwarding
+	allow_update_forwarding,
+	allow_inline_update
 } acl_type_t;
 
 #define RETERR(x)                        \
@@ -132,6 +133,12 @@ configure_zone_acl(const cfg_obj_t *zconfig, const cfg_obj_t *vconfig,
 		}
 		aclname = "allow-update-forwarding";
 		break;
+	case allow_inline_update:
+		if (view != NULL) {
+			aclp = &view->inlineupdateacl;
+		}
+		aclname = "allow-inline-update";
+		break;
 	default:
 		UNREACHABLE();
 	}
@@ -196,8 +203,8 @@ parse_acl:
  * Parse the zone update-policy statement.
  */
 static isc_result_t
-configure_zone_ssutable(const cfg_obj_t *zconfig, dns_zone_t *zone,
-			const char *zname) {
+configure_zone_ssutable(const cfg_obj_t *zconfig, const char *policy,
+			dns_zone_t *zone, const char *zname) {
 	const cfg_obj_t *updatepolicy = NULL;
 	const cfg_listelt_t *element, *element2;
 	dns_ssutable_t *table = NULL;
@@ -205,7 +212,7 @@ configure_zone_ssutable(const cfg_obj_t *zconfig, dns_zone_t *zone,
 	bool autoddns = false;
 	isc_result_t result = ISC_R_SUCCESS;
 
-	(void)cfg_map_get(zconfig, "update-policy", &updatepolicy);
+	(void)cfg_map_get(zconfig, policy, &updatepolicy);
 
 	if (updatepolicy == NULL) {
 		dns_zone_setssutable(zone, NULL);
@@ -1544,12 +1551,38 @@ named_zone_configure(const cfg_obj_t *config, const cfg_obj_t *vconfig,
 		if (updateacl != NULL && dns_acl_isinsecure(updateacl)) {
 			isc_log_write(named_g_lctx, DNS_LOGCATEGORY_SECURITY,
 				      NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
-				      "zone '%s' allows unsigned updates "
-				      "from remote hosts, which is insecure",
+				      "zone '%s' allow-update acl allows "
+				      "unsigned updates from remote hosts, "
+				      "which is insecure",
 				      zname);
 		}
 
-		RETERR(configure_zone_ssutable(zoptions, mayberaw, zname));
+		RETERR(configure_zone_ssutable(zoptions, "update-policy",
+					       mayberaw, zname));
+	}
+
+	/*
+	 * Configure inline zone update policy.
+	 */
+	if (raw != NULL &&
+	    (ztype == dns_zone_primary || ztype == dns_zone_secondary)) {
+		dns_acl_t *updateacl;
+
+		RETERR(configure_zone_acl(
+			zconfig, vconfig, config, allow_inline_update, ac, zone,
+			dns_zone_setupdateacl, dns_zone_clearupdateacl));
+
+		updateacl = dns_zone_getupdateacl(zone);
+		if (updateacl != NULL && dns_acl_isinsecure(updateacl)) {
+			isc_log_write(named_g_lctx, DNS_LOGCATEGORY_SECURITY,
+				      NAMED_LOGMODULE_SERVER, ISC_LOG_WARNING,
+				      "zone '%s' allow-inline-update acl "
+				      "allows unsigned updates from remote "
+				      "hosts, which is insecure",
+				      zname);
+		}
+		RETERR(configure_zone_ssutable(zoptions, "inline-update-policy",
+					       zone, zname));
 	}
 
 	/*

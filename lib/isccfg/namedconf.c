@@ -2225,6 +2225,8 @@ static cfg_clausedef_t dnssecpolicy_clauses[] = {
  * Example: allow-transfer port 853 protocol tls { ... };
  */
 static cfg_clausedef_t zone_clauses[] = {
+	{ "allow-inline-update", &cfg_type_bracketed_aml,
+	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY },
 	{ "allow-notify", &cfg_type_bracketed_aml,
 	  CFG_ZONE_SECONDARY | CFG_ZONE_MIRROR },
 	{ "allow-query", &cfg_type_bracketed_aml,
@@ -2387,6 +2389,8 @@ static cfg_clausedef_t zone_only_clauses[] = {
 		  CFG_ZONE_STUB | CFG_ZONE_HINT | CFG_ZONE_REDIRECT },
 	{ "in-view", &cfg_type_astring, CFG_ZONE_INVIEW },
 	{ "inline-signing", &cfg_type_boolean,
+	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY },
+	{ "inline-update-policy", &cfg_type_updatepolicy,
 	  CFG_ZONE_PRIMARY | CFG_ZONE_SECONDARY },
 	{ "ixfr-base", NULL, CFG_CLAUSEFLAG_ANCIENT },
 	{ "ixfr-from-differences", &cfg_type_boolean,

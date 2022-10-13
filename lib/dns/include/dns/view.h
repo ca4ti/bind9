@@ -137,6 +137,7 @@ struct dns_view {
 	dns_acl_t	     *notifyacl;
 	dns_acl_t	     *transferacl;
 	dns_acl_t	     *updateacl;
+	dns_acl_t	     *inlineupdateacl;
 	dns_acl_t	     *upfwdacl;
 	dns_acl_t	     *denyansweracl;
 	dns_acl_t	     *nocasecompress;
