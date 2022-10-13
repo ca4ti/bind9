@@ -98,6 +98,14 @@ zsks_are_published() {
 	test "$lines" -eq 1 || return 1
 }
 
+# Check if a certain RRtype is present in the zone/journal file.
+rrset_exists() {
+	_rrtype=$1
+	_file=$2
+	lines=$(awk -v rt="${_rrtype}" '$4 == rt {print}' $_file | wc -l)
+	test "$lines" -eq 0 && return 1
+}
+
 n=$((n+1))
 echo_i "update zone ${ZONE} at ns3 with ZSK from provider ns4"
 ret=0
@@ -132,7 +140,17 @@ test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 # Verify again.
 dnssec_verify
-
+# No DNSSEC in raw journal.
+n=$((n+1))
+echo_i "check zone ${ZONE} raw journal has no DNSSEC ($n)"
+ret=0
+$JOURNALPRINT "${DIR}/${ZONE}.db.jnl" > "${DIR}/${ZONE}.journal.out.test$n"
+rrset_exists NSEC "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists NSEC3 "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists NSEC3PARAM "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists RRSIG "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 
 #
 # Update CDNSKEY RRset.
@@ -192,6 +210,17 @@ echo_i "check zone ${ZONE} CDNSKEY RRset after update ($n)"
 retry_quiet 10 records_published CDNSKEY 2 || ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
+# No DNSSEC in raw journal.
+n=$((n+1))
+echo_i "check zone ${ZONE} raw journal has no DNSSEC ($n)"
+ret=0
+$JOURNALPRINT "${DIR}/${ZONE}.db.jnl" > "${DIR}/${ZONE}.journal.out.test$n"
+rrset_exists NSEC "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists NSEC3 "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists NSEC3PARAM "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists RRSIG "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
 
 
 #
@@ -240,6 +269,17 @@ echo send
 # skip it during DNSSEC maintenance).
 echo_i "check zone ${ZONE} CDS RRset after update ($n)"
 retry_quiet 10 records_published CDS 2 || ret=1
+test "$ret" -eq 0 || echo_i "failed"
+status=$((status+ret))
+# No DNSSEC in raw journal.
+n=$((n+1))
+echo_i "check zone ${ZONE} raw journal has no DNSSEC ($n)"
+ret=0
+$JOURNALPRINT "${DIR}/${ZONE}.db.jnl" > "${DIR}/${ZONE}.journal.out.test$n"
+rrset_exists NSEC "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists NSEC3 "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists NSEC3PARAM "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists RRSIG "${DIR}/${ZONE}.journal.out.test$n" && ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
