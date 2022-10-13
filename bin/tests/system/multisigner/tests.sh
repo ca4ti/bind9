@@ -98,12 +98,12 @@ zsks_are_published() {
 	test "$lines" -eq 1 || return 1
 }
 
-# Check if a certain RRtype is present in the zone/journal file.
+# Check if a certain RRtype is present in the journal file.
 rrset_exists() {
 	_rrtype=$1
 	_file=$2
-	lines=$(awk -v rt="${_rrtype}" '$4 == rt {print}' $_file | wc -l)
-	test "$lines" -eq 0 && return 1
+	lines=$(awk -v rt="${_rrtype}" '$5 == rt {print}' ${_file} | wc -l)
+	test "$lines" -gt 0
 }
 
 n=$((n+1))
@@ -145,10 +145,10 @@ n=$((n+1))
 echo_i "check zone ${ZONE} raw journal has no DNSSEC ($n)"
 ret=0
 $JOURNALPRINT "${DIR}/${ZONE}.db.jnl" > "${DIR}/${ZONE}.journal.out.test$n"
-rrset_exists NSEC "${DIR}/${ZONE}.journal.out.test$n" && ret=1
-rrset_exists NSEC3 "${DIR}/${ZONE}.journal.out.test$n" && ret=1
-rrset_exists NSEC3PARAM "${DIR}/${ZONE}.journal.out.test$n" && ret=1
-rrset_exists RRSIG "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists "NSEC" "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists "NSEC3" "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists "NSEC3PARAM" "${DIR}/${ZONE}.journal.out.test$n" && ret=1
+rrset_exists "RRSIG" "${DIR}/${ZONE}.journal.out.test$n" && ret=1
 test "$ret" -eq 0 || echo_i "failed"
 status=$((status+ret))
 
