@@ -12,6 +12,7 @@
 # information regarding copyright ownership.
 
 from functools import partial
+import glob
 import logging
 import os
 from pathlib import Path
@@ -271,6 +272,12 @@ def system_test(env: Dict[str, str], logger, system_test_dir, system_test_name, 
             logger.info("test ended (SKIPPED)")
             pytest.skip("Prerequisites missing.")
 
+    def check_for_log_files():
+        log_files = glob.glob(f"{testdir}/**/named.run", recursive=True)
+        if log_files:
+            logging.debug(f"found log files: {', '.join(log_files)}")
+            pytest.skip("Unclean test directory (previsouly failed test?).")
+
     def cleanup_test(initial: bool = True):
         try:
             shell(f"{testdir}/clean.sh")
@@ -322,6 +329,7 @@ def system_test(env: Dict[str, str], logger, system_test_dir, system_test_name, 
 
     try:
         check_prerequisites()
+        check_for_log_files()
         cleanup_test(initial=True)
         passed = False
         try:
