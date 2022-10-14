@@ -25,10 +25,12 @@ import pytest
 
 
 # Configure logging to file on DEBUG level
+XDIST_WORKER = os.environ.get("PYTEST_XDIST_WORKER", "")
+LOGFILE = f"pytest{f'-{XDIST_WORKER}' if XDIST_WORKER else ''}.log"
 logging.basicConfig(
     format="%(asctime)s %(levelname)s:%(name)s %(message)s",
     level=logging.DEBUG,
-    filename="pytest.log",
+    filename=LOGFILE,
     filemode="w",
 )
 
