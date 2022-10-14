@@ -77,7 +77,7 @@ def conf_env():
     return conf_env
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def env(conf_env, ports):
     test_env = conf_env.copy()
     test_env.update(ports)
@@ -152,60 +152,107 @@ class ShellSystemTest(pytest.Module):
         yield pytest.Function.from_parent(
             name=f"tests_sh",
             parent=self,
-            callobj=partial(run_system_test, self.path.name),
+            callobj=run_tests_sh,
         )
+
+
+@pytest.fixture(scope="module")
+def system_test_name(request, env):
+    path = request.path
+    if path.name.endswith(".py"):
+        return path.parent.name
+    return path.name
+
+
+@pytest.fixture(scope="module")
+def system_test_dir(system_test_name, env):
+    system_dir = f"{env['TOP_BUILDDIR']}/bin/tests/system"
+    return f"{system_dir}/{system_test_name}"
+
+
+@pytest.fixture(scope="module")
+def logger(system_test_name):
+    return logging.getLogger(system_test_name)  # TODO consider different name
+
+
+def _run_script(
+    logger,
+    system_test_dir: str,
+    env,
+    interpreter: str,
+    script: str,
+    args: Optional[List[str]] = None,
+):
+    if args is None:
+        args = []
+    path = Path(script)
+    if not path.is_absolute():
+        # make sure relative paths are always relative to system_dir
+        path = Path(system_test_dir).parent / path
+    script = str(path)
+    cwd = os.getcwd()
+    if not path.exists():
+        raise FileNotFoundError(f"script {script} not found in {cwd}")
+    logger.debug("running script: %s %s %s", interpreter, script, " ".join(args))
+    logger.debug("  workdir: %s", cwd)
+    stdout = b""
+    returncode = 1
+    try:
+        proc = subprocess.run(
+            [interpreter, script] + args,
+            env=env,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+    except subprocess.CalledProcessError as exc:
+        stdout = exc.stdout
+        returncode = exc.returncode
+        raise exc
+    else:
+        stdout = proc.stdout
+        returncode = proc.returncode
+    finally:
+        if stdout:
+            for line in stdout.decode().splitlines():
+                logger.debug("    %s", line)
+        logger.debug("  exited with %d", returncode)
+    return proc
+
+
+@pytest.fixture(scope="module")
+def shell(env, system_test_dir, logger):
+    return partial(_run_script, logger, system_test_dir, env, env["SHELL"])
+
+
+@pytest.fixture(scope="module")
+def perl(env, system_test_dir, logger):
+    return partial(_run_script, logger, system_test_dir, env, env["PERL"])
+
+
+def run_tests_sh(system_test_dir, shell):
+    stdout = b""
+    try:
+        tests_proc = shell(f"{system_test_dir}/tests.sh")
+    except subprocess.CalledProcessError as exc:
+        stdout = exc.stdout
+        raise
+    else:
+        stdout = tests_proc.stdout
+    finally:
+        if stdout:
+            # Print is called here in order to integrate with pytest
+            # output. Combined with pytests's -rA option (our default from
+            # pytest.ini), it will display the log from each test for both
+            # successessful and failed tests.
+            print(stdout.decode().strip())
+
 
 # TODO turn this into setup/cleanup directory level (module scope) fixture &
 # run "tests.sh" and pytests as separate test cases  (function scope)
-def run_system_test(name: str, env: Dict[str, str]):
-    system_dir = f"{env['TOP_BUILDDIR']}/bin/tests/system"
-    systest_dir = f"{system_dir}/{name}"
-
-    logger = logging.getLogger(name)
-
-    def _run_script(
-        interpreter: str,
-        script: str,
-        args: Optional[List[str]] = None,
-    ):
-        if args is None:
-            args = []
-        path = Path(script)
-        if not path.is_absolute():
-            # make sure relative paths are always relative to system_dir
-            path = Path(system_dir) / path
-        script = str(path)
-        cwd = os.getcwd()
-        if not path.exists():
-            raise FileNotFoundError(f"script {script} not found in {cwd}")
-        logger.debug("running script: %s %s %s", interpreter, script, " ".join(args))
-        logger.debug("  workdir: %s", cwd)
-        stdout = b""
-        returncode = 1
-        try:
-            proc = subprocess.run(
-                [interpreter, script] + args,
-                env=env,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-        except subprocess.CalledProcessError as exc:
-            stdout = exc.stdout
-            returncode = exc.returncode
-            raise exc
-        else:
-            stdout = proc.stdout
-            returncode = proc.returncode
-        finally:
-            if stdout:
-                for line in stdout.decode().splitlines():
-                    logger.debug("    %s", line)
-            logger.debug("  exited with %d", returncode)
-        return proc
-
-    perl = partial(_run_script, env["PERL"])
-    shell = partial(_run_script, env["SHELL"])
+@pytest.fixture(scope="module", autouse=True)
+def system_test(env: Dict[str, str], logger, system_test_dir, system_test_name, shell, perl):
+    systest_dir = system_test_dir
 
     def check_net_interfaces():
         try:
@@ -245,33 +292,17 @@ def run_system_test(name: str, env: Dict[str, str]):
 
     def start_servers():
         try:
-            perl("start.pl", ["--port", env["PORT"], name])
+            perl("start.pl", ["--port", env["PORT"], system_test_name])
         except subprocess.CalledProcessError:
             logger.error("start.pl: failed to start servers")
             raise
 
     def stop_servers():
         try:
-            perl("stop.pl", [name])
+            perl("stop.pl", [system_test_name])
         except subprocess.CalledProcessError:
             logger.warning("stop.pl: failed to stop servers")
 
-    def run_tests_sh():
-        stdout = b""
-        try:
-            tests_proc = shell(f"{testdir}/tests.sh")
-        except subprocess.CalledProcessError as exc:
-            stdout = exc.stdout
-            raise
-        else:
-            stdout = tests_proc.stdout
-        finally:
-            if stdout:
-                # Print is called here in order to integrate with pytest
-                # output. Combined with pytests's -rA option (our default from
-                # pytest.ini), it will display the log from each test for both
-                # successessful and failed tests.
-                print(stdout.decode().strip())
 
     # FUTURE Always create a tempdir for the test and run it out of tree. It
     # would get rid of the need for explicit cleanup and eliminate the risk of
@@ -287,7 +318,7 @@ def run_system_test(name: str, env: Dict[str, str]):
     # System tests are meant to be executed from their directory - switch to it.
     old_cwd = os.getcwd()
     os.chdir(testdir)
-    logging.debug("changed workdir to: %s", testdir)
+    logger.debug("changed workdir to: %s", testdir)
 
     try:
         check_prerequisites()
@@ -297,20 +328,7 @@ def run_system_test(name: str, env: Dict[str, str]):
             setup_test()
             start_servers()
 
-            # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-            # TODO everything above should be a directory-level fixture setup
-            #
-            run_tests_sh()
-            #
-            # TODO everything below should be a directory-level fixture cleanup
-            # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-
-            # TODO run existing pytests once directory-level fixtures are supported
-            # Existing pytests assume default unmodified named.conf, i.e. the same
-            # as at the start of tests.sh, not after tests.sh is finished. This
-            # might clash with the concept of directory-level fixtures for
-            # setup/cleanup and running all the tests (both tests.sh and individual
-            # pytests) in between.
+            yield
 
             passed = True
         finally:  # TODO run this cleanup on KeyboardInterrupt from pytest
@@ -326,4 +344,4 @@ def run_system_test(name: str, env: Dict[str, str]):
                 logger.error("test ended (FAILED)")
     finally:
         os.chdir(old_cwd)
-        logger.debug("changed workdir to: %s", testdir)
+        logger.debug("changed workdir to: %s", old_cwd)
