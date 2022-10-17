@@ -39,6 +39,28 @@ FILE_DIR = os.path.abspath(Path(__file__).parent)
 ENV_RE = re.compile("([^=]+)=(.*)")
 
 
+def pytest_configure(config):
+    if not XDIST_WORKER:  # run on main instance before any xdist workers are spawned
+        logging.debug("compiling required files")
+        env = os.environ.copy()
+        env["TESTS"] = ""  # disable automake test framework - compile-only
+        try:
+            proc = subprocess.run(
+                "make -e check",
+                shell=True,
+                check=True,
+                cwd=FILE_DIR,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env=env,
+            )
+        except subprocess.CalledProcessError as exc:
+            logging.debug(exc.stdout)
+            logging.error("failed to compile test files: %s", exc)
+            raise exc
+        logging.debug(proc.stdout)
+
+
 @pytest.fixture(scope="session")
 def conf_env():
     """Common environment variables for running tests."""
