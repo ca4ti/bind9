@@ -403,7 +403,6 @@ name_hash(uint8_t *key, size_t keylen, bool case_sensitive) {
 	uint8_t key_s[DNS_NAME_MAXWIRE];
 
 	if (!case_sensitive) {
-		/* label lengths are < 64 so tolower() does not affect them */
 		isc_ascii_lowercopy(key_s, key, keylen);
 		key = key_s;
 	}

@@ -13,8 +13,6 @@
 
 /*! \file */
 
-#include <isc/util.h>
-
 #include <dns/fixedname.h>
 
 void
@@ -38,13 +36,4 @@ dns_name_t *
 dns_fixedname_initname(dns_fixedname_t *fixed) {
 	dns_fixedname_init(fixed);
 	return (dns_fixedname_name(fixed));
-}
-
-void
-dns_fixedname_initdowncase(dns_fixedname_t *fixed, const dns_name_t *source) {
-	isc_result_t result;
-	dns_name_t *name = dns_fixedname_initname(fixed);
-
-	result = dns_name_downcase(source, name, &fixed->buffer);
-	INSIST(result == ISC_R_SUCCESS);
 }

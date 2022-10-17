@@ -16,6 +16,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include <isc/ascii.h>
 #include <isc/async.h>
 #include <isc/hex.h>
 #include <isc/loop.h>
@@ -527,18 +528,19 @@ dns_catz_zones_merge(dns_catz_zone_t *target, dns_catz_zone_t *newzone) {
 		if (zt_find_result == ISC_R_SUCCESS) {
 			dns_catz_coo_t *coo = NULL;
 			char pczname[DNS_NAME_FORMATSIZE];
-			dns_fixedname_t nkey;
+			uint8_t hkey[DNS_NAME_MAXWIRE];
+			size_t hkeylen = 0;
 
-			dns_fixedname_initdowncase(&nkey, &nentry->name);
+			isc_ascii_lowercopy(hkey, nentry->name.ndata,
+					    nentry->name.length);
+			hkeylen = nentry->name.length;
 
 			/*
 			 * Change of ownership (coo) processing, if required
 			 */
 			parentcatz = dns_zone_get_parentcatz(zone);
 			if (parentcatz != NULL && parentcatz != target &&
-			    isc_ht_find(parentcatz->coos,
-					isc_buffer_base(&nkey.buffer),
-					isc_buffer_usedlength(&nkey.buffer),
+			    isc_ht_find(parentcatz->coos, hkey, hkeylen,
 					(void **)&coo) == ISC_R_SUCCESS &&
 			    dns_name_equal(&coo->name, &target->name))
 			{
@@ -1101,7 +1103,8 @@ catz_process_coo(dns_catz_zone_t *zone, dns_label_t *mhash,
 	dns_catz_entry_t *entry = NULL;
 	dns_catz_coo_t *ncoo = NULL;
 	dns_catz_coo_t *ocoo = NULL;
-	dns_fixedname_t key;
+	uint8_t key[DNS_NAME_MAXWIRE];
+	size_t keylen = 0;
 
 	REQUIRE(DNS_CATZ_ZONE_VALID(zone));
 	REQUIRE(mhash != NULL);
@@ -1155,18 +1158,17 @@ catz_process_coo(dns_catz_zone_t *zone, dns_label_t *mhash,
 		goto cleanup;
 	}
 
-	dns_fixedname_initdowncase(&key, &entry->name);
-	result = isc_ht_find(zone->coos, isc_buffer_base(&key.buffer),
-			     isc_buffer_usedlength(&key.buffer),
-			     (void **)&ocoo);
+	isc_ascii_lowercopy(key, entry->name.ndata, entry->name.length);
+	keylen = entry->name.length;
+
+	result = isc_ht_find(zone->coos, key, keylen, (void **)&ocoo);
 	if (result == ISC_R_SUCCESS) {
 		/* The change of ownership permission was already registered. */
 		goto cleanup;
 	}
 
 	catz_coo_new(zone->catzs->mctx, &ptr.ptr, &ncoo);
-	result = isc_ht_add(zone->coos, isc_buffer_base(&key.buffer),
-			    isc_buffer_usedlength(&key.buffer), ncoo);
+	result = isc_ht_add(zone->coos, key, keylen, ncoo);
 	if (result != ISC_R_SUCCESS) {
 		catz_coo_detach(zone, &ncoo);
 	}

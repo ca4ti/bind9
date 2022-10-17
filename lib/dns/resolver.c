@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include <isc/ascii.h>
 #include <isc/async.h>
 #include <isc/atomic.h>
 #include <isc/counter.h>
@@ -1626,19 +1627,19 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 	zonebucket_t *zbucket = NULL;
 	fctxcount_t *counter = NULL;
 	isc_rwlocktype_t ltype = isc_rwlocktype_read;
-	dns_fixedname_t downcase;
-	isc_buffer_t *key = &downcase.buffer;
+	uint8_t key[DNS_NAME_MAXWIRE];
+	size_t keylen = 0;
 
 	REQUIRE(fctx != NULL);
 	res = fctx->res;
 	REQUIRE(res != NULL);
 	INSIST(fctx->zbucket == NULL);
 
-	dns_fixedname_initdowncase(&downcase, fctx->domain);
+	isc_ascii_lowercopy(key, fctx->domain->ndata, fctx->domain->length);
+	keylen = fctx->domain->length;
 
 	RWLOCK(&res->zonehash_lock, ltype);
-	result = isc_ht_find(res->zonebuckets, isc_buffer_base(key),
-			     isc_buffer_usedlength(key), (void **)&zbucket);
+	result = isc_ht_find(res->zonebuckets, key, keylen, (void **)&zbucket);
 	if (result != ISC_R_SUCCESS) {
 		RWUNLOCK(&res->zonehash_lock, ltype);
 		zbucket = isc_mem_get(res->mctx, sizeof(*zbucket));
@@ -1648,15 +1649,13 @@ fcount_incr(fetchctx_t *fctx, bool force) {
 
 		ltype = isc_rwlocktype_write;
 		RWLOCK(&res->zonehash_lock, ltype);
-		result = isc_ht_add(res->zonebuckets, isc_buffer_base(key),
-				    isc_buffer_usedlength(key), zbucket);
+		result = isc_ht_add(res->zonebuckets, key, keylen, zbucket);
 		if (result != ISC_R_SUCCESS) {
 			/* Another thread must have created it */
 			isc_mutex_destroy(&zbucket->lock);
 			isc_mem_put(res->mctx, zbucket, sizeof(*zbucket));
-			result = isc_ht_find(
-				res->zonebuckets, isc_buffer_base(key),
-				isc_buffer_usedlength(key), (void **)&zbucket);
+			result = isc_ht_find(res->zonebuckets, key, keylen,
+					     (void **)&zbucket);
 		}
 	}
 	RUNTIME_CHECK(result == ISC_R_SUCCESS);
@@ -10658,14 +10657,14 @@ get_fctxbucket(dns_resolver_t *res, const dns_name_t *domain) {
 	isc_result_t result;
 	isc_rwlocktype_t ltype = isc_rwlocktype_read;
 	fctxbucket_t *bucket = NULL;
-	dns_fixedname_t downcase;
-	isc_buffer_t *key = &downcase.buffer;
+	uint8_t key[DNS_NAME_MAXWIRE];
+	size_t keylen = 0;
 
-	dns_fixedname_initdowncase(&downcase, domain);
+	isc_ascii_lowercopy(key, domain->ndata, domain->length);
+	keylen = domain->length;
 
 	RWLOCK(&res->hash_lock, ltype);
-	result = isc_ht_find(res->buckets, isc_buffer_base(key),
-			     isc_buffer_usedlength(key), (void **)&bucket);
+	result = isc_ht_find(res->buckets, key, keylen, (void **)&bucket);
 	if (result != ISC_R_SUCCESS) {
 		RWUNLOCK(&res->hash_lock, ltype);
 		bucket = isc_mem_get(res->mctx, sizeof(*bucket));
@@ -10677,16 +10676,14 @@ get_fctxbucket(dns_resolver_t *res, const dns_name_t *domain) {
 
 		ltype = isc_rwlocktype_write;
 		RWLOCK(&res->hash_lock, ltype);
-		result = isc_ht_add(res->buckets, isc_buffer_base(key),
-				    isc_buffer_usedlength(key), bucket);
+		result = isc_ht_add(res->buckets, key, keylen, bucket);
 		if (result == ISC_R_SUCCESS) {
 			inc_stats(res, dns_resstatscounter_buckets);
 		} else {
 			/* Another thread must have created it */
 			isc_mutex_destroy(&bucket->lock);
 			isc_mem_put(res->mctx, bucket, sizeof(*bucket));
-			result = isc_ht_find(res->buckets, isc_buffer_base(key),
-					     isc_buffer_usedlength(key),
+			result = isc_ht_find(res->buckets, key, keylen,
 					     (void **)&bucket);
 		}
 	}

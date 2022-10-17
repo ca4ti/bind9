@@ -18,7 +18,6 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include <isc/buffer.h>
 #include <isc/result.h>
 #include <isc/types.h>
 

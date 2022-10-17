@@ -24,6 +24,7 @@
 #include <limits.h>
 #include <stdbool.h>
 
+#include <isc/ascii.h>
 #include <isc/atomic.h>
 #include <isc/ht.h>
 #include <isc/mutexblock.h>
@@ -1602,23 +1603,22 @@ get_namebucket(dns_adb_t *adb, const dns_name_t *name,
 	       dns_adbnamebucket_t **nbucketp) {
 	isc_result_t result;
 	dns_adbnamebucket_t *nbucket = NULL;
-	dns_fixedname_t downcase;
-	isc_buffer_t *key = &downcase.buffer;
+	uint8_t key[DNS_NAME_MAXWIRE];
+	size_t keylen = 0;
 
 	REQUIRE(nbucketp != NULL && *nbucketp == NULL);
 
-	dns_fixedname_initdowncase(&downcase, name);
+	isc_ascii_lowercopy(key, name->ndata, name->length);
+	keylen = name->length;
 
 	RWLOCK(&adb->names_lock, isc_rwlocktype_write);
-	result = isc_ht_find(adb->namebuckets, isc_buffer_base(key),
-			     isc_buffer_usedlength(key), (void **)&nbucket);
+	result = isc_ht_find(adb->namebuckets, key, keylen, (void **)&nbucket);
 	if (result == ISC_R_NOTFOUND) {
 		/*
 		 * Allocate a new bucket and add it to the hash table.
 		 */
 		nbucket = new_adbnamebucket(adb);
-		result = isc_ht_add(adb->namebuckets, isc_buffer_base(key),
-				    isc_buffer_usedlength(key), nbucket);
+		result = isc_ht_add(adb->namebuckets, key, keylen, nbucket);
 	}
 	RWUNLOCK(&adb->names_lock, isc_rwlocktype_write);
 	INSIST(result == ISC_R_SUCCESS);
