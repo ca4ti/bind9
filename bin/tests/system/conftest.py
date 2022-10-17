@@ -157,12 +157,22 @@ class ShellSystemTest(pytest.Module):
         )
 
 
-@pytest.fixture(scope="module")
-def system_test_name(request, env):
-    path = request.path
+@pytest.hookimpl(tryfirst=True)
+def pytest_collection_modifyitems(session, config, items):
+    for item in items:
+        name = _system_test_name_from_path(item.path)
+        item.add_marker(pytest.mark.xdist_group(name))
+
+
+def _system_test_name_from_path(path):
     if path.name.endswith(".py"):
         return path.parent.name
     return path.name
+
+
+@pytest.fixture(scope="module")
+def system_test_name(request):
+    return _system_test_name_from_path(request.path)
 
 
 @pytest.fixture(scope="module")
