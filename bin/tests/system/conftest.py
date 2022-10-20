@@ -286,7 +286,9 @@ def run_tests_sh(system_test_dir, shell):
 # TODO turn this into setup/cleanup directory level (module scope) fixture &
 # run "tests.sh" and pytests as separate test cases  (function scope)
 @pytest.fixture(scope="module", autouse=True)
-def system_test(env: Dict[str, str], logger, system_test_dir, system_test_name, shell, perl):
+def system_test(
+    request, env: Dict[str, str], logger, system_test_dir, system_test_name, shell, perl
+):
     systest_dir = system_test_dir
 
     def check_net_interfaces():
@@ -344,13 +346,12 @@ def system_test(env: Dict[str, str], logger, system_test_dir, system_test_name, 
         except subprocess.CalledProcessError:
             logger.warning("stop.pl: failed to stop servers")
 
-
     # FUTURE Always create a tempdir for the test and run it out of tree. It
     # would get rid of the need for explicit cleanup and eliminate the risk of
     # some previous unclean state from affecting the current test.
     testdir = systest_dir
 
-    logger.info("test started")
+    logger.info(f"test started: {request.node.name}")
     check_net_interfaces()
 
     # TODO Do we need --restart option for the runner? IMO not for now (as long
@@ -381,9 +382,9 @@ def system_test(env: Dict[str, str], logger, system_test_dir, system_test_name, 
             # TODO get_core_dumps
 
             if passed:
-                logger.info("test ended (PASSED)")
+                logger.info(f"test ended (PASSED): {request.node.name}")
             else:
-                logger.error("test ended (FAILED)")
+                logger.error(f"test ended (FAILED): {request.node.name}")
     finally:
         os.chdir(old_cwd)
         logger.debug("changed workdir to: %s", old_cwd)
