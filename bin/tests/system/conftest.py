@@ -61,6 +61,30 @@ def pytest_configure(config):
         logging.debug(proc.stdout)
 
 
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Hook that is used to expose test results to session (for use in fixtures)."""
+    # execute all other hooks to obtain the report object
+    outcome = yield
+    report = outcome.get_result()
+
+    # Set the test outcome in session, so we can access it from module-level
+    # fixture using nodeid. Note that this hook is called three times: for
+    # setup, call and teardown. We only care about the overall result so we
+    # merge the results together and preserve the information whether a test
+    # passed.
+    test_results = {}
+    try:
+        test_results = getattr(item.session, "test_results")
+    except AttributeError:
+        setattr(item.session, "test_results", test_results)
+    # nodeid may have @loadgroup attached to it when running with xdist's --loadgroup
+    nodeid = item.nodeid.split("@")[0]  # ignore the @loadgroup part
+    node_result = test_results.get(nodeid)
+    if node_result is None or report.outcome != "passed":
+        test_results[nodeid] = report.outcome
+
+
 @pytest.fixture(scope="session")
 def conf_env():
     """Common environment variables for running tests."""
@@ -283,8 +307,6 @@ def run_tests_sh(system_test_dir, shell):
             print(stdout.decode().strip())
 
 
-# TODO turn this into setup/cleanup directory level (module scope) fixture &
-# run "tests.sh" and pytests as separate test cases  (function scope)
 @pytest.fixture(scope="module", autouse=True)
 def system_test(
     request, env: Dict[str, str], logger, system_test_dir, system_test_name, shell, perl
@@ -296,7 +318,6 @@ def system_test(
             perl("testsock.pl", ["-p", env["PORT"]])  # TODO python rewrite
         except subprocess.CalledProcessError as exc:
             logger.error("testsock.pl: exited with code %d", exc.returncode)
-            logger.info("SKIPPED")
             pytest.skip("Network interface aliases not set up.")
 
     def check_prerequisites():
@@ -305,13 +326,12 @@ def system_test(
         except FileNotFoundError:
             pass  # prereq.sh is optional
         except subprocess.CalledProcessError:
-            logger.info("test ended (SKIPPED)")
             pytest.skip("Prerequisites missing.")
 
     def check_for_log_files():
         log_files = glob.glob(f"{testdir}/**/named.run", recursive=True)
         if log_files:
-            logging.debug(f"found log files: {', '.join(log_files)}")
+            logger.debug("found log files: %s", ', '.join(log_files))
             pytest.skip("Unclean test directory (previsouly failed test?).")
 
     def cleanup_test(initial: bool = True):
@@ -320,7 +340,7 @@ def system_test(
         except subprocess.CalledProcessError:
             if initial:
                 logger.error("cleanup.sh: failed to run initial cleanup")
-                pytest.skip("Cleanup script failed.")
+                pytest.fail("Cleanup script failed.")
             else:
                 logger.warning("clean.sh: failed to clean up after test")
 
@@ -329,22 +349,41 @@ def system_test(
             shell(f"{testdir}/setup.sh")
         except FileNotFoundError:
             pass  # setup.sh is optional
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as exc:
             logger.error("setup.sh: failed to run test setup")
-            raise
+            pytest.fail(f"setup.sh exited with {exc.returncode}")
 
     def start_servers():
         try:
             perl("start.pl", ["--port", env["PORT"], system_test_name])
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as exc:
             logger.error("start.pl: failed to start servers")
-            raise
+            pytest.fail(f"start.pl exited with {exc.returncode}")
 
     def stop_servers():
         try:
             perl("stop.pl", [system_test_name])
-        except subprocess.CalledProcessError:
-            logger.warning("stop.pl: failed to stop servers")
+        except subprocess.CalledProcessError as exc:
+            logger.error("stop.pl: failed to stop servers")
+            pytest.fail(f"stop.pl exited with {exc.returncode}")
+
+    def get_test_result():
+        """Aggregate test results from all individual tests from this module
+        into a single result: failed > skipped > passed."""
+        test_results = [
+            request.session.test_results[node.nodeid]
+            for node in request.node.collect()
+            if node.nodeid in request.session.test_results
+        ]
+        assert len(test_results)
+        failed = any([res == "failed" for res in test_results])
+        skipped = any([res == "skipped" for res in test_results])
+        if failed:
+            return "failed"
+        if skipped:
+            return "skipped"
+        assert all([res == "passed" for res in test_results])
+        return "passed"
 
     # FUTURE Always create a tempdir for the test and run it out of tree. It
     # would get rid of the need for explicit cleanup and eliminate the risk of
@@ -352,39 +391,47 @@ def system_test(
     testdir = systest_dir
 
     logger.info(f"test started: {request.node.name}")
-    check_net_interfaces()
-
-    # TODO Do we need --restart option for the runner? IMO not for now (as long
-    # as old way of running system tests exists)
-
-    # System tests are meant to be executed from their directory - switch to it.
-    old_cwd = os.getcwd()
-    os.chdir(testdir)
-    logger.debug("changed workdir to: %s", testdir)
-
+    result = "skipped"
     try:
-        check_prerequisites()
-        check_for_log_files()
-        cleanup_test(initial=True)
-        passed = False
+        check_net_interfaces()
+
+        # TODO Do we need --restart option for the runner? IMO not for now (as long
+        # as old way of running system tests exists)
+
+        # System tests are meant to be executed from their directory - switch to it.
+        old_cwd = os.getcwd()
+        os.chdir(testdir)
+        logger.debug("changed workdir to: %s", testdir)
+
         try:
+            check_prerequisites()
+            check_for_log_files()
+            result = "failed"
+            cleanup_test(initial=True)
             setup_test()
-            start_servers()
+            try:
+                start_servers()
+                yield
+            finally:
+                stop_servers()
 
-            yield
+            # If we get here, it means no pytest.fail() was called in any the
+            # fixture functions (since that would halt execution and only enter
+            # "finally" blocks).
+            #
+            # It means that on a fixture-level, all went well
+            # (starting/stopping servers). However, individual test cases might
+            # have still failed. Examine these below.
+            result = get_test_result()
 
-            passed = True
-        finally:  # TODO run this cleanup on KeyboardInterrupt from pytest
-            stop_servers()
-            if passed:  # TODO implement --keep option
+            if result == "passed":  # TODO implement --keep option
                 cleanup_test(initial=False)
-
-            # TODO get_core_dumps
-
-            if passed:
-                logger.info(f"test ended (PASSED): {request.node.name}")
-            else:
-                logger.error(f"test ended (FAILED): {request.node.name}")
+        finally:
+            os.chdir(old_cwd)
+            logger.debug("changed workdir to: %s", old_cwd)
     finally:
-        os.chdir(old_cwd)
-        logger.debug("changed workdir to: %s", old_cwd)
+        if result == "failed":
+            logger.error("test ended (FAILED): %s", request.node.name)
+        else:
+            # FIXME this may log incorrect results when pytest is interrupted
+            logger.info(f"test ended (%s): %s", result.upper(), request.node.name)
