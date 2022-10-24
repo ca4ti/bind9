@@ -106,13 +106,13 @@ foreach my $name (@ns) {
 	stop_signal($name, "TERM");
 }
 
-@ns = wait_for_servers(300, @ns);
+@ns = wait_for_servers(5, @ns);
 
 foreach my $name(@ans) {
 	stop_signal($name, "TERM", 1);
 }
 
-@ans = wait_for_servers(300, @ans);
+@ans = wait_for_servers(5, @ans);
 
 # Pass 3: SIGABRT
 foreach my $name (@ns) {
@@ -195,7 +195,7 @@ sub stop_rndc {
 
 sub server_died {
 	my ( $server, $signal ) = @_;
-	
+
 	print "I:$test:$server died before a SIG$signal was sent\n";
 	$errors = 1;
 
