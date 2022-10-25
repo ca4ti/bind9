@@ -312,7 +312,6 @@ struct dns_zone {
 	unsigned int notifycnt;
 	isc_sockaddr_t notifyfrom;
 	isc_task_t *task;
-	isc_task_t *loadtask;
 	isc_sockaddr_t notifysrc4;
 	isc_sockaddr_t notifysrc6;
 	isc_sockaddr_t parentalsrc4;
@@ -601,7 +600,6 @@ struct dns_zonemgr {
 	isc_nm_t *netmgr;
 	uint32_t workers;
 	isc_task_t **zonetasks;
-	isc_task_t **loadtasks;
 	isc_mem_t **mctxpool;
 	isc_ratelimiter_t *checkdsrl;
 	isc_ratelimiter_t *notifyrl;
@@ -731,10 +729,12 @@ struct dns_forward {
 struct dns_io {
 	unsigned int magic;
 	dns_zonemgr_t *zmgr;
+	isc_loop_t *loop;
+	isc_job_cb cb;
+	void *arg;
 	bool high;
-	isc_task_t *task;
+	bool canceled;
 	ISC_LINK(dns_io_t) link;
-	isc_event_t *event;
 };
 
 /*%
@@ -973,8 +973,8 @@ zmgr_resume_xfrs(dns_zonemgr_t *zmgr, bool multi);
 static void
 zonemgr_free(dns_zonemgr_t *zmgr);
 static isc_result_t
-zonemgr_getio(dns_zonemgr_t *zmgr, bool high, isc_task_t *task,
-	      isc_taskaction_t action, void *arg, dns_io_t **iop);
+zonemgr_getio(dns_zonemgr_t *zmgr, bool high, isc_loop_t *loop, isc_job_cb cb,
+	      void *arg, dns_io_t **iop);
 static void
 zonemgr_putio(dns_io_t **iop);
 static void
@@ -1271,9 +1271,6 @@ zone_free(dns_zone_t *zone) {
 
 	if (zone->task != NULL) {
 		isc_task_detach(&zone->task);
-	}
-	if (zone->loadtask != NULL) {
-		isc_task_detach(&zone->loadtask);
 	}
 	if (zone->view != NULL) {
 		dns_view_weakdetach(&zone->view);
@@ -2602,22 +2599,12 @@ zone_registerinclude(const char *filename, void *arg) {
 }
 
 static void
-zone_gotreadhandle(isc_task_t *task, isc_event_t *event) {
-	dns_load_t *load = event->ev_arg;
+zone_gotreadhandle(void *arg) {
+	dns_load_t *load = (dns_load_t *)arg;
 	isc_result_t result = ISC_R_SUCCESS;
 	unsigned int options;
 
 	REQUIRE(DNS_LOAD_VALID(load));
-
-	UNUSED(task);
-
-	if ((event->ev_attributes & ISC_EVENTATTR_CANCELED) != 0) {
-		result = ISC_R_CANCELED;
-	}
-	isc_event_free(&event);
-	if (result == ISC_R_CANCELED) {
-		goto fail;
-	}
 
 	options = get_primary_options(load->zone);
 
@@ -2654,24 +2641,15 @@ get_raw_serial(dns_zone_t *raw, dns_masterrawheader_t *rawdata) {
 }
 
 static void
-zone_gotwritehandle(isc_task_t *task, isc_event_t *event) {
-	dns_zone_t *zone = event->ev_arg;
+zone_gotwritehandle(void *arg) {
+	dns_zone_t *zone = (dns_zone_t *)arg;
 	isc_result_t result = ISC_R_SUCCESS;
 	dns_dbversion_t *version = NULL;
 	dns_masterrawheader_t rawdata;
 	dns_db_t *db = NULL;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
-	INSIST(task == zone->task);
 	ENTER;
-
-	if ((event->ev_attributes & ISC_EVENTATTR_CANCELED) != 0) {
-		result = ISC_R_CANCELED;
-	}
-	isc_event_free(&event);
-	if (result == ISC_R_CANCELED) {
-		goto fail;
-	}
 
 	LOCK_ZONE(zone);
 	INSIST(zone != zone->raw);
@@ -2761,12 +2739,10 @@ zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
 
 	if (zone->zmgr != NULL && zone->db != NULL) {
 		load = isc_mem_get(zone->mctx, sizeof(*load));
-
-		load->mctx = NULL;
-		load->zone = NULL;
-		load->db = NULL;
-		load->loadtime = loadtime;
-		load->magic = LOAD_MAGIC;
+		*load = (dns_load_t){
+			.loadtime = loadtime,
+			.magic = LOAD_MAGIC,
+		};
 
 		isc_mem_attach(zone->mctx, &load->mctx);
 		zone_iattach(zone, &load->zone);
@@ -2778,7 +2754,7 @@ zone_startload(dns_db_t *db, dns_zone_t *zone, isc_time_t loadtime) {
 		if (result != ISC_R_SUCCESS) {
 			goto cleanup;
 		}
-		result = zonemgr_getio(zone->zmgr, true, zone->loadtask,
+		result = zonemgr_getio(zone->zmgr, true, zone->loop,
 				       zone_gotreadhandle, load, &zone->readio);
 		if (result != ISC_R_SUCCESS) {
 			/*
@@ -12256,7 +12232,7 @@ redo:
 		dns_zone_t *dummy = NULL;
 		LOCK_ZONE(zone);
 		zone_iattach(zone, &dummy);
-		result = zonemgr_getio(zone->zmgr, false, zone->task,
+		result = zonemgr_getio(zone->zmgr, false, zone->loop,
 				       zone_gotwritehandle, zone,
 				       &zone->writeio);
 		if (result != ISC_R_SUCCESS) {
@@ -19021,18 +18997,6 @@ dns_zonemgr_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
 		isc_task_setname(zmgr->zonetasks[i], "zonemgr-zonetasks", NULL);
 	}
 
-	zmgr->loadtasks = isc_mem_getx(
-		zmgr->mctx, zmgr->workers * sizeof(zmgr->loadtasks[0]),
-		ISC_MEM_ZERO);
-	for (size_t i = 0; i < zmgr->workers; i++) {
-		result = isc_task_create(zmgr->taskmgr, &zmgr->loadtasks[i], i);
-		INSIST(result == ISC_R_SUCCESS);
-		if (result != ISC_R_SUCCESS) {
-			goto free_loadtasks;
-		}
-		isc_task_setname(zmgr->loadtasks[i], "zonemgr-loadtasks", NULL);
-	}
-
 	zmgr->mctxpool = isc_mem_getx(zmgr->mctx,
 				      zmgr->workers * sizeof(zmgr->mctxpool[0]),
 				      ISC_MEM_ZERO);
@@ -19071,14 +19035,6 @@ dns_zonemgr_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
  free_iolock:
 	isc_mutex_destroy(&zmgr->iolock);
 #endif /* if 0 */
-free_loadtasks:
-	for (size_t i = 0; i < zmgr->workers; i++) {
-		if (zmgr->loadtasks[i] != NULL) {
-			isc_task_detach(&zmgr->loadtasks[i]);
-		}
-	}
-	isc_mem_put(zmgr->mctx, zmgr->loadtasks,
-		    zmgr->workers * sizeof(zmgr->loadtasks[0]));
 
 free_zonetasks:
 	for (size_t i = 0; i < zmgr->workers; i++) {
@@ -19153,7 +19109,6 @@ dns_zonemgr_managezone(dns_zonemgr_t *zmgr, dns_zone_t *zone) {
 	REQUIRE(zone->zmgr == NULL);
 
 	isc_task_attach(zmgr->zonetasks[zone->tid], &zone->task);
-	isc_task_attach(zmgr->loadtasks[zone->tid], &zone->loadtask);
 
 	/*
 	 * Set the task name.  The tag will arbitrarily point to one
@@ -19161,7 +19116,6 @@ dns_zonemgr_managezone(dns_zonemgr_t *zmgr, dns_zone_t *zone) {
 	 * to be managed last).
 	 */
 	isc_task_setname(zone->task, "zone", zone);
-	isc_task_setname(zone->loadtask, "loadzone", zone);
 
 	zone->loop = isc_loop_get(zmgr->loopmgr, zone->tid);
 
@@ -19286,10 +19240,6 @@ dns_zonemgr_shutdown(dns_zonemgr_t *zmgr) {
 	}
 
 	for (size_t i = 0; i < zmgr->workers; i++) {
-		isc_task_detach(&zmgr->loadtasks[i]);
-	}
-
-	for (size_t i = 0; i < zmgr->workers; i++) {
 		isc_task_detach(&zmgr->zonetasks[i]);
 	}
 
@@ -19320,8 +19270,6 @@ zonemgr_free(dns_zonemgr_t *zmgr) {
 
 	isc_mem_put(zmgr->mctx, zmgr->mctxpool,
 		    zmgr->workers * sizeof(zmgr->mctxpool[0]));
-	isc_mem_put(zmgr->mctx, zmgr->loadtasks,
-		    zmgr->workers * sizeof(zmgr->loadtasks[0]));
 	isc_mem_put(zmgr->mctx, zmgr->zonetasks,
 		    zmgr->workers * sizeof(zmgr->zonetasks[0]));
 
@@ -19545,24 +19493,24 @@ dns_zonemgr_getiolimit(dns_zonemgr_t *zmgr) {
  */
 
 static isc_result_t
-zonemgr_getio(dns_zonemgr_t *zmgr, bool high, isc_task_t *task,
-	      isc_taskaction_t action, void *arg, dns_io_t **iop) {
-	dns_io_t *io;
+zonemgr_getio(dns_zonemgr_t *zmgr, bool high, isc_loop_t *loop, isc_job_cb cb,
+	      void *arg, dns_io_t **iop) {
+	dns_io_t *io = NULL;
 	bool queue;
 
 	REQUIRE(DNS_ZONEMGR_VALID(zmgr));
 	REQUIRE(iop != NULL && *iop == NULL);
 
 	io = isc_mem_get(zmgr->mctx, sizeof(*io));
+	*io = (dns_io_t){
+		.zmgr = zmgr,
+		.high = high,
+		.cb = cb,
+		.arg = arg,
+		.link = ISC_LINK_INITIALIZER,
+	};
 
-	io->event = isc_event_allocate(zmgr->mctx, task, DNS_EVENT_IOREADY,
-				       action, arg, sizeof(*io->event));
-
-	io->zmgr = zmgr;
-	io->high = high;
-	io->task = NULL;
-	isc_task_attach(task, &io->task);
-	ISC_LINK_INIT(io, link);
+	isc_loop_attach(loop, &io->loop);
 	io->magic = IO_MAGIC;
 
 	LOCK(&zmgr->iolock);
@@ -19579,28 +19527,29 @@ zonemgr_getio(dns_zonemgr_t *zmgr, bool high, isc_task_t *task,
 	*iop = io;
 
 	if (!queue) {
-		isc_task_send(io->task, &io->event);
+		isc_async_run(loop, cb, arg);
 	}
 	return (ISC_R_SUCCESS);
 }
 
 static void
 zonemgr_putio(dns_io_t **iop) {
-	dns_io_t *io;
-	dns_io_t *next;
-	dns_zonemgr_t *zmgr;
+	dns_io_t *io = NULL;
+	dns_io_t *next = NULL;
+	dns_zonemgr_t *zmgr = NULL;
 
 	REQUIRE(iop != NULL);
+
 	io = *iop;
 	*iop = NULL;
+
 	REQUIRE(DNS_IO_VALID(io));
 
 	INSIST(!ISC_LINK_LINKED(io, link));
-	INSIST(io->event == NULL);
 
-	zmgr = io->zmgr;
-	isc_task_detach(&io->task);
 	io->magic = 0;
+	zmgr = io->zmgr;
+	isc_loop_detach(&io->loop);
 	isc_mem_put(zmgr->mctx, io, sizeof(*io));
 
 	LOCK(&zmgr->iolock);
@@ -19616,11 +19565,10 @@ zonemgr_putio(dns_io_t **iop) {
 		} else {
 			ISC_LIST_UNLINK(zmgr->low, next, link);
 		}
-		INSIST(next->event != NULL);
 	}
 	UNLOCK(&zmgr->iolock);
 	if (next != NULL) {
-		isc_task_send(next->task, &next->event);
+		isc_async_run(next->loop, next->cb, next->arg);
 	}
 }
 
@@ -19642,12 +19590,11 @@ zonemgr_cancelio(dns_io_t *io) {
 		}
 
 		send_event = true;
-		INSIST(io->event != NULL);
 	}
 	UNLOCK(&io->zmgr->iolock);
 	if (send_event) {
-		io->event->ev_attributes |= ISC_EVENTATTR_CANCELED;
-		isc_task_send(io->task, &io->event);
+		io->canceled = true;
+		isc_async_run(io->loop, io->cb, io->arg);
 	}
 }
 
@@ -22579,13 +22526,11 @@ dns_zone_link(dns_zone_t *zone, dns_zone_t *raw) {
 	REQUIRE(DNS_ZONE_VALID(zone));
 	REQUIRE(zone->zmgr != NULL);
 	REQUIRE(zone->task != NULL);
-	REQUIRE(zone->loadtask != NULL);
 	REQUIRE(zone->raw == NULL);
 
 	REQUIRE(DNS_ZONE_VALID(raw));
 	REQUIRE(raw->zmgr == NULL);
 	REQUIRE(raw->task == NULL);
-	REQUIRE(raw->loadtask == NULL);
 	REQUIRE(raw->secure == NULL);
 
 	REQUIRE(zone != raw);
@@ -22608,7 +22553,6 @@ dns_zone_link(dns_zone_t *zone, dns_zone_t *raw) {
 	zone_iattach(zone, &raw->secure);
 
 	isc_task_attach(zone->task, &raw->task);
-	isc_task_attach(zone->loadtask, &raw->loadtask);
 
 	ISC_LIST_APPEND(zmgr->zones, raw, link);
 	raw->zmgr = zmgr;
