@@ -35,6 +35,15 @@
 #include <isc/time.h>
 #include <isc/types.h>
 
+struct isc_rlevent {
+	isc_mem_t	  *mctx;
+	isc_ratelimiter_t *rl;
+	bool		   canceled;
+	isc_job_cb	   cb;
+	void		  *arg;
+	ISC_LINK(isc_rlevent_t) link;
+};
+
 ISC_LANG_BEGINDECLS
 
 /*****
@@ -72,31 +81,30 @@ isc_ratelimiter_setpushpop(isc_ratelimiter_t *rl, bool pushpop);
  */
 
 isc_result_t
-isc_ratelimiter_enqueue(isc_ratelimiter_t *rl, isc_task_t *task,
-			isc_event_t **eventp);
+isc_ratelimiter_enqueue(isc_ratelimiter_t *rl, isc_loop_t *loop, isc_job_cb cb,
+			void *arg, isc_rlevent_t **rlep);
 /*%<
  * Queue an event for rate-limited execution.
  *
- * This is similar
- * to doing an isc_task_send() to the 'task', except that the
- * execution may be delayed to achieve the desired rate of
+ * This is similar to doing an isc_async_run() to the 'loop', except
+ * that the execution may be delayed to achieve the desired rate of
  * execution.
  *
- * '(*eventp)->ev_sender' is used to hold the task.  The caller
- * must ensure that the task exists until the event is delivered.
+ * '*rlep' will be set to point to an allocated ratelimiter event,
+ * which can be freed by the caller using isc_rlevent_free() when the
+ * event fires, or by dequeueing.
  *
  * Requires:
- *\li	An interval has been set by calling
- *	isc_ratelimiter_setinterval().
- *
- *\li	'task' to be non NULL.
- *\li	'(*eventp)->ev_sender' to be NULL.
+ *\li	'rl' is a valid ratelimiter.
+ *\li	'loop ' is non NULL.
+ *\li	'rlep' is non NULL and '*rlep' is NULL.
  */
 
 isc_result_t
-isc_ratelimiter_dequeue(isc_ratelimiter_t *rl, isc_event_t *event);
+isc_ratelimiter_dequeue(isc_ratelimiter_t *rl, isc_rlevent_t **rleventp);
 /*
- * Dequeue a event off the ratelimiter queue.
+ * Dequeue a event off the ratelimiter queue. If the event has not already
+ * been posted, it will be freed and '*rleventp' will be set to NULL.
  *
  * Returns:
  * \li	ISC_R_NOTFOUND if the event is no longer linked to the rate limiter.
@@ -109,14 +117,17 @@ isc_ratelimiter_shutdown(isc_ratelimiter_t *ratelimiter);
  * Shut down a rate limiter.
  *
  * Ensures:
- *\li	All events that have not yet been
- *	dispatched to the task are dispatched immediately with
- *	the #ISC_EVENTATTR_CANCELED bit set in ev_attributes.
+ *\li	All pending events are dispatched immediately with
+ *	rle->canceled set to true.
  *
  *\li	Further attempts to enqueue events will fail with
  *	#ISC_R_SHUTTINGDOWN.
- *
- *\li	The rate limiter is no longer attached to its task.
+ */
+
+void
+isc_rlevent_free(isc_rlevent_t **rlep);
+/*%<
+ * Free the rate limiter event '*rlep'.
  */
 
 ISC_REFCOUNT_DECL(isc_ratelimiter);

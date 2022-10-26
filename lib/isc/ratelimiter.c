@@ -17,7 +17,6 @@
 #include <stdbool.h>
 
 #include <isc/async.h>
-#include <isc/event.h>
 #include <isc/loop.h>
 #include <isc/magic.h>
 #include <isc/mem.h>
@@ -48,7 +47,7 @@ struct isc_ratelimiter {
 	uint32_t pertic;
 	bool pushpop;
 	isc_ratelimiter_state_t state;
-	ISC_LIST(isc_event_t) pending;
+	ISC_LIST(isc_rlevent_t) pending;
 };
 
 static void
@@ -152,16 +151,14 @@ isc__ratelimiter_start(void *arg) {
 }
 
 isc_result_t
-isc_ratelimiter_enqueue(isc_ratelimiter_t *rl, isc_task_t *task,
-			isc_event_t **eventp) {
+isc_ratelimiter_enqueue(isc_ratelimiter_t *rl, isc_loop_t *loop, isc_job_cb cb,
+			void *arg, isc_rlevent_t **rlep) {
 	isc_result_t result = ISC_R_SUCCESS;
-	isc_event_t *event;
+	isc_rlevent_t *rle = NULL;
 
 	REQUIRE(VALID_RATELIMITER(rl));
-	REQUIRE(task != NULL);
-	REQUIRE(eventp != NULL && *eventp != NULL);
-	event = *eventp;
-	REQUIRE(event->ev_sender == NULL);
+	REQUIRE(loop != NULL);
+	REQUIRE(rlep != NULL && *rlep == NULL);
 
 	LOCK(&rl->lock);
 	switch (rl->state) {
@@ -175,13 +172,21 @@ isc_ratelimiter_enqueue(isc_ratelimiter_t *rl, isc_task_t *task,
 		rl->state = isc_ratelimiter_ratelimited;
 		FALLTHROUGH;
 	case isc_ratelimiter_ratelimited:
-		event->ev_sender = task;
-		*eventp = NULL;
+		rle = isc_mem_get(rl->mctx, sizeof(*rle));
+		*rle = (isc_rlevent_t){
+			.cb = cb,
+			.arg = arg,
+			.link = ISC_LINK_INITIALIZER,
+		};
+		isc_mem_attach(rl->mctx, &rle->mctx);
+		isc_ratelimiter_attach(rl, &rle->rl);
+
 		if (rl->pushpop) {
-			ISC_LIST_PREPEND(rl->pending, event, ev_ratelink);
+			ISC_LIST_PREPEND(rl->pending, rle, link);
 		} else {
-			ISC_LIST_APPEND(rl->pending, event, ev_ratelink);
+			ISC_LIST_APPEND(rl->pending, rle, link);
 		}
+		*rlep = rle;
 		break;
 	default:
 		UNREACHABLE();
@@ -191,30 +196,29 @@ isc_ratelimiter_enqueue(isc_ratelimiter_t *rl, isc_task_t *task,
 }
 
 isc_result_t
-isc_ratelimiter_dequeue(isc_ratelimiter_t *rl, isc_event_t *event) {
+isc_ratelimiter_dequeue(isc_ratelimiter_t *rl, isc_rlevent_t **rlep) {
 	isc_result_t result = ISC_R_SUCCESS;
 
 	REQUIRE(rl != NULL);
-	REQUIRE(event != NULL);
+	REQUIRE(rlep != NULL);
 
 	LOCK(&rl->lock);
-	if (ISC_LINK_LINKED(event, ev_ratelink)) {
-		ISC_LIST_UNLINK(rl->pending, event, ev_ratelink);
-		event->ev_sender = NULL;
+	if (ISC_LINK_LINKED(*rlep, link)) {
+		ISC_LIST_UNLINK(rl->pending, *rlep, link);
+		isc_rlevent_free(rlep);
 	} else {
 		result = ISC_R_NOTFOUND;
 	}
 	UNLOCK(&rl->lock);
-
 	return (result);
 }
 
 static void
 isc__ratelimiter_tick(void *arg) {
 	isc_ratelimiter_t *rl = (isc_ratelimiter_t *)arg;
-	isc_event_t *event;
+	isc_rlevent_t *rle = NULL;
 	uint32_t pertic;
-	ISC_LIST(isc_event_t) pending;
+	ISC_LIST(isc_rlevent_t) pending;
 
 	REQUIRE(VALID_RATELIMITER(rl));
 
@@ -231,11 +235,11 @@ isc__ratelimiter_tick(void *arg) {
 
 	pertic = rl->pertic;
 	while (pertic != 0) {
-		event = ISC_LIST_HEAD(rl->pending);
-		if (event != NULL) {
+		rle = ISC_LIST_HEAD(rl->pending);
+		if (rle != NULL) {
 			/* There is work to do.  Let's do it after unlocking. */
-			ISC_LIST_UNLINK(rl->pending, event, ev_ratelink);
-			ISC_LIST_APPEND(pending, event, ev_ratelink);
+			ISC_LIST_UNLINK(rl->pending, rle, link);
+			ISC_LIST_APPEND(pending, rle, link);
 		} else {
 			/*
 			 * We processed all the scheduled work, but there's a
@@ -257,9 +261,9 @@ isc__ratelimiter_tick(void *arg) {
 unlock:
 	UNLOCK(&rl->lock);
 
-	while ((event = ISC_LIST_HEAD(pending)) != NULL) {
-		ISC_LIST_UNLINK(pending, event, ev_ratelink);
-		isc_task_send(event->ev_sender, &event);
+	while ((rle = ISC_LIST_HEAD(pending)) != NULL) {
+		ISC_LIST_UNLINK(pending, rle, link);
+		isc_async_run(rl->loop, rle->cb, rle->arg);
 	}
 }
 
@@ -282,8 +286,8 @@ isc__ratelimiter_doshutdown(void *arg) {
 
 void
 isc_ratelimiter_shutdown(isc_ratelimiter_t *rl) {
-	isc_event_t *event;
-	ISC_LIST(isc_event_t) pending;
+	isc_rlevent_t *rle = NULL;
+	ISC_LIST(isc_rlevent_t) pending;
 
 	REQUIRE(VALID_RATELIMITER(rl));
 
@@ -298,10 +302,10 @@ isc_ratelimiter_shutdown(isc_ratelimiter_t *rl) {
 	}
 	UNLOCK(&rl->lock);
 
-	while ((event = ISC_LIST_HEAD(pending)) != NULL) {
-		ISC_LIST_UNLINK(pending, event, ev_ratelink);
-		event->ev_attributes |= ISC_EVENTATTR_CANCELED;
-		isc_task_send(event->ev_sender, &event);
+	while ((rle = ISC_LIST_HEAD(pending)) != NULL) {
+		ISC_LIST_UNLINK(pending, rle, link);
+		rle->canceled = true;
+		isc_async_run(rl->loop, rle->cb, rle->arg);
 	}
 }
 
@@ -315,6 +319,19 @@ ratelimiter_destroy(isc_ratelimiter_t *rl) {
 
 	isc_mutex_destroy(&rl->lock);
 	isc_mem_putanddetach(&rl->mctx, rl, sizeof(*rl));
+}
+
+void
+isc_rlevent_free(isc_rlevent_t **rlep) {
+	isc_rlevent_t *rle = NULL;
+
+	REQUIRE(rlep != NULL && *rlep != NULL);
+
+	rle = *rlep;
+	*rlep = NULL;
+
+	isc_ratelimiter_detach(&rle->rl);
+	isc_mem_putanddetach(&rle->mctx, rle, sizeof(*rle));
 }
 
 ISC_REFCOUNT_IMPL(isc_ratelimiter, ratelimiter_destroy);

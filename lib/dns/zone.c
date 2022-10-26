@@ -655,7 +655,7 @@ struct dns_notify {
 	dns_transport_t *transport;
 	isc_dscp_t dscp;
 	ISC_LINK(dns_notify_t) link;
-	isc_event_t *event;
+	isc_rlevent_t *rlevent;
 };
 
 #define DNS_NOTIFY_NOSOA   0x0001U
@@ -675,7 +675,7 @@ struct dns_checkds {
 	dns_transport_t *transport;
 	isc_dscp_t dscp;
 	ISC_LINK(dns_checkds_t) link;
-	isc_event_t *event;
+	isc_rlevent_t *rlevent;
 };
 
 /*%
@@ -934,7 +934,7 @@ stub_callback(isc_task_t *, isc_event_t *);
 static void
 queue_soa_query(dns_zone_t *zone);
 static void
-soa_query(isc_task_t *, isc_event_t *);
+soa_query(void *arg);
 static void
 ns_query(dns_zone_t *zone, dns_rdataset_t *soardataset, dns_stub_t *stub);
 static int
@@ -948,7 +948,7 @@ checkds_createmessage(dns_zone_t *zone, dns_message_t **messagep);
 static void
 checkds_done(isc_task_t *task, isc_event_t *event);
 static void
-checkds_send_toaddr(isc_task_t *task, isc_event_t *event);
+checkds_send_toaddr(void *arg);
 static void
 notify_cancel(dns_zone_t *zone);
 static void
@@ -961,7 +961,7 @@ notify_createmessage(dns_zone_t *zone, unsigned int flags,
 static void
 notify_done(isc_task_t *task, isc_event_t *event);
 static void
-notify_send_toaddr(isc_task_t *task, isc_event_t *event);
+notify_send_toaddr(void *arg);
 static isc_result_t
 zone_dump(dns_zone_t *, bool);
 static void
@@ -12520,22 +12520,21 @@ requeue:
 	 * not a startup notify, re-enqueue on the normal notify
 	 * ratelimiter.
 	 */
-	if (notify->event != NULL && (flags & DNS_NOTIFY_STARTUP) == 0 &&
+	if (notify->rlevent != NULL && (flags & DNS_NOTIFY_STARTUP) == 0 &&
 	    (notify->flags & DNS_NOTIFY_STARTUP) != 0)
 	{
 		zmgr = notify->zone->zmgr;
 		result = isc_ratelimiter_dequeue(zmgr->startupnotifyrl,
-						 notify->event);
+						 &notify->rlevent);
 		if (result != ISC_R_SUCCESS) {
 			return (true);
 		}
 
 		notify->flags &= ~DNS_NOTIFY_STARTUP;
-		result = isc_ratelimiter_enqueue(notify->zone->zmgr->notifyrl,
-						 notify->zone->task,
-						 &notify->event);
+		result = isc_ratelimiter_enqueue(
+			notify->zone->zmgr->notifyrl, notify->zone->loop,
+			notify_send_toaddr, notify, &notify->rlevent);
 		if (result != ISC_R_SUCCESS) {
-			isc_event_free(&notify->event);
 			return (false);
 		}
 	}
@@ -12720,31 +12719,16 @@ destroy:
 
 static isc_result_t
 notify_send_queue(dns_notify_t *notify, bool startup) {
-	isc_event_t *e;
-	isc_result_t result;
-
-	INSIST(notify->event == NULL);
-	e = isc_event_allocate(notify->mctx, NULL, DNS_EVENT_NOTIFYSENDTOADDR,
-			       notify_send_toaddr, notify, sizeof(isc_event_t));
-	if (startup) {
-		notify->event = e;
-	}
-	e->ev_arg = notify;
-	e->ev_sender = NULL;
-	result = isc_ratelimiter_enqueue(
+	return (isc_ratelimiter_enqueue(
 		startup ? notify->zone->zmgr->startupnotifyrl
 			: notify->zone->zmgr->notifyrl,
-		notify->zone->task, &e);
-	if (result != ISC_R_SUCCESS) {
-		isc_event_free(&e);
-		notify->event = NULL;
-	}
-	return (result);
+		notify->zone->loop, notify_send_toaddr, notify,
+		&notify->rlevent));
 }
 
 static void
-notify_send_toaddr(isc_task_t *task, isc_event_t *event) {
-	dns_notify_t *notify;
+notify_send_toaddr(void *arg) {
+	dns_notify_t *notify = (dns_notify_t *)arg;
 	isc_result_t result;
 	dns_message_t *message = NULL;
 	isc_netaddr_t dstip;
@@ -12756,21 +12740,12 @@ notify_send_toaddr(isc_task_t *task, isc_event_t *event) {
 	bool have_notifydscp = false;
 	isc_dscp_t dscp = -1;
 
-	notify = event->ev_arg;
 	REQUIRE(DNS_NOTIFY_VALID(notify));
-
-	UNUSED(task);
 
 	LOCK_ZONE(notify->zone);
 
-	notify->event = NULL;
-
-	if (DNS_ZONE_FLAG(notify->zone, DNS_ZONEFLG_LOADED) == 0) {
-		result = ISC_R_CANCELED;
-		goto cleanup;
-	}
-
-	if ((event->ev_attributes & ISC_EVENTATTR_CANCELED) != 0 ||
+	if (DNS_ZONE_FLAG(notify->zone, DNS_ZONEFLG_LOADED) == 0 ||
+	    notify->rlevent->canceled ||
 	    DNS_ZONE_FLAG(notify->zone, DNS_ZONEFLG_EXITING) ||
 	    notify->zone->view->requestmgr == NULL || notify->zone->db == NULL)
 	{
@@ -12894,7 +12869,7 @@ cleanup_message:
 	dns_message_detach(&message);
 cleanup:
 	UNLOCK_ZONE(notify->zone);
-	isc_event_free(&event);
+	isc_rlevent_free(&notify->rlevent);
 	if (result != ISC_R_SUCCESS) {
 		notify_destroy(notify, false);
 	}
@@ -14597,11 +14572,15 @@ detach:
 	return;
 }
 
+struct soaquery {
+	dns_zone_t *zone;
+	isc_rlevent_t *rlevent;
+};
+
 static void
 queue_soa_query(dns_zone_t *zone) {
-	isc_event_t *e;
-	dns_zone_t *dummy = NULL;
 	isc_result_t result;
+	struct soaquery *sq = NULL;
 
 	ENTER;
 	/*
@@ -14614,31 +14593,28 @@ queue_soa_query(dns_zone_t *zone) {
 		return;
 	}
 
-	e = isc_event_allocate(zone->mctx, NULL, DNS_EVENT_ZONE, soa_query,
-			       zone, sizeof(isc_event_t));
+	sq = isc_mem_get(zone->mctx, sizeof(*sq));
+	*sq = (struct soaquery){ .zone = NULL };
 
 	/*
-	 * Attach so that we won't clean up
-	 * until the event is delivered.
+	 * Attach so that we won't clean up until the event is delivered.
 	 */
-	zone_iattach(zone, &dummy);
-
-	e->ev_arg = zone;
-	e->ev_sender = NULL;
-	result = isc_ratelimiter_enqueue(zone->zmgr->refreshrl, zone->task, &e);
+	zone_iattach(zone, &sq->zone);
+	result = isc_ratelimiter_enqueue(zone->zmgr->refreshrl, zone->loop,
+					 soa_query, sq, &sq->rlevent);
 	if (result != ISC_R_SUCCESS) {
-		zone_idetach(&dummy);
-		isc_event_free(&e);
+		zone_idetach(&sq->zone);
+		isc_mem_put(zone->mctx, sq, sizeof(*sq));
 		cancel_refresh(zone);
 	}
 }
 
 static void
-soa_query(isc_task_t *task, isc_event_t *event) {
+soa_query(void *arg) {
+	struct soaquery *sq = (struct soaquery *)arg;
+	dns_zone_t *zone = sq->zone;
 	isc_result_t result = ISC_R_FAILURE;
 	dns_message_t *message = NULL;
-	dns_zone_t *zone = event->ev_arg;
-	dns_zone_t *dummy = NULL;
 	isc_netaddr_t primaryip;
 	dns_tsigkey_t *key = NULL;
 	dns_transport_t *transport = NULL;
@@ -14652,13 +14628,10 @@ soa_query(isc_task_t *task, isc_event_t *event) {
 
 	REQUIRE(DNS_ZONE_VALID(zone));
 
-	UNUSED(task);
-
 	ENTER;
 
 	LOCK_ZONE(zone);
-	if (((event->ev_attributes & ISC_EVENTATTR_CANCELED) != 0) ||
-	    DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING) ||
+	if (sq->rlevent->canceled || DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING) ||
 	    zone->view->requestmgr == NULL)
 	{
 		if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_EXITING)) {
@@ -14822,7 +14795,7 @@ again:
 		}
 	}
 
-	zone_iattach(zone, &dummy);
+	zone_iattach(zone, &(dns_zone_t *){ NULL });
 	timeout = 15;
 	if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_DIALREFRESH)) {
 		timeout = 30;
@@ -14832,7 +14805,7 @@ again:
 		&zone->primaryaddr, NULL, NULL, dscp, options, key, timeout * 3,
 		timeout, 2, zone->task, refresh_callback, zone, &zone->request);
 	if (result != ISC_R_SUCCESS) {
-		zone_idetach(&dummy);
+		zone_idetach(&(dns_zone_t *){ zone });
 		zone_debuglog(zone, __func__, 1,
 			      "dns_request_create() failed: %s",
 			      isc_result_totext(result));
@@ -14861,11 +14834,12 @@ cleanup:
 	if (cancel) {
 		cancel_refresh(zone);
 	}
-	isc_event_free(&event);
 	UNLOCK_ZONE(zone);
 	if (do_queue_xfrin) {
 		queue_xfrin(zone);
 	}
+	isc_rlevent_free(&sq->rlevent);
+	isc_mem_put(zone->mctx, sq, sizeof(*sq));
 	dns_zone_idetach(&zone);
 	return;
 
@@ -20732,8 +20706,6 @@ dnssec_report(const char *format, ...) {
 
 static void
 checkds_destroy(dns_checkds_t *checkds, bool locked) {
-	isc_mem_t *mctx;
-
 	REQUIRE(DNS_CHECKDS_VALID(checkds));
 
 	dns_zone_log(checkds->zone, ISC_LOG_DEBUG(3),
@@ -20766,9 +20738,8 @@ checkds_destroy(dns_checkds_t *checkds, bool locked) {
 	if (checkds->transport != NULL) {
 		dns_transport_detach(&checkds->transport);
 	}
-	mctx = checkds->mctx;
-	isc_mem_put(checkds->mctx, checkds, sizeof(*checkds));
-	isc_mem_detach(&mctx);
+	INSIST(checkds->rlevent == NULL);
+	isc_mem_putanddetach(&checkds->mctx, checkds, sizeof(*checkds));
 }
 
 static isc_result_t
@@ -21167,8 +21138,8 @@ checkds_createmessage(dns_zone_t *zone, dns_message_t **messagep) {
 }
 
 static void
-checkds_send_toaddr(isc_task_t *task, isc_event_t *event) {
-	dns_checkds_t *checkds;
+checkds_send_toaddr(void *arg) {
+	dns_checkds_t *checkds = (dns_checkds_t *)arg;
 	isc_result_t result;
 	dns_message_t *message = NULL;
 	isc_netaddr_t dstip;
@@ -21178,23 +21149,16 @@ checkds_send_toaddr(isc_task_t *task, isc_event_t *event) {
 	unsigned int options, timeout;
 	bool have_checkdssource = false;
 	bool have_checkdsdscp = false;
+	bool canceled = checkds->rlevent->canceled;
 	isc_dscp_t dscp = -1;
 
-	checkds = event->ev_arg;
 	REQUIRE(DNS_CHECKDS_VALID(checkds));
 
-	UNUSED(task);
+	isc_rlevent_free(&checkds->rlevent);
 
 	LOCK_ZONE(checkds->zone);
 
-	checkds->event = NULL;
-
-	if (DNS_ZONE_FLAG(checkds->zone, DNS_ZONEFLG_LOADED) == 0) {
-		result = ISC_R_CANCELED;
-		goto cleanup;
-	}
-
-	if ((event->ev_attributes & ISC_EVENTATTR_CANCELED) != 0 ||
+	if (DNS_ZONE_FLAG(checkds->zone, DNS_ZONEFLG_LOADED) == 0 || canceled ||
 	    DNS_ZONE_FLAG(checkds->zone, DNS_ZONEFLG_EXITING) ||
 	    checkds->zone->view->requestmgr == NULL ||
 	    checkds->zone->db == NULL)
@@ -21315,30 +21279,9 @@ cleanup_message:
 	dns_message_detach(&message);
 cleanup:
 	UNLOCK_ZONE(checkds->zone);
-	isc_event_free(&event);
 	if (result != ISC_R_SUCCESS) {
 		checkds_destroy(checkds, false);
 	}
-}
-
-static isc_result_t
-checkds_send_queue(dns_checkds_t *checkds) {
-	isc_event_t *e;
-	isc_result_t result;
-
-	INSIST(checkds->event == NULL);
-	e = isc_event_allocate(checkds->mctx, NULL, DNS_EVENT_CHECKDSSENDTOADDR,
-			       checkds_send_toaddr, checkds,
-			       sizeof(isc_event_t));
-	e->ev_arg = checkds;
-	e->ev_sender = NULL;
-	result = isc_ratelimiter_enqueue(checkds->zone->zmgr->checkdsrl,
-					 checkds->zone->task, &e);
-	if (result != ISC_R_SUCCESS) {
-		isc_event_free(&e);
-		checkds->event = NULL;
-	}
-	return (result);
 }
 
 static void
@@ -21433,7 +21376,9 @@ checkds_send(dns_zone_t *zone) {
 		}
 
 		ISC_LIST_APPEND(zone->checkds_requests, checkds, link);
-		result = checkds_send_queue(checkds);
+		result = isc_ratelimiter_enqueue(
+			checkds->zone->zmgr->checkdsrl, checkds->zone->loop,
+			checkds_send_toaddr, checkds, &checkds->rlevent);
 		if (result != ISC_R_SUCCESS) {
 			dns_zone_log(zone, ISC_LOG_DEBUG(3),
 				     "checkds: send DS query to "
