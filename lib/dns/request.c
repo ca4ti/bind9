@@ -16,11 +16,12 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include <isc/async.h>
+#include <isc/loop.h>
 #include <isc/magic.h>
 #include <isc/mem.h>
 #include <isc/netmgr.h>
 #include <isc/result.h>
-#include <isc/task.h>
 #include <isc/thread.h>
 #include <isc/tls.h>
 #include <isc/util.h>
@@ -28,7 +29,6 @@
 #include <dns/acl.h>
 #include <dns/compress.h>
 #include <dns/dispatch.h>
-#include <dns/events.h>
 #include <dns/log.h>
 #include <dns/message.h>
 #include <dns/rdata.h>
@@ -55,7 +55,6 @@ struct dns_requestmgr {
 	isc_mem_t *mctx;
 
 	/* locked */
-	isc_taskmgr_t *taskmgr;
 	dns_dispatchmgr_t *dispatchmgr;
 	dns_dispatch_t *dispatchv4;
 	dns_dispatch_t *dispatchv6;
@@ -72,10 +71,14 @@ struct dns_request {
 	unsigned int hash;
 	isc_mem_t *mctx;
 	int32_t flags;
+	isc_loop_t *loop;
+	isc_result_t result;
+	isc_job_cb cb;
+	void *arg;
+	bool complete;
 	ISC_LINK(dns_request_t) link;
 	isc_buffer_t *query;
 	isc_buffer_t *answer;
-	dns_requestevent_t *event;
 	dns_dispatch_t *dispatch;
 	dns_dispentry_t *dispentry;
 	dns_requestmgr_t *requestmgr;
@@ -116,10 +119,6 @@ req_sendevent(dns_request_t *request, isc_result_t result);
 static void
 req_connected(isc_result_t eresult, isc_region_t *region, void *arg);
 static void
-req_attach(dns_request_t *source, dns_request_t **targetp);
-static void
-req_detach(dns_request_t **requestp);
-static void
 req_destroy(dns_request_t *request);
 static void
 req_log(int level, const char *fmt, ...) ISC_FORMAT_PRINTF(2, 3);
@@ -131,8 +130,7 @@ request_cancel(dns_request_t *request);
  ***/
 
 isc_result_t
-dns_requestmgr_create(isc_mem_t *mctx, isc_taskmgr_t *taskmgr,
-		      dns_dispatchmgr_t *dispatchmgr,
+dns_requestmgr_create(isc_mem_t *mctx, dns_dispatchmgr_t *dispatchmgr,
 		      dns_dispatch_t *dispatchv4, dns_dispatch_t *dispatchv6,
 		      dns_requestmgr_t **requestmgrp) {
 	dns_requestmgr_t *requestmgr;
@@ -141,13 +139,11 @@ dns_requestmgr_create(isc_mem_t *mctx, isc_taskmgr_t *taskmgr,
 	req_log(ISC_LOG_DEBUG(3), "dns_requestmgr_create");
 
 	REQUIRE(requestmgrp != NULL && *requestmgrp == NULL);
-	REQUIRE(taskmgr != NULL);
 	REQUIRE(dispatchmgr != NULL);
 
 	requestmgr = isc_mem_get(mctx, sizeof(*requestmgr));
 	*requestmgr = (dns_requestmgr_t){ 0 };
 
-	isc_taskmgr_attach(taskmgr, &requestmgr->taskmgr);
 	dns_dispatchmgr_attach(dispatchmgr, &requestmgr->dispatchmgr);
 	isc_mutex_init(&requestmgr->lock);
 
@@ -260,9 +256,6 @@ mgr_destroy(dns_requestmgr_t *requestmgr) {
 	if (requestmgr->dispatchmgr != NULL) {
 		dns_dispatchmgr_detach(&requestmgr->dispatchmgr);
 	}
-	if (requestmgr->taskmgr != NULL) {
-		isc_taskmgr_detach(&requestmgr->taskmgr);
-	}
 	requestmgr->magic = 0;
 	isc_mem_putanddetach(&requestmgr->mctx, requestmgr,
 			     sizeof(*requestmgr));
@@ -291,7 +284,7 @@ req_send(dns_request_t *request) {
 	request->flags |= DNS_REQUEST_F_SENDING;
 
 	/* detached in req_senddone() */
-	req_attach(request, &(dns_request_t *){ NULL });
+	dns_request_ref(request);
 	dns_dispatch_send(request->dispentry, &r, request->dscp);
 }
 
@@ -350,8 +343,7 @@ tcp_dispatch(bool newtcp, dns_requestmgr_t *requestmgr,
 
 			isc_sockaddr_format(destaddr, peer, sizeof(peer));
 			req_log(ISC_LOG_DEBUG(1),
-				"attached to %s TCP "
-				"connection to %s",
+				"attached to %s TCP connection to %s",
 				*connected ? "existing" : "pending", peer);
 			return (result);
 		}
@@ -414,7 +406,7 @@ dns_request_createraw(dns_requestmgr_t *requestmgr, isc_buffer_t *msgbuf,
 		      isc_tlsctx_cache_t *tlsctx_cache, isc_dscp_t dscp,
 		      unsigned int options, unsigned int timeout,
 		      unsigned int udptimeout, unsigned int udpretries,
-		      isc_task_t *task, isc_taskaction_t action, void *arg,
+		      isc_loop_t *loop, isc_job_cb cb, void *arg,
 		      dns_request_t **requestp) {
 	dns_request_t *request = NULL;
 	isc_result_t result;
@@ -429,8 +421,8 @@ dns_request_createraw(dns_requestmgr_t *requestmgr, isc_buffer_t *msgbuf,
 	REQUIRE(VALID_REQUESTMGR(requestmgr));
 	REQUIRE(msgbuf != NULL);
 	REQUIRE(destaddr != NULL);
-	REQUIRE(task != NULL);
-	REQUIRE(action != NULL);
+	REQUIRE(loop != NULL);
+	REQUIRE(cb != NULL);
 	REQUIRE(requestp != NULL && *requestp == NULL);
 	REQUIRE(timeout > 0);
 	if (srcaddr != NULL) {
@@ -455,16 +447,12 @@ dns_request_createraw(dns_requestmgr_t *requestmgr, isc_buffer_t *msgbuf,
 		return (result);
 	}
 
+	request->loop = loop;
+	request->cb = cb;
+	request->arg = arg;
+	request->result = ISC_R_FAILURE;
 	request->udpcount = udpretries;
 	request->dscp = dscp;
-
-	request->event = (dns_requestevent_t *)isc_event_allocate(
-		mctx, task, DNS_EVENT_REQUESTDONE, action, arg,
-		sizeof(dns_requestevent_t));
-	isc_task_attach(task, &(isc_task_t *){ NULL });
-	request->event->ev_sender = task;
-	request->event->request = request;
-	request->event->result = ISC_R_FAILURE;
 
 	isc_buffer_usedregion(msgbuf, &r);
 	if (r.length < DNS_MESSAGE_HEADERLEN || r.length > 65535) {
@@ -492,7 +480,7 @@ dns_request_createraw(dns_requestmgr_t *requestmgr, isc_buffer_t *msgbuf,
 	}
 
 	/* detached in req_connected() */
-	req_attach(request, &(dns_request_t *){ NULL });
+	dns_request_ref(request);
 
 again:
 
@@ -537,8 +525,8 @@ again:
 	if (tcp && connected) {
 		req_send(request);
 
-		/* no need to call req_connected(), detach here */
-		req_detach(&(dns_request_t *){ request });
+		/* no need to call req_connected(), unref here */
+		dns_request_unref(request);
 	} else {
 		request->flags |= DNS_REQUEST_F_CONNECTING;
 		if (tcp) {
@@ -561,13 +549,11 @@ unlink:
 	UNLOCK(&requestmgr->lock);
 
 detach:
-	/* connect failed, detach here */
-	req_detach(&(dns_request_t *){ request });
+	/* connect failed, unref here */
+	dns_request_unref(request);
 
 cleanup:
-	isc_task_detach(&(isc_task_t *){ task });
-	/* final detach to shut down request */
-	req_detach(&request);
+	dns_request_detach(&request);
 	req_log(ISC_LOG_DEBUG(3), "dns_request_createraw: failed %s",
 		isc_result_totext(result));
 	return (result);
@@ -580,9 +566,8 @@ dns_request_create(dns_requestmgr_t *requestmgr, dns_message_t *message,
 		   isc_tlsctx_cache_t *tlsctx_cache, isc_dscp_t dscp,
 		   unsigned int options, dns_tsigkey_t *key,
 		   unsigned int timeout, unsigned int udptimeout,
-		   unsigned int udpretries, isc_task_t *task,
-		   isc_taskaction_t action, void *arg,
-		   dns_request_t **requestp) {
+		   unsigned int udpretries, isc_loop_t *loop, isc_job_cb cb,
+		   void *arg, dns_request_t **requestp) {
 	dns_request_t *request = NULL;
 	isc_result_t result;
 	isc_mem_t *mctx = NULL;
@@ -593,8 +578,8 @@ dns_request_create(dns_requestmgr_t *requestmgr, dns_message_t *message,
 	REQUIRE(VALID_REQUESTMGR(requestmgr));
 	REQUIRE(message != NULL);
 	REQUIRE(destaddr != NULL);
-	REQUIRE(task != NULL);
-	REQUIRE(action != NULL);
+	REQUIRE(loop != NULL);
+	REQUIRE(cb != NULL);
 	REQUIRE(requestp != NULL && *requestp == NULL);
 	REQUIRE(timeout > 0);
 
@@ -622,16 +607,15 @@ dns_request_create(dns_requestmgr_t *requestmgr, dns_message_t *message,
 		return (result);
 	}
 
+	request->loop = loop;
+	request->cb = cb;
+	request->arg = arg;
+	request->result = ISC_R_FAILURE;
 	request->udpcount = udpretries;
 	request->dscp = dscp;
 
-	request->event = (dns_requestevent_t *)isc_event_allocate(
-		mctx, task, DNS_EVENT_REQUESTDONE, action, arg,
-		sizeof(dns_requestevent_t));
-	isc_task_attach(task, &(isc_task_t *){ NULL });
-	request->event->ev_sender = task;
-	request->event->request = request;
-	request->event->result = ISC_R_FAILURE;
+	request->udpcount = udpretries;
+	request->dscp = dscp;
 
 	if (key != NULL) {
 		dns_tsigkey_attach(key, &request->tsigkey);
@@ -656,7 +640,7 @@ dns_request_create(dns_requestmgr_t *requestmgr, dns_message_t *message,
 	}
 
 	/* detached in req_connected() */
-	req_attach(request, &(dns_request_t *){ NULL });
+	dns_request_ref(request);
 
 again:
 	result = get_dispatch(tcp, false, requestmgr, srcaddr, destaddr, dscp,
@@ -705,8 +689,8 @@ again:
 	if (tcp && connected) {
 		req_send(request);
 
-		/* no need to call req_connected(), detach here */
-		req_detach(&(dns_request_t *){ request });
+		/* no need to call req_connected(), unref here */
+		dns_request_unref(request);
 	} else {
 		request->flags |= DNS_REQUEST_F_CONNECTING;
 		if (tcp) {
@@ -729,13 +713,11 @@ unlink:
 	UNLOCK(&requestmgr->lock);
 
 detach:
-	/* connect failed, detach here */
-	req_detach(&(dns_request_t *){ request });
+	/* connect failed, unref here */
+	dns_request_unref(request);
 
 cleanup:
-	isc_task_detach(&(isc_task_t *){ task });
-	/* final detach to shut down request */
-	req_detach(&request);
+	dns_request_detach(&request);
 	req_log(ISC_LOG_DEBUG(3), "dns_request_create: failed %s",
 		isc_result_totext(result));
 	return (result);
@@ -901,7 +883,7 @@ dns_request_usedtcp(dns_request_t *request) {
 
 void
 dns_request_destroy(dns_request_t **requestp) {
-	dns_request_t *request;
+	dns_request_t *request = NULL;
 
 	REQUIRE(requestp != NULL && VALID_REQUEST(*requestp));
 
@@ -923,8 +905,16 @@ dns_request_destroy(dns_request_t **requestp) {
 	INSIST(request->dispentry == NULL);
 	INSIST(request->dispatch == NULL);
 
+	/*
+	 * if we've called the completion handler, there's
+	 * another ref to detach
+	 */
+	if (request->complete) {
+		dns_request_unref(request);
+	}
+
 	/* final detach to shut down request */
-	req_detach(&request);
+	dns_request_detach(&request);
 }
 
 static void
@@ -958,7 +948,7 @@ req_connected(isc_result_t eresult, isc_region_t *region, void *arg) {
 	UNLOCK(&request->requestmgr->locks[request->hash]);
 
 	/* attached in dns_request_create/_createraw() */
-	req_detach(&(dns_request_t *){ request });
+	dns_request_unref(request);
 }
 
 static void
@@ -989,7 +979,7 @@ req_senddone(isc_result_t eresult, isc_region_t *region, void *arg) {
 	UNLOCK(&request->requestmgr->locks[request->hash]);
 
 	/* attached in req_send() */
-	req_detach(&request);
+	dns_request_detach(&request);
 }
 
 static void
@@ -1055,53 +1045,26 @@ done:
 
 static void
 req_sendevent(dns_request_t *request, isc_result_t result) {
-	isc_task_t *task = NULL;
-
 	REQUIRE(VALID_REQUEST(request));
 
-	if (request->event == NULL) {
+	if (request->complete) {
 		return;
 	}
 
 	req_log(ISC_LOG_DEBUG(3), "req_sendevent: request %p", request);
 
-	/*
-	 * Lock held by caller.
-	 */
-	task = request->event->ev_sender;
-	request->event->ev_sender = request;
-	request->event->result = result;
+	dns_request_ref(request);
 
-	isc_task_sendanddetach(&task, (isc_event_t **)&request->event);
-}
+	request->result = result;
+	request->complete = true;
 
-static void
-req_attach(dns_request_t *source, dns_request_t **targetp) {
-	REQUIRE(VALID_REQUEST(source));
-	REQUIRE(targetp != NULL && *targetp == NULL);
-
-	isc_refcount_increment(&source->references);
-
-	*targetp = source;
-}
-
-static void
-req_detach(dns_request_t **requestp) {
-	dns_request_t *request = NULL;
-
-	REQUIRE(requestp != NULL && VALID_REQUEST(*requestp));
-
-	request = *requestp;
-	*requestp = NULL;
-
-	if (isc_refcount_decrement(&request->references) == 1) {
-		req_destroy(request);
-	}
+	isc_async_run(request->loop, request->cb, request);
 }
 
 static void
 req_destroy(dns_request_t *request) {
 	REQUIRE(VALID_REQUEST(request));
+	REQUIRE(!ISC_LINK_LINKED(request, link));
 
 	req_log(ISC_LOG_DEBUG(3), "req_destroy: request %p", request);
 
@@ -1113,9 +1076,6 @@ req_destroy(dns_request_t *request) {
 	}
 	if (request->answer != NULL) {
 		isc_buffer_free(&request->answer);
-	}
-	if (request->event != NULL) {
-		isc_event_free((isc_event_t **)&request->event);
 	}
 	if (request->dispentry != NULL) {
 		dns_dispatch_done(&request->dispentry);
@@ -1134,6 +1094,22 @@ req_destroy(dns_request_t *request) {
 	}
 	isc_mem_putanddetach(&request->mctx, request, sizeof(*request));
 }
+
+void *
+dns_request_getarg(dns_request_t *request) {
+	REQUIRE(VALID_REQUEST(request));
+
+	return (request->arg);
+}
+
+isc_result_t
+dns_request_getresult(dns_request_t *request) {
+	REQUIRE(VALID_REQUEST(request));
+
+	return (request->result);
+}
+
+ISC_REFCOUNT_IMPL(dns_request, req_destroy);
 
 static void
 req_log(int level, const char *fmt, ...) {

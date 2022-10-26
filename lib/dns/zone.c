@@ -928,9 +928,9 @@ zone_viewname_tostr(dns_zone_t *zone, char *buf, size_t length);
 static isc_result_t
 zone_send_secureserial(dns_zone_t *zone, uint32_t serial);
 static void
-refresh_callback(isc_task_t *, isc_event_t *);
+refresh_callback(void *arg);
 static void
-stub_callback(isc_task_t *, isc_event_t *);
+stub_callback(void *arg);
 static void
 queue_soa_query(dns_zone_t *zone);
 static void
@@ -946,7 +946,7 @@ checkds_send(dns_zone_t *zone);
 static void
 checkds_createmessage(dns_zone_t *zone, dns_message_t **messagep);
 static void
-checkds_done(isc_task_t *task, isc_event_t *event);
+checkds_done(void *arg);
 static void
 checkds_send_toaddr(void *arg);
 static void
@@ -959,7 +959,7 @@ static isc_result_t
 notify_createmessage(dns_zone_t *zone, unsigned int flags,
 		     dns_message_t **messagep);
 static void
-notify_done(isc_task_t *task, isc_event_t *event);
+notify_done(void *arg);
 static void
 notify_send_toaddr(void *arg);
 static isc_result_t
@@ -991,7 +991,7 @@ zone_get_from_db(dns_zone_t *zone, dns_db_t *db, unsigned int *nscount,
 static void
 zone_freedbargs(dns_zone_t *zone);
 static void
-forward_callback(isc_task_t *task, isc_event_t *event);
+forward_callback(void *arg);
 static void
 zone_saveunique(dns_zone_t *zone, const char *path, const char *templat);
 static void
@@ -12832,7 +12832,7 @@ notify_send_toaddr(void *arg) {
 	result = dns_request_create(
 		notify->zone->view->requestmgr, message, &src, &notify->dst,
 		NULL, NULL, dscp, options, key, timeout * 3, timeout, 2,
-		notify->zone->task, notify_done, notify, &notify->request);
+		notify->zone->loop, notify_done, notify, &notify->request);
 	if (result == ISC_R_SUCCESS) {
 		if (isc_sockaddr_pf(&notify->dst) == AF_INET) {
 			inc_stats(notify->zone,
@@ -13301,9 +13301,11 @@ stub_finish_zone_update(dns_stub_t *stub, isc_time_t now) {
  * was missing in a previous answer for a NS query.
  */
 static void
-stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
-	dns_requestevent_t *revent = (dns_requestevent_t *)event;
-	dns_stub_t *stub = NULL;
+stub_glue_response(void *arg) {
+	dns_request_t *request = (dns_request_t *)arg;
+	struct stub_glue_request *sgr = dns_request_getarg(request);
+	struct stub_cb_args *cb_args = sgr->args;
+	dns_stub_t *stub = cb_args->stub;
 	dns_message_t *msg = NULL;
 	dns_zone_t *zone = NULL;
 	char primary[ISC_SOCKADDR_FORMATSIZE];
@@ -13311,16 +13313,9 @@ stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
 	uint32_t addr_count, cnamecnt;
 	isc_result_t result;
 	isc_time_t now;
-	struct stub_glue_request *request;
-	struct stub_cb_args *cb_args;
 	dns_rdataset_t *addr_rdataset = NULL;
 	dns_dbnode_t *node = NULL;
 
-	UNUSED(task);
-
-	request = revent->ev_arg;
-	cb_args = request->args;
-	stub = cb_args->stub;
 	INSIST(DNS_STUB_VALID(stub));
 
 	zone = stub->zone;
@@ -13339,19 +13334,19 @@ stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
 	isc_sockaddr_format(&zone->primaryaddr, primary, sizeof(primary));
 	isc_sockaddr_format(&zone->sourceaddr, source, sizeof(source));
 
-	if (revent->result != ISC_R_SUCCESS) {
+	if (dns_request_getresult(request) != ISC_R_SUCCESS) {
 		dns_zonemgr_unreachableadd(zone->zmgr, &zone->primaryaddr,
 					   &zone->sourceaddr, &now);
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "could not refresh stub from primary %s"
 			     " (source %s): %s",
 			     primary, source,
-			     isc_result_totext(revent->result));
+			     isc_result_totext(dns_request_getresult(request)));
 		goto cleanup;
 	}
 
 	dns_message_create(zone->mctx, DNS_MESSAGE_INTENTPARSE, &msg);
-	result = dns_request_getresponse(revent->request, msg, 0);
+	result = dns_request_getresponse(request, msg, 0);
 	if (result != ISC_R_SUCCESS) {
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "refreshing stub: unable to parse response (%s)",
@@ -13397,7 +13392,7 @@ stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
 	 * We need complete messages.
 	 */
 	if ((msg->flags & DNS_MESSAGEFLAG_TC) != 0) {
-		if (dns_request_usedtcp(revent->request)) {
+		if (dns_request_usedtcp(request)) {
 			dns_zone_log(zone, ISC_LOG_INFO,
 				     "refreshing stub: truncated TCP "
 				     "response from primary %s (source %s)",
@@ -13423,8 +13418,8 @@ stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
 	 */
 	cnamecnt = message_count(msg, DNS_SECTION_ANSWER, dns_rdatatype_cname);
 	addr_count = message_count(msg, DNS_SECTION_ANSWER,
-				   request->ipv4 ? dns_rdatatype_a
-						 : dns_rdatatype_aaaa);
+				   sgr->ipv4 ? dns_rdatatype_a
+					     : dns_rdatatype_aaaa);
 
 	if (cnamecnt != 0) {
 		dns_zone_log(zone, ISC_LOG_INFO,
@@ -13438,32 +13433,31 @@ stub_glue_response_cb(isc_task_t *task, isc_event_t *event) {
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "refreshing stub: no %s records in response "
 			     "from primary %s (source %s)",
-			     request->ipv4 ? "A" : "AAAA", primary, source);
+			     sgr->ipv4 ? "A" : "AAAA", primary, source);
 		goto cleanup;
 	}
 	/*
 	 * Extract A or AAAA RRset from message.
 	 */
-	result = dns_message_findname(msg, DNS_SECTION_ANSWER, &request->name,
-				      request->ipv4 ? dns_rdatatype_a
-						    : dns_rdatatype_aaaa,
+	result = dns_message_findname(msg, DNS_SECTION_ANSWER, &sgr->name,
+				      sgr->ipv4 ? dns_rdatatype_a
+						: dns_rdatatype_aaaa,
 				      dns_rdatatype_none, NULL, &addr_rdataset);
 	if (result != ISC_R_SUCCESS) {
 		if (result != DNS_R_NXDOMAIN && result != DNS_R_NXRRSET) {
 			char namebuf[DNS_NAME_FORMATSIZE];
-			dns_name_format(&request->name, namebuf,
-					sizeof(namebuf));
+			dns_name_format(&sgr->name, namebuf, sizeof(namebuf));
 			dns_zone_log(
 				zone, ISC_LOG_INFO,
 				"refreshing stub: dns_message_findname(%s/%s) "
 				"failed (%s)",
-				namebuf, request->ipv4 ? "A" : "AAAA",
+				namebuf, sgr->ipv4 ? "A" : "AAAA",
 				isc_result_totext(result));
 		}
 		goto cleanup;
 	}
 
-	result = dns_db_findnode(stub->db, &request->name, true, &node);
+	result = dns_db_findnode(stub->db, &sgr->name, true, &node);
 	if (result != ISC_R_SUCCESS) {
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "refreshing stub: "
@@ -13486,10 +13480,8 @@ cleanup:
 	if (msg != NULL) {
 		dns_message_detach(&msg);
 	}
-	isc_event_free(&event);
-	dns_name_free(&request->name, zone->mctx);
-	dns_request_destroy(&request->request);
-	isc_mem_put(zone->mctx, request, sizeof(*request));
+	dns_name_free(&sgr->name, zone->mctx);
+	dns_request_destroy(&request);
 
 	/* If last request, release all related resources */
 	if (atomic_fetch_sub_release(&stub->pending_requests, 1) == 1) {
@@ -13544,8 +13536,8 @@ stub_request_nameserver_address(struct stub_cb_args *args, bool ipv4,
 	result = dns_request_create(
 		zone->view->requestmgr, message, &zone->sourceaddr,
 		&zone->primaryaddr, NULL, NULL, args->dscp, DNS_REQUESTOPT_TCP,
-		args->tsig_key, args->timeout * 3, args->timeout, 2, zone->task,
-		stub_glue_response_cb, request, &request->request);
+		args->tsig_key, args->timeout * 3, args->timeout, 2, zone->loop,
+		stub_glue_response, request, &request->request);
 
 	if (result != ISC_R_SUCCESS) {
 		uint_fast32_t pr;
@@ -13723,9 +13715,10 @@ done:
 }
 
 static void
-stub_callback(isc_task_t *task, isc_event_t *event) {
-	dns_requestevent_t *revent = (dns_requestevent_t *)event;
-	dns_stub_t *stub = NULL;
+stub_callback(void *arg) {
+	dns_request_t *request = (dns_request_t *)arg;
+	struct stub_cb_args *cb_args = dns_request_getarg(request);
+	dns_stub_t *stub = cb_args->stub;
 	dns_message_t *msg = NULL;
 	dns_zone_t *zone = NULL;
 	char primary[ISC_SOCKADDR_FORMATSIZE];
@@ -13735,13 +13728,8 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 	isc_time_t now;
 	bool exiting = false;
 	unsigned int j;
-	struct stub_cb_args *cb_args;
 
-	cb_args = revent->ev_arg;
-	stub = cb_args->stub;
 	INSIST(DNS_STUB_VALID(stub));
-
-	UNUSED(task);
 
 	zone = stub->zone;
 
@@ -13758,7 +13746,8 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 	isc_sockaddr_format(&zone->primaryaddr, primary, sizeof(primary));
 	isc_sockaddr_format(&zone->sourceaddr, source, sizeof(source));
 
-	switch (revent->result) {
+	result = dns_request_getresult(request);
+	switch (result) {
 	case ISC_R_SUCCESS:
 		break;
 	case ISC_R_SHUTTINGDOWN:
@@ -13779,14 +13768,13 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "could not refresh stub from primary "
 			     "%s (source %s): %s",
-			     primary, source,
-			     isc_result_totext(revent->result));
+			     primary, source, isc_result_totext(result));
 		goto next_primary;
 	}
 
 	dns_message_create(zone->mctx, DNS_MESSAGE_INTENTPARSE, &msg);
 
-	result = dns_request_getresponse(revent->request, msg, 0);
+	result = dns_request_getresponse(request, msg, 0);
 	if (result != ISC_R_SUCCESS) {
 		goto next_primary;
 	}
@@ -13842,7 +13830,7 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 	 * We need complete messages.
 	 */
 	if ((msg->flags & DNS_MESSAGEFLAG_TC) != 0) {
-		if (dns_request_usedtcp(revent->request)) {
+		if (dns_request_usedtcp(request)) {
 			dns_zone_log(zone, ISC_LOG_INFO,
 				     "refreshing stub: truncated TCP "
 				     "response from primary %s (source %s)",
@@ -13903,7 +13891,6 @@ stub_callback(isc_task_t *task, isc_event_t *event) {
 	}
 
 	dns_message_detach(&msg);
-	isc_event_free(&event);
 	dns_request_destroy(&zone->request);
 
 	/*
@@ -13934,7 +13921,6 @@ next_primary:
 	if (msg != NULL) {
 		dns_message_detach(&msg);
 	}
-	isc_event_free(&event);
 	dns_request_destroy(&zone->request);
 	/*
 	 * Skip to next failed / untried primary.
@@ -13990,11 +13976,10 @@ same_primary:
 	if (msg != NULL) {
 		dns_message_detach(&msg);
 	}
-	isc_event_free(&event);
 	dns_request_destroy(&zone->request);
 	ns_query(zone, NULL, stub);
 	UNLOCK_ZONE(zone);
-	goto done;
+	return;
 
 free_stub:
 	UNLOCK_ZONE(zone);
@@ -14003,10 +13988,6 @@ free_stub:
 	INSIST(stub->db == NULL);
 	INSIST(stub->version == NULL);
 	isc_mem_put(stub->mctx, stub, sizeof(*stub));
-
-done:
-	INSIST(event == NULL);
-	return;
 }
 
 /*
@@ -14103,9 +14084,9 @@ setmodtime(dns_zone_t *zone, isc_time_t *expiretime) {
  * An SOA query has finished (successfully or not).
  */
 static void
-refresh_callback(isc_task_t *task, isc_event_t *event) {
-	dns_requestevent_t *revent = (dns_requestevent_t *)event;
-	dns_zone_t *zone;
+refresh_callback(void *arg) {
+	dns_request_t *request = (dns_request_t *)arg;
+	dns_zone_t *zone = dns_request_getarg(request);
 	dns_message_t *msg = NULL;
 	uint32_t soacnt, cnamecnt, soacount, nscount;
 	isc_time_t now;
@@ -14119,10 +14100,7 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 	unsigned int j;
 	bool do_queue_xfrin = false;
 
-	zone = revent->ev_arg;
 	INSIST(DNS_ZONE_VALID(zone));
-
-	UNUSED(task);
 
 	ENTER;
 
@@ -14140,7 +14118,7 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 	isc_sockaddr_format(&zone->primaryaddr, primary, sizeof(primary));
 	isc_sockaddr_format(&zone->sourceaddr, source, sizeof(source));
 
-	switch (revent->result) {
+	switch (dns_request_getresult(request)) {
 	case ISC_R_SUCCESS:
 		break;
 	case ISC_R_SHUTTINGDOWN:
@@ -14153,7 +14131,7 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 				     "primary %s (source %s)",
 				     primary, source);
 			goto same_primary;
-		} else if (!dns_request_usedtcp(revent->request)) {
+		} else if (!dns_request_usedtcp(request)) {
 			dns_zone_log(zone, ISC_LOG_INFO,
 				     "refresh: retry limit for "
 				     "primary %s exceeded (source %s)",
@@ -14187,12 +14165,12 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 			     "refresh: failure trying primary "
 			     "%s (source %s): %s",
 			     primary, source,
-			     isc_result_totext(revent->result));
+			     isc_result_totext(dns_request_getresult(request)));
 		goto next_primary;
 	}
 
 	dns_message_create(zone->mctx, DNS_MESSAGE_INTENTPARSE, &msg);
-	result = dns_request_getresponse(revent->request, msg, 0);
+	result = dns_request_getresponse(request, msg, 0);
 	if (result != ISC_R_SUCCESS) {
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "refresh: failure trying primary "
@@ -14285,7 +14263,7 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 			goto tcp_transfer;
 		} else {
 			INSIST(zone->type == dns_zone_stub);
-			if (dns_request_usedtcp(revent->request)) {
+			if (dns_request_usedtcp(request)) {
 				dns_zone_log(zone, ISC_LOG_INFO,
 					     "refresh: truncated TCP response "
 					     "from primary %s (source %s)",
@@ -14417,7 +14395,6 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 			goto next_primary;
 		}
 	tcp_transfer:
-		isc_event_free(&event);
 		dns_request_destroy(&zone->request);
 		if (zone->type == dns_zone_secondary ||
 		    zone->type == dns_zone_mirror ||
@@ -14476,7 +14453,6 @@ next_primary:
 	if (msg != NULL) {
 		dns_message_detach(&msg);
 	}
-	isc_event_free(&event);
 	dns_request_destroy(&zone->request);
 	/*
 	 * Skip to next failed / untried primary.
@@ -14533,7 +14509,6 @@ requeue:
 	goto detach;
 
 exiting:
-	isc_event_free(&event);
 	dns_request_destroy(&zone->request);
 	goto detach;
 
@@ -14541,7 +14516,6 @@ same_primary:
 	if (msg != NULL) {
 		dns_message_detach(&msg);
 	}
-	isc_event_free(&event);
 	dns_request_destroy(&zone->request);
 	queue_soa_query(zone);
 
@@ -14785,7 +14759,7 @@ again:
 	result = dns_request_create(
 		zone->view->requestmgr, message, &zone->sourceaddr,
 		&zone->primaryaddr, NULL, NULL, dscp, options, key, timeout * 3,
-		timeout, 2, zone->task, refresh_callback, zone, &zone->request);
+		timeout, 2, zone->loop, refresh_callback, zone, &zone->request);
 	if (result != ISC_R_SUCCESS) {
 		zone_idetach(&(dns_zone_t *){ zone });
 		zone_debuglog(zone, __func__, 1,
@@ -15068,7 +15042,7 @@ ns_query(dns_zone_t *zone, dns_rdataset_t *soardataset, dns_stub_t *stub) {
 	result = dns_request_create(zone->view->requestmgr, message,
 				    &zone->sourceaddr, &zone->primaryaddr, NULL,
 				    NULL, dscp, DNS_REQUESTOPT_TCP, key,
-				    timeout * 3, timeout, 2, zone->task,
+				    timeout * 3, timeout, 2, zone->loop,
 				    stub_callback, cb_args, &zone->request);
 	if (result != ISC_R_SUCCESS) {
 		zone_debuglog(zone, __func__, 1,
@@ -16371,32 +16345,28 @@ dns_zone_getidleout(dns_zone_t *zone) {
 }
 
 static void
-notify_done(isc_task_t *task, isc_event_t *event) {
-	dns_requestevent_t *revent = (dns_requestevent_t *)event;
-	dns_notify_t *notify;
+notify_done(void *arg) {
+	dns_request_t *request = (dns_request_t *)arg;
+	dns_notify_t *notify = dns_request_getarg(request);
 	isc_result_t result;
 	dns_message_t *message = NULL;
 	isc_buffer_t buf;
 	char rcode[128];
 	char addrbuf[ISC_SOCKADDR_FORMATSIZE];
 
-	UNUSED(task);
-
-	notify = event->ev_arg;
 	REQUIRE(DNS_NOTIFY_VALID(notify));
-	INSIST(task == notify->zone->task);
 
 	isc_buffer_init(&buf, rcode, sizeof(rcode));
 	isc_sockaddr_format(&notify->dst, addrbuf, sizeof(addrbuf));
 	dns_message_create(notify->zone->mctx, DNS_MESSAGE_INTENTPARSE,
 			   &message);
 
-	if (revent->result != ISC_R_SUCCESS) {
-		result = revent->result;
+	result = dns_request_getresult(request);
+	if (result != ISC_R_SUCCESS) {
 		goto fail;
 	}
 
-	result = dns_request_getresponse(revent->request, message,
+	result = dns_request_getresponse(request, message,
 					 DNS_MESSAGEPARSE_PRESERVEORDER);
 	if (result != ISC_R_SUCCESS) {
 		goto fail;
@@ -16420,7 +16390,6 @@ fail:
 	}
 done:
 	notify_destroy(notify, false);
-	isc_event_free(&event);
 	dns_message_detach(&message);
 }
 
@@ -18383,7 +18352,7 @@ sendtoprimary(dns_forward_t *forward) {
 	result = dns_request_createraw(
 		forward->zone->view->requestmgr, forward->msgbuf, &src,
 		&forward->addr, forward->transport, zone->zmgr->tlsctx_cache,
-		dscp, forward->options, 15 /* XXX */, 0, 0, forward->zone->task,
+		dscp, forward->options, 15 /* XXX */, 0, 0, forward->zone->loop,
 		forward_callback, forward, &forward->request);
 	if (result == ISC_R_SUCCESS) {
 		if (!ISC_LINK_LINKED(forward, link)) {
@@ -18405,17 +18374,14 @@ unlock:
 }
 
 static void
-forward_callback(isc_task_t *task, isc_event_t *event) {
-	dns_requestevent_t *revent = (dns_requestevent_t *)event;
+forward_callback(void *arg) {
+	dns_request_t *request = (dns_request_t *)arg;
+	dns_forward_t *forward = dns_request_getarg(request);
 	dns_message_t *msg = NULL;
 	char primary[ISC_SOCKADDR_FORMATSIZE];
 	isc_result_t result;
-	dns_forward_t *forward;
 	dns_zone_t *zone;
 
-	UNUSED(task);
-
-	forward = revent->ev_arg;
 	INSIST(DNS_FORWARD_VALID(forward));
 	zone = forward->zone;
 	INSIST(DNS_ZONE_VALID(zone));
@@ -18424,16 +18390,17 @@ forward_callback(isc_task_t *task, isc_event_t *event) {
 
 	isc_sockaddr_format(&forward->addr, primary, sizeof(primary));
 
-	if (revent->result != ISC_R_SUCCESS) {
+	result = dns_request_getresult(request);
+	if (result != ISC_R_SUCCESS) {
 		dns_zone_log(zone, ISC_LOG_INFO,
 			     "could not forward dynamic update to %s: %s",
-			     primary, isc_result_totext(revent->result));
+			     primary, isc_result_totext(result));
 		goto next_primary;
 	}
 
 	dns_message_create(zone->mctx, DNS_MESSAGE_INTENTPARSE, &msg);
 
-	result = dns_request_getresponse(revent->request, msg,
+	result = dns_request_getresponse(request, msg,
 					 DNS_MESSAGEPARSE_PRESERVEORDER |
 						 DNS_MESSAGEPARSE_CLONEBUFFER);
 	if (result != ISC_R_SUCCESS) {
@@ -18508,14 +18475,12 @@ forward_callback(isc_task_t *task, isc_event_t *event) {
 	msg = NULL;
 	dns_request_destroy(&forward->request);
 	forward_destroy(forward);
-	isc_event_free(&event);
 	return;
 
 next_primary:
 	if (msg != NULL) {
 		dns_message_detach(&msg);
 	}
-	isc_event_free(&event);
 	forward->which++;
 	dns_request_destroy(&forward->request);
 	result = sendtoprimary(forward);
@@ -18929,9 +18894,7 @@ dns_zonemgr_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
 		ISC_MEM_ZERO);
 	for (size_t i = 0; i < zmgr->workers; i++) {
 		result = isc_task_create(zmgr->taskmgr, &zmgr->zonetasks[i], i);
-		INSIST(result == ISC_R_SUCCESS);
 		if (result != ISC_R_SUCCESS) {
-			INSIST(result == ISC_R_SUCCESS);
 			goto free_zonetasks;
 		}
 		isc_task_setname(zmgr->zonetasks[i], "zonemgr-zonetasks", NULL);
@@ -20808,19 +20771,19 @@ validate_ds(dns_zone_t *zone, dns_message_t *message) {
 }
 
 static void
-checkds_done(isc_task_t *task, isc_event_t *event) {
+checkds_done(void *arg) {
+	dns_request_t *request = (dns_request_t *)arg;
+	dns_checkds_t *checkds = dns_request_getarg(request);
 	char addrbuf[ISC_SOCKADDR_FORMATSIZE];
 	char rcode[128];
-	dns_checkds_t *checkds;
-	dns_zone_t *zone;
+	dns_zone_t *zone = NULL;
 	dns_db_t *db = NULL;
 	dns_dbversion_t *version = NULL;
-	dns_dnsseckey_t *key;
+	dns_dnsseckey_t *key = NULL;
 	dns_dnsseckeylist_t keys;
 	dns_kasp_t *kasp = NULL;
 	dns_message_t *message = NULL;
 	dns_rdataset_t *ds_rrset = NULL;
-	dns_requestevent_t *revent = (dns_requestevent_t *)event;
 	isc_buffer_t buf;
 	isc_result_t result;
 	isc_stdtime_t now;
@@ -20828,13 +20791,9 @@ checkds_done(isc_task_t *task, isc_event_t *event) {
 	bool rekey = false;
 	bool empty = false;
 
-	UNUSED(task);
-
-	checkds = event->ev_arg;
 	REQUIRE(DNS_CHECKDS_VALID(checkds));
 
 	zone = checkds->zone;
-	INSIST(task == zone->task);
 
 	ISC_LIST_INIT(keys);
 
@@ -20850,8 +20809,8 @@ checkds_done(isc_task_t *task, isc_event_t *event) {
 	dns_message_create(zone->mctx, DNS_MESSAGE_INTENTPARSE, &message);
 	INSIST(message != NULL);
 
-	CHECK(revent->result);
-	CHECK(dns_request_getresponse(revent->request, message,
+	CHECK(dns_request_getresult(request));
+	CHECK(dns_request_getresponse(request, message,
 				      DNS_MESSAGEPARSE_PRESERVEORDER));
 	CHECK(dns_rcode_totext(message->rcode, &buf));
 
@@ -21031,7 +20990,6 @@ failure:
 		dns_dnsseckey_destroy(dns_zone_getmctx(zone), &key);
 	}
 
-	isc_event_free(&event);
 	checkds_destroy(checkds, false);
 	dns_message_detach(&message);
 }
@@ -21236,7 +21194,7 @@ checkds_send_toaddr(void *arg) {
 	result = dns_request_create(
 		checkds->zone->view->requestmgr, message, &src, &checkds->dst,
 		NULL, NULL, dscp, options, key, timeout * 3, timeout, 2,
-		checkds->zone->task, checkds_done, checkds, &checkds->request);
+		checkds->zone->loop, checkds_done, checkds, &checkds->request);
 	if (result != ISC_R_SUCCESS) {
 		dns_zone_log(checkds->zone, ISC_LOG_DEBUG(3),
 			     "checkds: dns_request_create() to %s failed: %s",
