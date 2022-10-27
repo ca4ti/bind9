@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#include <isc/async.h>
 #include <isc/netaddr.h>
 #include <isc/print.h>
 #include <isc/serial.h>
@@ -25,7 +26,6 @@
 #include <dns/dbiterator.h>
 #include <dns/diff.h>
 #include <dns/dnssec.h>
-#include <dns/events.h>
 #include <dns/fixedname.h>
 #include <dns/journal.h>
 #include <dns/keyvalues.h>
@@ -223,11 +223,11 @@ struct rr {
 	dns_rdata_t rdata;
 };
 
-typedef struct update_event update_event_t;
+typedef struct update update_t;
 
-struct update_event {
-	ISC_EVENT_COMMON(update_event_t);
+struct update {
 	dns_zone_t *zone;
+	ns_client_t *client;
 	isc_result_t result;
 	dns_message_t *answer;
 };
@@ -260,13 +260,13 @@ typedef struct {
  */
 
 static void
-update_action(isc_task_t *task, isc_event_t *event);
+update_action(void *arg);
 static void
-updatedone_action(isc_task_t *task, isc_event_t *event);
+updatedone_action(void *arg);
 static isc_result_t
-send_forward_event(ns_client_t *client, dns_zone_t *zone);
+send_forward(ns_client_t *client, dns_zone_t *zone);
 static void
-forward_done(isc_task_t *task, isc_event_t *event);
+forward_done(void *arg);
 static isc_result_t
 add_rr_prepare_action(void *data, rr_t *rr);
 
@@ -1638,25 +1638,18 @@ check_soa_increment(dns_db_t *db, dns_dbversion_t *ver,
  * the RFC2136 pseudocode as closely as possible.
  */
 
-static isc_result_t
-send_update_event(ns_client_t *client, dns_zone_t *zone) {
-	isc_result_t result = ISC_R_SUCCESS;
-	update_event_t *event = NULL;
-	isc_task_t *zonetask = NULL;
+static void
+send_update(ns_client_t *client, dns_zone_t *zone) {
+	update_t *uev = isc_mem_get(client->manager->mctx, sizeof(*uev));
 
-	event = (update_event_t *)isc_event_allocate(
-		client->manager->mctx, client, DNS_EVENT_UPDATE, update_action,
-		NULL, sizeof(*event));
-	event->zone = zone;
-	event->result = ISC_R_SUCCESS;
-
-	event->ev_arg = client;
+	*uev = (update_t){
+		.zone = zone,
+		.client = client,
+		.result = ISC_R_SUCCESS,
+	};
 
 	isc_nmhandle_attach(client->handle, &client->updatehandle);
-	dns_zone_gettask(zone, &zonetask);
-	isc_task_send(zonetask, ISC_EVENT_PTR(&event));
-
-	return (result);
+	isc_async_run(dns_zone_getloop(zone), update_action, uev);
 }
 
 static void
@@ -1759,7 +1752,7 @@ ns_update_start(ns_client_t *client, isc_nmhandle_t *handle,
 			FAIL(sigresult);
 		}
 		dns_message_clonebuffer(client->message);
-		CHECK(send_update_event(client, zone));
+		send_update(client, zone);
 		break;
 	case dns_zone_secondary:
 	case dns_zone_mirror:
@@ -1767,7 +1760,7 @@ ns_update_start(ns_client_t *client, isc_nmhandle_t *handle,
 				     "update forwarding", zonename, true,
 				     false));
 		dns_message_clonebuffer(client->message);
-		CHECK(send_forward_event(client, zone));
+		CHECK(send_forward(client, zone));
 		break;
 	default:
 		FAILC(DNS_R_NOTAUTH, "not authoritative for update zone");
@@ -1782,7 +1775,7 @@ failure:
 	}
 	/*
 	 * We failed without having sent an update event to the zone.
-	 * We are still in the client task context, so we can
+	 * We are still in the client context, so we can
 	 * simply give an error response without switching tasks.
 	 */
 	respond(client, result);
@@ -2615,10 +2608,10 @@ isdnssec(dns_db_t *db, dns_dbversion_t *ver, dns_rdatatype_t privatetype) {
 }
 
 static void
-update_action(isc_task_t *task, isc_event_t *event) {
-	update_event_t *uev = (update_event_t *)event;
+update_action(void *arg) {
+	update_t *uev = (update_t *)arg;
 	dns_zone_t *zone = uev->zone;
-	ns_client_t *client = (ns_client_t *)event->ev_arg;
+	ns_client_t *client = uev->client;
 	isc_result_t result;
 	dns_db_t *db = NULL;
 	dns_dbversion_t *oldver = NULL;
@@ -2630,7 +2623,7 @@ update_action(isc_task_t *task, isc_event_t *event) {
 	dns_rdatatype_t covers;
 	dns_message_t *request = client->message;
 	dns_rdataclass_t zoneclass;
-	dns_name_t *zonename;
+	dns_name_t *zonename = NULL;
 	dns_ssutable_t *ssutable = NULL;
 	dns_fixedname_t tmpnamefixed;
 	dns_name_t *tmpname = NULL;
@@ -2644,8 +2637,6 @@ update_action(isc_task_t *task, isc_event_t *event) {
 	size_t ruleslen = 0;
 	size_t rule;
 	const dns_ssurule_t **rules = NULL;
-
-	INSIST(event->ev_type == DNS_EVENT_UPDATE);
 
 	dns_diff_init(mctx, &diff);
 	dns_diff_init(mctx, &temp);
@@ -3454,10 +3445,7 @@ update_action(isc_task_t *task, isc_event_t *event) {
 			if (result == ISC_R_SUCCESS && records > maxrecords) {
 				update_log(client, zone, ISC_LOG_ERROR,
 					   "records in zone (%" PRIu64 ") "
-					   "exceeds"
-					   " max-"
-					   "records"
-					   " (%u)",
+					   "exceeds max-records (%u)",
 					   records, maxrecords);
 				result = DNS_R_TOOMANYRECORDS;
 				goto failure;
@@ -3540,29 +3528,20 @@ common:
 		dns_ssutable_detach(&ssutable);
 	}
 
-	isc_task_detach(&task);
 	uev->result = result;
 	if (zone != NULL) {
 		INSIST(uev->zone == zone); /* we use this later */
 	}
-	uev->ev_type = DNS_EVENT_UPDATEDONE;
-	uev->ev_action = updatedone_action;
 
-	isc_task_send(client->manager->task, &event);
-
+	isc_async_run(client->manager->loop, updatedone_action, uev);
 	INSIST(ver == NULL);
-	INSIST(event == NULL);
 }
 
 static void
-updatedone_action(isc_task_t *task, isc_event_t *event) {
-	update_event_t *uev = (update_event_t *)event;
-	ns_client_t *client = (ns_client_t *)event->ev_arg;
+updatedone_action(void *arg) {
+	update_t *uev = (update_t *)arg;
+	ns_client_t *client = uev->client;
 
-	UNUSED(task);
-
-	REQUIRE(event->ev_type == DNS_EVENT_UPDATEDONE);
-	REQUIRE(task == client->manager->task);
 	REQUIRE(client->updatehandle == client->handle);
 
 	switch (uev->result) {
@@ -3576,13 +3555,13 @@ updatedone_action(isc_task_t *task, isc_event_t *event) {
 		inc_stats(client, uev->zone, ns_statscounter_updatefail);
 		break;
 	}
-	if (uev->zone != NULL) {
-		dns_zone_detach(&uev->zone);
-	}
 
 	respond(client, uev->result);
 
-	isc_event_free(&event);
+	if (uev->zone != NULL) {
+		dns_zone_detach(&uev->zone);
+	}
+	isc_mem_put(client->manager->mctx, uev, sizeof(*uev));
 	isc_nmhandle_detach(&client->updatehandle);
 }
 
@@ -3590,89 +3569,77 @@ updatedone_action(isc_task_t *task, isc_event_t *event) {
  * Update forwarding support.
  */
 static void
-forward_fail(isc_task_t *task, isc_event_t *event) {
-	ns_client_t *client = (ns_client_t *)event->ev_arg;
-
-	UNUSED(task);
+forward_fail(void *arg) {
+	update_t *uev = (update_t *)arg;
+	ns_client_t *client = uev->client;
 
 	respond(client, DNS_R_SERVFAIL);
-	isc_event_free(&event);
+
+	isc_mem_put(client->manager->mctx, uev, sizeof(*uev));
 	isc_nmhandle_detach(&client->updatehandle);
 }
 
 static void
 forward_callback(void *arg, isc_result_t result, dns_message_t *answer) {
-	update_event_t *uev = arg;
-	ns_client_t *client = uev->ev_arg;
+	update_t *uev = (update_t *)arg;
+	ns_client_t *client = uev->client;
 	dns_zone_t *zone = uev->zone;
 
 	if (result != ISC_R_SUCCESS) {
 		INSIST(answer == NULL);
-		uev->ev_type = DNS_EVENT_UPDATEDONE;
-		uev->ev_action = forward_fail;
 		inc_stats(client, zone, ns_statscounter_updatefwdfail);
+		isc_async_run(client->manager->loop, forward_fail, uev);
 	} else {
-		uev->ev_type = DNS_EVENT_UPDATEDONE;
-		uev->ev_action = forward_done;
 		uev->answer = answer;
 		inc_stats(client, zone, ns_statscounter_updaterespfwd);
+		isc_async_run(client->manager->loop, forward_done, uev);
 	}
 
-	isc_task_send(client->manager->task, ISC_EVENT_PTR(&uev));
 	dns_zone_detach(&zone);
 }
 
 static void
-forward_done(isc_task_t *task, isc_event_t *event) {
-	update_event_t *uev = (update_event_t *)event;
-	ns_client_t *client = (ns_client_t *)event->ev_arg;
-
-	UNUSED(task);
+forward_done(void *arg) {
+	update_t *uev = (update_t *)arg;
+	ns_client_t *client = uev->client;
 
 	ns_client_sendraw(client, uev->answer);
 	dns_message_detach(&uev->answer);
-	isc_event_free(&event);
+	isc_mem_put(client->manager->mctx, uev, sizeof(*uev));
 	isc_nmhandle_detach(&client->reqhandle);
 	isc_nmhandle_detach(&client->updatehandle);
 }
 
 static void
-forward_action(isc_task_t *task, isc_event_t *event) {
-	update_event_t *uev = (update_event_t *)event;
+forward_action(void *arg) {
+	update_t *uev = (update_t *)arg;
 	dns_zone_t *zone = uev->zone;
-	ns_client_t *client = (ns_client_t *)event->ev_arg;
+	ns_client_t *client = uev->client;
 	isc_result_t result;
 
 	result = dns_zone_forwardupdate(zone, client->message, forward_callback,
-					event);
+					uev);
 	if (result != ISC_R_SUCCESS) {
-		uev->ev_type = DNS_EVENT_UPDATEDONE;
-		uev->ev_action = forward_fail;
-		isc_task_send(client->manager->task, &event);
+		isc_async_run(client->manager->loop, forward_fail, uev);
 		inc_stats(client, zone, ns_statscounter_updatefwdfail);
 		dns_zone_detach(&zone);
 	} else {
 		inc_stats(client, zone, ns_statscounter_updatereqfwd);
 	}
-
-	isc_task_detach(&task);
 }
 
 static isc_result_t
-send_forward_event(ns_client_t *client, dns_zone_t *zone) {
+send_forward(ns_client_t *client, dns_zone_t *zone) {
+	isc_result_t result = ISC_R_SUCCESS;
 	char namebuf[DNS_NAME_FORMATSIZE];
 	char classbuf[DNS_RDATACLASS_FORMATSIZE];
-	isc_result_t result = ISC_R_SUCCESS;
-	update_event_t *event = NULL;
-	isc_task_t *zonetask = NULL;
+	update_t *uev = isc_mem_get(client->manager->mctx, sizeof(*uev));
 
-	event = (update_event_t *)isc_event_allocate(
-		client->manager->mctx, client, DNS_EVENT_UPDATE, forward_action,
-		NULL, sizeof(*event));
-	event->zone = zone;
-	event->result = ISC_R_SUCCESS;
-
-	event->ev_arg = client;
+	*uev = (update_t){
+		.zone = zone,
+		.client = client,
+		.result = ISC_R_SUCCESS,
+	};
 
 	dns_name_format(dns_zone_getorigin(zone), namebuf, sizeof(namebuf));
 	dns_rdataclass_format(dns_zone_getclass(zone), classbuf,
@@ -3682,12 +3649,8 @@ send_forward_event(ns_client_t *client, dns_zone_t *zone) {
 		      LOGLEVEL_PROTOCOL, "forwarding update for zone '%s/%s'",
 		      namebuf, classbuf);
 
-	dns_zone_gettask(zone, &zonetask);
 	isc_nmhandle_attach(client->handle, &client->updatehandle);
-	isc_task_send(zonetask, ISC_EVENT_PTR(&event));
+	isc_async_run(dns_zone_getloop(zone), forward_action, uev);
 
-	if (event != NULL) {
-		isc_event_free(ISC_EVENT_PTR(&event));
-	}
 	return (result);
 }
