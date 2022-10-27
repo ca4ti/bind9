@@ -10,6 +10,7 @@ confidential!
 | ------------------------ | ------------------------------ |
 | Incident Manager:        | @user                          |
 | Deputy Incident Manager: | @user                          |
+| Public Disclosure Date:  | YYYY-MM-DD                     |
 | CVSS Score:              | [0.0][cvss_score]              |
 | Security Advisory:       | isc-private/printing-press!NNN |
 | Mattermost Channel:      | [URL]                          |
