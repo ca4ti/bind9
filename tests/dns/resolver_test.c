@@ -73,8 +73,8 @@ static void
 mkres(dns_resolver_t **resolverp) {
 	isc_result_t result;
 
-	result = dns_resolver_create(view, loopmgr, taskmgr, 1, netmgr, 0,
-				     dispatchmgr, dispatch, NULL, resolverp);
+	result = dns_resolver_create(view, loopmgr, 1, netmgr, 0, dispatchmgr,
+				     dispatch, NULL, resolverp);
 	assert_int_equal(result, ISC_R_SUCCESS);
 }
 

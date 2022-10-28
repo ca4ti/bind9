@@ -1835,8 +1835,8 @@ main(int argc, char *argv[]) {
 	setup_logging(stderr);
 
 	/* Create client */
-	result = dns_client_create(mctx, loopmgr, taskmgr, netmgr, 0, &client,
-				   srcaddr4, srcaddr6);
+	result = dns_client_create(mctx, loopmgr, netmgr, 0, &client, srcaddr4,
+				   srcaddr6);
 	if (result != ISC_R_SUCCESS) {
 		delv_log(ISC_LOG_ERROR, "dns_client_create: %s",
 			 isc_result_totext(result));

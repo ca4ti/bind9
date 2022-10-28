@@ -25,7 +25,6 @@
 #include <isc/result.h>
 #include <isc/safe.h>
 #include <isc/sockaddr.h>
-#include <isc/task.h>
 #include <isc/util.h>
 
 #include <dns/adb.h>
@@ -76,7 +75,6 @@ struct dns_client {
 	unsigned int magic;
 	unsigned int attributes;
 	isc_mem_t *mctx;
-	isc_task_t *task;
 	isc_loop_t *loop;
 	isc_nm_t *nm;
 	dns_dispatchmgr_t *dispatchmgr;
@@ -135,7 +133,7 @@ typedef struct resarg {
 } resarg_t;
 
 static void
-client_resfind(resctx_t *rctx, dns_fetchevent_t *event);
+client_resfind(resctx_t *rctx, dns_fetchresponse_t *event);
 static void
 destroyrestrans(dns_clientrestrans_t **transp);
 
@@ -203,7 +201,7 @@ getudpdispatch(int family, dns_dispatchmgr_t *dispatchmgr,
 
 static isc_result_t
 createview(isc_mem_t *mctx, dns_rdataclass_t rdclass, isc_loopmgr_t *loopmgr,
-	   isc_taskmgr_t *taskmgr, isc_nm_t *nm, dns_dispatchmgr_t *dispatchmgr,
+	   isc_nm_t *nm, dns_dispatchmgr_t *dispatchmgr,
 	   dns_dispatch_t *dispatchv4, dns_dispatch_t *dispatchv6,
 	   dns_view_t **viewp) {
 	isc_result_t result;
@@ -220,8 +218,8 @@ createview(isc_mem_t *mctx, dns_rdataclass_t rdclass, isc_loopmgr_t *loopmgr,
 		goto cleanup_view;
 	}
 
-	result = dns_view_createresolver(view, loopmgr, taskmgr, 1, nm, 0,
-					 dispatchmgr, dispatchv4, dispatchv6);
+	result = dns_view_createresolver(view, loopmgr, 1, nm, 0, dispatchmgr,
+					 dispatchv4, dispatchv6);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup_view;
 	}
@@ -241,9 +239,9 @@ cleanup_view:
 }
 
 isc_result_t
-dns_client_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
-		  isc_taskmgr_t *taskmgr, isc_nm_t *nm, unsigned int options,
-		  dns_client_t **clientp, const isc_sockaddr_t *localaddr4,
+dns_client_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr, isc_nm_t *nm,
+		  unsigned int options, dns_client_t **clientp,
+		  const isc_sockaddr_t *localaddr4,
 		  const isc_sockaddr_t *localaddr6) {
 	isc_result_t result;
 	dns_client_t *client = NULL;
@@ -252,7 +250,6 @@ dns_client_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
 	dns_view_t *view = NULL;
 
 	REQUIRE(mctx != NULL);
-	REQUIRE(taskmgr != NULL);
 	REQUIRE(nm != NULL);
 	REQUIRE(clientp != NULL && *clientp == NULL);
 
@@ -264,14 +261,9 @@ dns_client_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
 		.nm = nm,
 	};
 
-	result = isc_task_create(taskmgr, &client->task, 0);
-	if (result != ISC_R_SUCCESS) {
-		goto cleanup_lock;
-	}
-
 	result = dns_dispatchmgr_create(mctx, nm, &client->dispatchmgr);
 	if (result != ISC_R_SUCCESS) {
-		goto cleanup_task;
+		goto cleanup_client;
 	}
 	(void)setsourceports(mctx, client->dispatchmgr);
 
@@ -306,7 +298,7 @@ dns_client_create(isc_mem_t *mctx, isc_loopmgr_t *loopmgr,
 	isc_refcount_init(&client->references, 1);
 
 	/* Create the default view for class IN */
-	result = createview(mctx, dns_rdataclass_in, loopmgr, taskmgr, nm,
+	result = createview(mctx, dns_rdataclass_in, loopmgr, nm,
 			    client->dispatchmgr, dispatchv4, dispatchv6, &view);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup_references;
@@ -340,9 +332,7 @@ cleanup_dispatchmgr:
 		dns_dispatch_detach(&dispatchv6);
 	}
 	dns_dispatchmgr_detach(&client->dispatchmgr);
-cleanup_task:
-	isc_task_detach(&client->task);
-cleanup_lock:
+cleanup_client:
 	isc_mem_put(mctx, client, sizeof(*client));
 
 	return (result);
@@ -362,8 +352,6 @@ destroyclient(dns_client_t *client) {
 	}
 
 	dns_dispatchmgr_detach(&client->dispatchmgr);
-
-	isc_task_detach(&client->task);
 
 	client->magic = 0;
 
@@ -454,15 +442,13 @@ putrdataset(isc_mem_t *mctx, dns_rdataset_t **rdatasetp) {
 }
 
 static void
-fetch_done(isc_task_t *task, isc_event_t *event) {
-	resctx_t *rctx = event->ev_arg;
-	dns_fetchevent_t *fevent;
+fetch_done(void *arg) {
+	dns_fetchresponse_t *resp = (dns_fetchresponse_t *)arg;
+	resctx_t *rctx = resp->arg;
 
 	REQUIRE(RCTX_VALID(rctx));
-	REQUIRE(rctx->client->task == task);
-	fevent = (dns_fetchevent_t *)event;
 
-	client_resfind(rctx, fevent);
+	client_resfind(rctx, resp);
 }
 
 static isc_result_t
@@ -489,7 +475,7 @@ start_fetch(resctx_t *rctx) {
 	result = dns_resolver_createfetch(
 		rctx->view->resolver, dns_fixedname_name(&rctx->name),
 		rctx->type, NULL, NULL, NULL, NULL, 0, fopts, 0, NULL,
-		rctx->client->task, fetch_done, rctx, rctx->rdataset,
+		rctx->client->loop, fetch_done, rctx, rctx->rdataset,
 		rctx->sigrdataset, &rctx->fetch);
 
 	return (result);
@@ -516,8 +502,8 @@ view_find(resctx_t *rctx, dns_db_t **dbp, dns_dbnode_t **nodep,
 }
 
 static void
-client_resfind(resctx_t *rctx, dns_fetchevent_t *event) {
-	isc_mem_t *mctx;
+client_resfind(resctx_t *rctx, dns_fetchresponse_t *resp) {
+	isc_mem_t *mctx = NULL;
 	isc_result_t tresult, result = ISC_R_SUCCESS;
 	isc_result_t vresult = ISC_R_SUCCESS;
 	bool want_restart;
@@ -547,7 +533,7 @@ client_resfind(resctx_t *rctx, dns_fetchevent_t *event) {
 		rctx->restarts++;
 		want_restart = false;
 
-		if (event == NULL) {
+		if (resp == NULL) {
 			fname = dns_fixedname_initname(&foundname);
 			INSIST(!dns_rdataset_isassociated(rctx->rdataset));
 			INSIST(rctx->sigrdataset == NULL ||
@@ -577,16 +563,17 @@ client_resfind(resctx_t *rctx, dns_fetchevent_t *event) {
 				goto done;
 			}
 		} else {
-			INSIST(event != NULL);
-			INSIST(event->fetch == rctx->fetch);
+			INSIST(resp != NULL);
+			INSIST(resp->fetch == rctx->fetch);
 			dns_resolver_destroyfetch(&rctx->fetch);
-			db = event->db;
-			node = event->node;
-			result = event->result;
-			vresult = event->vresult;
-			fname = event->foundname;
-			INSIST(event->rdataset == rctx->rdataset);
-			INSIST(event->sigrdataset == rctx->sigrdataset);
+			db = resp->db;
+			node = resp->node;
+			result = resp->result;
+			vresult = resp->vresult;
+			fname = resp->foundname;
+			INSIST(resp->rdataset == rctx->rdataset);
+			INSIST(resp->sigrdataset == rctx->sigrdataset);
+			isc_mem_putanddetach(&resp->mctx, resp, sizeof(*resp));
 		}
 
 		/*
@@ -815,9 +802,6 @@ client_resfind(resctx_t *rctx, dns_fetchevent_t *event) {
 		}
 		if (db != NULL) {
 			dns_db_detach(&db);
-		}
-		if (event != NULL) {
-			isc_event_free(ISC_EVENT_PTR(&event));
 		}
 
 		/*
