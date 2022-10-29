@@ -594,3 +594,10 @@ isc_loopmgr_nonblocking(isc_loopmgr_t *loopmgr) {
 	isc_signal_start(loopmgr->sigint);
 	isc_signal_start(loopmgr->sigterm);
 }
+
+isc_loopmgr_t *
+isc_loop_getloopmgr(isc_loop_t *loop) {
+	REQUIRE(VALID_LOOP(loop));
+
+	return (loop->loopmgr);
+}
