@@ -519,7 +519,7 @@ status=$((status+ret))
 n=$((n+1))
 echo_i "checking that unpermitted change of ownership did not happen ($n)"
 ret=0
-wait_for_message ns2/named.run "catz_addmodzone_taskaction: zone 'dom2.example' will not be added because another catalog zone already contains an entry with that zone" || ret=1
+wait_for_message ns2/named.run "catz_addmodzone_cb: zone 'dom2.example' will not be added because another catalog zone already contains an entry with that zone" || ret=1
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
@@ -641,7 +641,7 @@ status=$((status+ret))
 n=$((n+1))
 echo_i "checking that the change of ownership did not happen because version '1' catalog2 zone does not support the 'coo' property ($n)"
 ret=0
-wait_for_message ns2/named.run "catz_addmodzone_taskaction: zone 'dom2.example' will not be added because another catalog zone already contains an entry with that zone" || ret=1
+wait_for_message ns2/named.run "catz_addmodzone_cb: zone 'dom2.example' will not be added because another catalog zone already contains an entry with that zone" || ret=1
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
@@ -713,7 +713,7 @@ n=$((n+1))
 echo_i "waiting for secondary to sync up ($n)"
 ret=0
 wait_for_message ns2/named.run "catz: adding zone 'dom-existing.example' from catalog 'catalog1.example'" &&
-wait_for_message ns2/named.run "catz_addmodzone_taskaction: zone 'dom-existing.example' will not be added because it is an explicitly configured zone" || ret=1
+wait_for_message ns2/named.run "catz_addmodzone_cb: zone 'dom-existing.example' will not be added because it is an explicitly configured zone" || ret=1
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
@@ -759,7 +759,7 @@ n=$((n+1))
 echo_i "waiting for secondary to sync up ($n)"
 ret=0
 wait_for_message ns2/named.run "catz: adding zone 'dom-existing-forward.example' from catalog 'catalog1.example'" &&
-wait_for_message ns2/named.run "catz_addmodzone_taskaction: zone 'dom-existing-forward.example' will not be processed because of the explicitly configured forwarding for that zone" || ret=1
+wait_for_message ns2/named.run "catz_addmodzone_cb: zone 'dom-existing-forward.example' will not be processed because of the explicitly configured forwarding for that zone" || ret=1
 if [ $ret -ne 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
