@@ -26,7 +26,6 @@
 #include <isc/print.h>
 #include <isc/result.h>
 #include <isc/string.h>
-#include <isc/task.h>
 #include <isc/timer.h>
 #include <isc/util.h>
 #include <isc/uv.h>
@@ -35,7 +34,6 @@ extern isc_mem_t     *mctx;
 extern isc_log_t     *lctx;
 extern isc_loop_t    *mainloop;
 extern isc_loopmgr_t *loopmgr;
-extern isc_taskmgr_t *taskmgr;
 extern isc_nm_t	     *netmgr;
 extern int	      ncpus;
 extern unsigned int   workers;
@@ -49,11 +47,6 @@ int
 setup_loopmgr(void **state);
 int
 teardown_loopmgr(void **state);
-
-int
-setup_taskmgr(void **state);
-int
-teardown_taskmgr(void **state);
 
 int
 setup_netmgr(void **state);

@@ -35,13 +35,11 @@
 #include <isc/result.h>
 #include <isc/sockaddr.h>
 #include <isc/string.h>
-#include <isc/task.h>
 #include <isc/time.h>
 #include <isc/util.h>
 
 #include <dns/byaddr.h>
 #include <dns/dispatch.h>
-#include <dns/events.h>
 #include <dns/fixedname.h>
 #include <dns/message.h>
 #include <dns/name.h>
@@ -2100,7 +2098,6 @@ main(int argc, char *argv[]) {
 	isc_log_t *lctx = NULL;
 	isc_logconfig_t *lcfg = NULL;
 	isc_nm_t *netmgr = NULL;
-	isc_taskmgr_t *taskmgr = NULL;
 	dns_dispatchmgr_t *dispatchmgr = NULL;
 	dns_dispatch_t *dispatchvx = NULL;
 	dns_view_t *view = NULL;
@@ -2119,7 +2116,7 @@ main(int argc, char *argv[]) {
 
 	preparse_args(argc, argv);
 
-	isc_managers_create(&mctx, 1, &loopmgr, &netmgr, &taskmgr);
+	isc_managers_create(&mctx, 1, &loopmgr, &netmgr);
 	isc_log_create(mctx, &lctx, &lcfg);
 
 	RUNCHECK(dst_lib_init(mctx, NULL));
@@ -2235,6 +2232,6 @@ main(int argc, char *argv[]) {
 		isc_mem_free(mctx, default_query.ecs_addr);
 	}
 
-	isc_managers_destroy(&mctx, &loopmgr, &netmgr, &taskmgr);
+	isc_managers_destroy(&mctx, &loopmgr, &netmgr);
 	return (0);
 }

@@ -30,7 +30,6 @@
 #include <isc/result.h>
 #include <isc/stats.h>
 #include <isc/string.h>
-#include <isc/task.h>
 #include <isc/util.h>
 
 #include <dns/acl.h>
@@ -42,7 +41,6 @@
 #include <dns/dlz.h>
 #include <dns/dns64.h>
 #include <dns/dnssec.h>
-#include <dns/events.h>
 #include <dns/forward.h>
 #include <dns/keytable.h>
 #include <dns/keyvalues.h>

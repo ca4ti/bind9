@@ -39,7 +39,6 @@
 #include <isc/base32.h>
 #include <isc/commandline.h>
 #include <isc/dir.h>
-#include <isc/event.h>
 #include <isc/file.h>
 #include <isc/hash.h>
 #include <isc/hex.h>
@@ -58,7 +57,6 @@
 #include <isc/serial.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
-#include <isc/task.h>
 #include <isc/tid.h>
 #include <isc/time.h>
 #include <isc/util.h>
@@ -148,7 +146,6 @@ static const char *directory = NULL, *dsdir = NULL;
 static isc_mutex_t namelock, statslock;
 static isc_nm_t *netmgr = NULL;
 static isc_loopmgr_t *loopmgr = NULL;
-static isc_taskmgr_t *taskmgr = NULL;
 static dns_db_t *gdb;		  /* The database */
 static dns_dbversion_t *gversion; /* The database version */
 static dns_dbiterator_t *gdbiter; /* The database iterator */
@@ -3707,7 +3704,7 @@ main(int argc, char *argv[]) {
 		directory = ".";
 	}
 
-	isc_managers_create(&mctx, nloops, &loopmgr, &netmgr, &taskmgr);
+	isc_managers_create(&mctx, nloops, &loopmgr, &netmgr);
 
 	result = dst_lib_init(mctx, engine);
 	if (result != ISC_R_SUCCESS) {
@@ -4096,7 +4093,7 @@ main(int argc, char *argv[]) {
 		isc_mem_stats(mctx, stdout);
 	}
 
-	isc_managers_destroy(&mctx, &loopmgr, &netmgr, &taskmgr);
+	isc_managers_destroy(&mctx, &loopmgr, &netmgr);
 
 	if (printstats) {
 		TIME_NOW(&timer_finish);

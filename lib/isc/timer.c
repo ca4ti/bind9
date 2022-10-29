@@ -25,7 +25,6 @@
 #include <isc/once.h>
 #include <isc/print.h>
 #include <isc/refcount.h>
-#include <isc/task.h>
 #include <isc/thread.h>
 #include <isc/time.h>
 #include <isc/timer.h>

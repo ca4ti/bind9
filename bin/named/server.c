@@ -61,7 +61,6 @@
 #include <isc/stats.h>
 #include <isc/stdio.h>
 #include <isc/string.h>
-#include <isc/task.h>
 #include <isc/timer.h>
 #include <isc/util.h>
 
@@ -76,7 +75,6 @@
 #include <dns/dnsrps.h>
 #include <dns/dnssec.h>
 #include <dns/dyndb.h>
-#include <dns/events.h>
 #include <dns/fixedname.h>
 #include <dns/forward.h>
 #include <dns/geoip.h>
@@ -219,12 +217,12 @@
 		}                                                              \
 	} while (0)
 
-#define CHECKFATAL(op, msg)                         \
-	{                                           \
-		result = (op);                      \
-		if (result != ISC_R_SUCCESS) {      \
-			fatal(server, msg, result); \
-		}                                   \
+#define CHECKFATAL(op, msg)                    \
+	{                                      \
+		result = (op);                 \
+		if (result != ISC_R_SUCCESS) { \
+			fatal(msg, result);    \
+		}                              \
 	}
 
 /*%
@@ -407,7 +405,7 @@ const char *empty_zones[] = {
 };
 
 noreturn static void
-fatal(named_server_t *server, const char *msg, isc_result_t result);
+fatal(const char *msg, isc_result_t result);
 
 static void
 named_server_reload(void *arg);
@@ -9186,16 +9184,7 @@ load_configuration(const char *filename, named_server_t *server,
 	(void)cfg_map_get(config, "view", &views);
 
 	/*
-	 * Create the views and count all the configured zones in
-	 * order to correctly size the zone manager's task table.
-	 * (We only count zones for configured views; the built-in
-	 * "bind" view can be ignored as it only adds a negligible
-	 * number of zones.)
-	 *
-	 * If we're allowing new zones, we need to be able to find the
-	 * new zone file and count those as well.  So we setup the new
-	 * zone configuration context, but otherwise view configuration
-	 * waits until after the zone manager's task list has been sized.
+	 * Create the views.
 	 */
 	for (element = cfg_list_first(views); element != NULL;
 	     element = cfg_list_next(element))
@@ -9995,10 +9984,8 @@ run_server(void *arg) {
 	named_server_t *server = (named_server_t *)arg;
 	dns_geoip_databases_t *geoip = NULL;
 
-	CHECKFATAL(dns_zonemgr_create(named_g_mctx, named_g_loopmgr,
-				      named_g_taskmgr, named_g_netmgr,
-				      &server->zonemgr),
-		   "dns_zonemgr_create");
+	dns_zonemgr_create(named_g_mctx, named_g_loopmgr, named_g_netmgr,
+			   &server->zonemgr);
 
 	CHECKFATAL(dns_dispatchmgr_create(named_g_mctx, named_g_netmgr,
 					  &named_g_dispatchmgr),
@@ -10012,10 +9999,10 @@ run_server(void *arg) {
 	geoip = NULL;
 #endif /* if defined(HAVE_GEOIP2) */
 
-	CHECKFATAL(ns_interfacemgr_create(
-			   named_g_mctx, server->sctx, named_g_loopmgr,
-			   named_g_taskmgr, named_g_netmgr, named_g_dispatchmgr,
-			   server->task, geoip, true, &server->interfacemgr),
+	CHECKFATAL(ns_interfacemgr_create(named_g_mctx, server->sctx,
+					  named_g_loopmgr, named_g_netmgr,
+					  named_g_dispatchmgr, geoip, true,
+					  &server->interfacemgr),
 		   "creating interface manager");
 
 	/*
@@ -10164,8 +10151,6 @@ shutdown_server(void *arg) {
 	dns_db_detach(&server->in_roothints);
 
 	isc_loopmgr_resume(named_g_loopmgr);
-
-	isc_task_detach(&server->task);
 }
 
 /*%
@@ -10245,16 +10230,6 @@ named_server_create(isc_mem_t *mctx, named_server_t **serverp) {
 		   "setting up root hints");
 
 	atomic_init(&server->reload_status, NAMED_RELOAD_IN_PROGRESS);
-
-	/*
-	 * Setup the server task, which is responsible for coordinating
-	 * startup and shutdown of the server, as well as all exclusive
-	 * tasks.
-	 */
-	CHECKFATAL(isc_task_create(named_g_taskmgr, &server->task, 0),
-		   "creating server task");
-	isc_task_setname(server->task, "server", server);
-	isc_taskmgr_setexcltask(named_g_taskmgr, server->task);
 
 	CHECKFATAL(ns_server_create(mctx, get_matching_view, &server->sctx),
 		   "creating server context");
@@ -10374,15 +10349,8 @@ named_server_destroy(named_server_t **serverp) {
 }
 
 static void
-fatal(named_server_t *server, const char *msg, isc_result_t result) {
-	if (server != NULL && server->task != NULL) {
-		/*
-		 * Prevent races between the OpenSSL on_exit registered
-		 * function and any other OpenSSL calls from other tasks
-		 * by requesting exclusive access to the task manager.
-		 */
-		isc_loopmgr_pause(named_g_loopmgr);
-	}
+fatal(const char *msg, isc_result_t result) {
+	isc_loopmgr_pause(named_g_loopmgr);
 	isc_log_write(named_g_lctx, NAMED_LOGCATEGORY_GENERAL,
 		      NAMED_LOGMODULE_SERVER, ISC_LOG_CRITICAL, "%s: %s", msg,
 		      isc_result_totext(result));
@@ -12551,7 +12519,6 @@ named_server_tsigdelete(named_server_t *server, isc_lex_t *lex,
 			RWUNLOCK(&view->dynamickeys->lock,
 				 isc_rwlocktype_write);
 			if (result != ISC_R_SUCCESS) {
-				isc_task_endexclusive(server->task);
 				isc_loopmgr_resume(named_g_loopmgr);
 				return (result);
 			}

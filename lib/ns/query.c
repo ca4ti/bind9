@@ -41,7 +41,6 @@
 #include <dns/dns64.h>
 #include <dns/dnsrps.h>
 #include <dns/dnssec.h>
-#include <dns/events.h>
 #include <dns/keytable.h>
 #include <dns/message.h>
 #include <dns/ncache.h>
@@ -66,7 +65,6 @@
 #include <dns/zt.h>
 
 #include <ns/client.h>
-#include <ns/events.h>
 #include <ns/hooks.h>
 #include <ns/interfacemgr.h>
 #include <ns/log.h>

@@ -23,11 +23,9 @@
 #define UNIT_TESTING
 #include <cmocka.h>
 
-#include <isc/event.h>
 #include <isc/job.h>
 #include <isc/loop.h>
 #include <isc/ratelimiter.h>
-#include <isc/task.h>
 #include <isc/time.h>
 
 #include "ratelimiter.c"
@@ -278,10 +276,6 @@ setup_test(void **state) {
 	if (r != 0) {
 		return (r);
 	}
-	r = setup_taskmgr(state);
-	if (r != 0) {
-		return (r);
-	}
 
 	return (0);
 }
@@ -290,10 +284,6 @@ static int
 teardown_test(void **state) {
 	int r;
 
-	r = teardown_taskmgr(state);
-	if (r != 0) {
-		return (r);
-	}
 	r = teardown_loopmgr(state);
 	if (r != 0) {
 		return (r);
