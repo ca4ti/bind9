@@ -12166,7 +12166,6 @@ static isc_result_t
 zone_dump(dns_zone_t *zone, bool compact) {
 	isc_result_t result;
 	dns_dbversion_t *version = NULL;
-	bool again;
 	dns_db_t *db = NULL;
 	char *masterfile = NULL;
 	dns_masterformat_t masterformat = dns_masterformat_none;
@@ -12178,7 +12177,6 @@ zone_dump(dns_zone_t *zone, bool compact) {
 	REQUIRE(DNS_ZONE_VALID(zone));
 	ENTER;
 
-redo:
 	ZONEDB_LOCK(&zone->dblock, isc_rwlocktype_read);
 	if (zone->db != NULL) {
 		dns_db_attach(zone->db, &db);
@@ -12235,34 +12233,15 @@ fail:
 	if (masterfile != NULL) {
 		isc_mem_free(zone->mctx, masterfile);
 	}
-	masterfile = NULL;
 
-	if (result == ISC_R_SUCCESS) {
-		return (ISC_R_SUCCESS); /* XXXMPA */
-	}
-
-	again = false;
-	LOCK_ZONE(zone);
-	DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_DUMPING);
 	if (result != ISC_R_SUCCESS) {
 		/*
 		 * Try again in a short while.
 		 */
+		LOCK_ZONE(zone);
+		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_DUMPING);
 		zone_needdump(zone, DNS_DUMP_DELAY);
-	} else if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_FLUSH) &&
-		   DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDDUMP) &&
-		   DNS_ZONE_FLAG(zone, DNS_ZONEFLG_LOADED))
-	{
-		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NEEDDUMP);
-		DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_DUMPING);
-		isc_time_settoepoch(&zone->dumptime);
-		again = true;
-	} else {
-		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_FLUSH);
-	}
-	UNLOCK_ZONE(zone);
-	if (again) {
-		goto redo;
+		UNLOCK_ZONE(zone);
 	}
 
 	return (result);
