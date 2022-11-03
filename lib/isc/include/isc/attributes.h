@@ -80,3 +80,23 @@
 #define ISC_ATTR_MALLOC_DEALLOCATOR(deallocator)
 #define ISC_ATTR_MALLOC_DEALLOCATOR_IDX(deallocator, idx)
 #endif /* HAVE_FUNC_ATTRIBUTE_MALLOC */
+
+/*
+ * When we are using an inheritance pattern (where several structures
+ * share a common prefix) we would like it to be easy to pass any of
+ * these subtype structures to functions that only operate on the
+ * common prefix, and we would also like it to be type safe.
+ *
+ * GNU C transparent unions have quiet conversions like void pointers,
+ * but only for a specific set of types. So they make it easy to pass
+ * just the known subtypes to a function that operates on their common
+ * prefix.
+ *
+ * On compilers without transparent unions we can use void pointers
+ * instead; we still benefit from type checking during development.
+ */
+#ifdef __has_attribute
+#if __has_attribute(__transparent_union__)
+#define ISC_ATTR_TRANSPARENT __attribute__((__transparent_union__))
+#endif
+#endif
