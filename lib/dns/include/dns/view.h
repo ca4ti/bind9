@@ -186,6 +186,7 @@ struct dns_view {
 	uint32_t	  fail_ttl;
 	dns_badcache_t	 *failcache;
 	unsigned int	  udpsize;
+	dns_name_t	 *rad; /* reporting agent domain */
 
 	/*
 	 * Configurable data for server use only,

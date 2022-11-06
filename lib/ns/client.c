@@ -1119,6 +1119,16 @@ no_nsid:
 		count++;
 	}
 
+	if (view != NULL && view->rad != NULL &&
+	    !dns_name_equal(view->rad, dns_rootname))
+	{
+		INSIST(count < DNS_EDNSOPTIONS);
+		ednsopts[count].code = DNS_OPT_RAD;
+		ednsopts[count].length = view->rad->length;
+		ednsopts[count].value = view->rad->ndata;
+		count++;
+	}
+
 	/* Padding must be added last */
 	if ((view != NULL) && (view->padding > 0) && WANTPAD(client) &&
 	    (TCP_CLIENT(client) ||

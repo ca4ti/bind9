@@ -1684,6 +1684,15 @@ default is used.
    If all supported digest types are disabled, the zones covered by
    :any:`disable-ds-digests` are treated as insecure.
 
+.. namedconf:statement:: reporting-agent-domain
+   :tags: query
+   :short: Sets the EDNS Reporting Agent Domain (RAD) value
+
+   The EDNS Reporting Agent Domain value is a domain name to which operational
+   and protocol errors in responses are to be reported.  If the value is set
+   to ``.`` then the EDNS option will not be added to the response.  There is
+   no default.
+
 .. namedconf:statement:: dnssec-must-be-secure
    :tags: dnssec
    :short: Defines hierarchies that must or may not be secure (signed and validated).

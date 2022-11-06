@@ -80,6 +80,9 @@
     
     Rate limiting of individual requests is logged in the ``query-errors`` category.
 
+``reporting-agent-domain``
+    Logs reports from clients that the there is an error in our responses.
+
 ``resolver``
     DNS resolution, such as the recursive lookups performed on behalf of clients by a caching name server.
 

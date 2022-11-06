@@ -1506,6 +1506,23 @@ check_options(const cfg_obj_t *options, const cfg_obj_t *config,
 	}
 
 	/*
+	 * Check reporting-agent-domain.
+	 */
+	obj = NULL;
+	(void)cfg_map_get(options, "reporting-agent-domain", &obj);
+	if (obj != NULL) {
+		str = cfg_obj_asstring(obj);
+		tresult = check_name(str);
+		if (tresult != ISC_R_SUCCESS) {
+			cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+				    "'%s' is not a valid name", str);
+			if (result == ISC_R_SUCCESS) {
+				result = tresult;
+			}
+		}
+	}
+
+	/*
 	 * Check dnssec-must-be-secure.
 	 */
 	obj = NULL;

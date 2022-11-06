@@ -4525,6 +4525,19 @@ configure_view(dns_view_t *view, dns_viewlist_t *viewlist, cfg_obj_t *config,
 	}
 
 	obj = NULL;
+	result = named_config_get(maps, "reporting-agent-domain", &obj);
+	if (view->rad != NULL) {
+		dns_name_free(view->rad, view->mctx);
+		isc_mem_put(view->mctx, view->rad, sizeof(*view->rad));
+	}
+	if (result == ISC_R_SUCCESS) {
+		view->rad = isc_mem_get(mctx, sizeof(*view->rad));
+		dns_name_init(view->rad, NULL);
+		CHECK(dns_name_fromstring(view->rad, cfg_obj_asstring(obj), 0,
+					  mctx));
+	}
+
+	obj = NULL;
 	result = named_config_get(maps, "dnssec-accept-expired", &obj);
 	INSIST(result == ISC_R_SUCCESS);
 	view->acceptexpired = cfg_obj_asboolean(obj);
