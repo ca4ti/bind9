@@ -11610,6 +11610,32 @@ cleanup:
 }
 
 static void
+log_rad(ns_client_t *client) {
+	char classbuf[DNS_RDATACLASS_FORMATSIZE];
+	char namebuf[DNS_NAME_FORMATSIZE];
+
+	if (!isc_log_wouldlog(ns_lctx, ISC_LOG_INFO)) {
+		return;
+	}
+
+	if (client->query.qtype != dns_rdatatype_txt ||
+	    client->view->rad == NULL ||
+	    dns_name_equal(client->view->rad, dns_rootname) ||
+	    !dns_name_israd(client->query.qname, client->view->rad))
+	{
+		return;
+	}
+
+	dns_name_format(client->query.qname, namebuf, sizeof(namebuf));
+	dns_rdataclass_format(client->view->rdclass, classbuf,
+			      sizeof(classbuf));
+
+	isc_log_write(ns_lctx, NS_LOGCATEGORY_DRA, NS_LOGMODULE_QUERY,
+		      ISC_LOG_INFO, "dns-reporting-agent '%s/%s'", namebuf,
+		      classbuf);
+}
+
+static void
 log_tat(ns_client_t *client) {
 	char namebuf[DNS_NAME_FORMATSIZE];
 	char clientbuf[ISC_NETADDR_FORMATSIZE];
@@ -11877,6 +11903,7 @@ ns_query_start(ns_client_t *client, isc_nmhandle_t *handle) {
 	dns_rdatatypestats_increment(client->manager->sctx->rcvquerystats,
 				     qtype);
 
+	log_rad(client);
 	log_tat(client);
 
 	if (dns_rdatatype_ismeta(qtype)) {

@@ -1309,6 +1309,14 @@ dns_name_isdnssvcb(const dns_name_t *name);
  * i.e. it starts with and optional _port label followed by a _dns label.
  */
 
+bool
+dns_name_israd(const dns_name_t *name, const dns_name_t *rad);
+/*%<
+ * Determine if a name is a RAD reporting name.
+ * i.e. _er.TYPE.QNAME.EDE._er.rad.
+ * TYPE and EDE are not currently checked.
+ */
+
 ISC_LANG_ENDDECLS
 
 /*

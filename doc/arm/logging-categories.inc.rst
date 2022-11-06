@@ -46,6 +46,9 @@
 ``general``
     A catch-all for many things that still are not classified into categories.
 
+``dns-reporting-agent``
+    Logs reports from clients that the there is an error in our responses.
+
 ``lame-servers``
     Misconfigurations in remote servers, discovered by BIND 9 when trying to query those servers during resolution.
 
@@ -79,9 +82,6 @@
     Start, periodic, and final notices of the rate limiting of a stream of responses that are logged at ``info`` severity in this category. These messages include a hash value of the domain name of the response and the name itself, except when there is insufficient memory to record the name for the final notice. The final notice is normally delayed until about one minute after rate limiting stops. A lack of memory can hurry the final notice, which is indicated by an initial asterisk (\*). Various internal events are logged at debug level 1 and higher.
     
     Rate limiting of individual requests is logged in the ``query-errors`` category.
-
-``reporting-agent-domain``
-    Logs reports from clients that the there is an error in our responses.
 
 ``resolver``
     DNS resolution, such as the recursive lookups performed on behalf of clients by a caching name server.

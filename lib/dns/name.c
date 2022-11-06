@@ -2430,3 +2430,33 @@ dns_name_isdnssvcb(const dns_name_t *name) {
 
 	return (false);
 }
+
+bool
+dns_name_israd(const dns_name_t *name, const dns_name_t *rad) {
+	dns_name_t suffix;
+	dns_offsets_t offsets;
+
+	REQUIRE(VALID_NAME(name));
+	REQUIRE(VALID_NAME(rad));
+
+	if (name->labels < rad->labels + 4U || name->length < 4U) {
+		return (false);
+	}
+
+	if (name->ndata[0] != 3 || name->ndata[1] != '_' ||
+	    tolower(name->ndata[2]) != 'e' || tolower(name->ndata[3]) != 'r')
+	{
+		return (false);
+	}
+
+	dns_name_init(&suffix, offsets);
+	dns_name_split(name, rad->labels + 1, NULL, &suffix);
+
+	if (suffix.ndata[0] != 3 || suffix.ndata[1] != '_' ||
+	    tolower(suffix.ndata[2]) != 'e' || tolower(suffix.ndata[3]) != 'r')
+	{
+		return (false);
+	}
+
+	return (dns_name_issubdomain(name, rad));
+}

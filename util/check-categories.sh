@@ -12,7 +12,8 @@
 list1=$(
 	grep LOGCATEGORY lib/*/include/*/*.h bin/named/include/named/*.h |
 	grep "#define.*(&" |
-	sed -e 's/.*LOGCATEGORY_\([A-Z_]*\).*/\1/' -e 's/^RRL$/rate-limit/' |
+	sed -e 's/.*LOGCATEGORY_\([A-Z_]*\).*/\1/' -e 's/^RRL$/rate-limit/' \
+	    -e 's/DRA/dns-reporting-agent/' |
 	tr '[A-Z]' '[a-z]' |
 	tr _ - |
 	sed 's/^tat$/trust-anchor-telemetry/' |
