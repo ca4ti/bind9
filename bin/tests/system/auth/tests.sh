@@ -186,5 +186,22 @@ lines=`wc -l < dig.out.test$n`
 [ $ret -eq 0 ] || echo_i "failed"
 status=`expr $status + $ret`
 
+n=`expr $n + 1`
+echo_i "check that RAD EDNS options is added to responses ($n)"
+ret=0
+$DIG $DIGOPTS @10.53.0.1 example.net > dig.out.test$n
+grep "; RAD: rad.example.net" dig.out.test$n > /dev/null || ret=1
+[ $ret -eq 0 ] || echo_i "failed"
+status=`expr $status + $ret`
+
+n=`expr $n + 1`
+echo_i "check that RAD requests are logged ($n)"
+ret=0
+nextpart ns1/named.run > /dev/null
+$DIG $DIGOPTS @10.53.0.1 _er.0.example.1._er.rad.example.net TXT > dig.out.test$n
+nextpart ns1/named.run | grep "dns-reporting-agent '_er.0.example.1._er.rad.example.net/IN'" > /dev/null || ret=1
+[ $ret -eq 0 ] || echo_i "failed"
+status=`expr $status + $ret`
+
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1
