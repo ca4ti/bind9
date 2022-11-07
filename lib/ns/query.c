@@ -11614,15 +11614,23 @@ log_rad(ns_client_t *client) {
 	char classbuf[DNS_RDATACLASS_FORMATSIZE];
 	char namebuf[DNS_NAME_FORMATSIZE];
 
-	if (!isc_log_wouldlog(ns_lctx, ISC_LOG_INFO)) {
-		return;
-	}
+	client->attributes |= NS_CLIENTATTR_WANTRAD;
 
 	if (client->query.qtype != dns_rdatatype_txt ||
 	    client->view->rad == NULL ||
 	    dns_name_equal(client->view->rad, dns_rootname) ||
 	    !dns_name_israd(client->query.qname, client->view->rad))
 	{
+		return;
+	}
+
+	/*
+	 * Don't return RAD to error reports to prevent infinite
+	 * loops.
+	 */
+	client->attributes &= ~NS_CLIENTATTR_WANTRAD;
+
+	if (!isc_log_wouldlog(ns_lctx, ISC_LOG_INFO)) {
 		return;
 	}
 
