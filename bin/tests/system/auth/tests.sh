@@ -18,7 +18,7 @@ DIGOPTS="+tcp -p ${PORT}"
 status=0
 n=0
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "wait for zones to finish transferring to ns2 ($n)"
 for i in 1 2 3 4 5 6 7 8 9 10
 do
@@ -32,13 +32,13 @@ do
   sleep 1
 done
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
 #
 # If recursion is unrequested or unavailable, then cross-zone CNAME records
 # should not be followed. If both requested and available, they should be.
 #
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that cross-zone CNAME record does not return target data (rd=0/ra=0) ($n)"
 ret=0
 $DIG $DIGOPTS +norec @10.53.0.1 www.example.com > dig.out.test$n || ret=1
@@ -47,9 +47,9 @@ grep "flags: qr aa;" dig.out.test$n > /dev/null || ret=1
 grep "www.example.com.*CNAME.*server.example.net" dig.out.test$n > /dev/null || ret=1
 grep "server.example.net.*A.*10.53.0.100" dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that cross-zone CNAME record does not return target data (rd=1/ra=0) ($n)"
 ret=0
 $DIG $DIGOPTS +rec @10.53.0.1 www.example.com > dig.out.test$n || ret=1
@@ -58,9 +58,9 @@ grep "flags: qr aa rd;" dig.out.test$n > /dev/null || ret=1
 grep "www.example.com.*CNAME.*server.example.net" dig.out.test$n > /dev/null || ret=1
 grep "server.example.net.*A.*10.53.0.100" dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that cross-zone CNAME record does not return target data (rd=0/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS +norec @10.53.0.2 www.example.com > dig.out.test$n || ret=1
@@ -69,9 +69,9 @@ grep "flags: qr aa ra;" dig.out.test$n > /dev/null || ret=1
 grep "www.example.com.*CNAME.*server.example.net" dig.out.test$n > /dev/null || ret=1
 grep "server.example.net.*A.*10.53.0.100" dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that cross-zone CNAME records return target data (rd=1/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.2 www.example.com > dig.out.test$n || ret=1
@@ -80,12 +80,12 @@ grep "flags: qr aa rd ra;" dig.out.test$n > /dev/null || ret=1
 grep "www.example.com.*CNAME.*server.example.net" dig.out.test$n > /dev/null || ret=1
 grep "server.example.net.*A.*10.53.0.100" dig.out.test$n > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
 #
 # In-zone CNAME records should always be followed regardless of RD and RA.
 #
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone CNAME records return target data (rd=0/ra=0) ($n)"
 ret=0
 $DIG $DIGOPTS +norec @10.53.0.1 inzone.example.com > dig.out.test$n || ret=1
@@ -94,9 +94,9 @@ grep "flags: qr aa;" dig.out.test$n > /dev/null || ret=1
 grep "inzone.example.com.*CNAME.*a.example.com" dig.out.test$n > /dev/null || ret=1
 grep "a.example.com.*A.*10.53.0.1" dig.out.test$n > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone CNAME records returns target data (rd=1/ra=0) ($n)"
 ret=0
 $DIG $DIGOPTS +rec @10.53.0.1 inzone.example.com > dig.out.test$n || ret=1
@@ -105,9 +105,9 @@ grep "flags: qr aa rd;" dig.out.test$n > /dev/null || ret=1
 grep "inzone.example.com.*CNAME.*a.example.com" dig.out.test$n > /dev/null || ret=1
 grep "a.example.com.*A.*10.53.0.1" dig.out.test$n > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone CNAME records return target data (rd=0/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS +norec @10.53.0.2 inzone.example.com > dig.out.test$n || ret=1
@@ -116,9 +116,9 @@ grep "flags: qr aa ra;" dig.out.test$n > /dev/null || ret=1
 grep "inzone.example.com.*CNAME.*a.example.com" dig.out.test$n > /dev/null || ret=1
 grep "a.example.com.*A.*10.53.0.1" dig.out.test$n > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone CNAME records return target data (rd=1/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.2 inzone.example.com > dig.out.test$n || ret=1
@@ -127,9 +127,9 @@ grep "flags: qr aa rd ra;" dig.out.test$n > /dev/null || ret=1
 grep "inzone.example.com.*CNAME.*a.example.com" dig.out.test$n > /dev/null || ret=1
 grep "a.example.com.*A.*10.53.0.1" dig.out.test$n > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone CNAME records does not return target data when QTYPE is CNAME (rd=1/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.2 -t cname inzone.example.com > dig.out.test$n || ret=1
@@ -138,9 +138,9 @@ grep 'flags: qr aa rd ra;' dig.out.test$n > /dev/null || ret=1
 grep 'inzone\.example\.com\..*CNAME.a\.example\.com\.' dig.out.test$n > /dev/null || ret=1
 grep 'a\.example\.com\..*A.10\.53\.0\.1' dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone CNAME records does not return target data when QTYPE is ANY (rd=1/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.2 -t any inzone.example.com > dig.out.test$n || ret=1
@@ -149,9 +149,9 @@ grep 'flags: qr aa rd ra;' dig.out.test$n > /dev/null || ret=1
 grep 'inzone\.example\.com\..*CNAME.a\.example\.com\.' dig.out.test$n > /dev/null || ret=1
 grep 'a\.example\.com\..*A.10\.53\.0\.1' dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone DNAME records does not return target data when QTYPE is CNAME (rd=1/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.2 -t cname inzone.dname.example.com > dig.out.test$n || ret=1
@@ -162,9 +162,9 @@ grep 'inzone\.dname\.example\.com\..*CNAME.inzone\.example\.com\.' dig.out.test$
 grep 'inzone\.example\.com\..*CNAME.a\.example\.com\.' dig.out.test$n > /dev/null && ret=1
 grep 'a\.example\.com\..*A.10\.53\.0\.1' dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that in-zone DNAME records does not return target data when QTYPE is ANY (rd=1/ra=1) ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.2 -t any inzone.dname.example.com > dig.out.test$n || ret=1
@@ -175,33 +175,33 @@ grep 'inzone\.dname\.example\.com\..*CNAME.inzone\.example\.com\.' dig.out.test$
 grep 'inzone\.example\.com.*CNAME.a\.example\.com\.' dig.out.test$n > /dev/null && ret=1
 grep 'a\.example\.com.*A.10\.53\.0\.1' dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that CHAOS addresses are compared correctly ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.1 +noall +answer ch test.example.chaos > dig.out.test$n
 lines=`wc -l < dig.out.test$n`
 [ ${lines:-0} -eq 2 ] || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that RAD EDNS options is added to responses ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.1 example.net > dig.out.test$n
 grep "; RAD: rad.example.net" dig.out.test$n > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
-n=`expr $n + 1`
+n=$((n + 1))
 echo_i "check that RAD requests are logged ($n)"
 ret=0
 nextpart ns1/named.run > /dev/null
 $DIG $DIGOPTS @10.53.0.1 _er.0.example.1._er.rad.example.net TXT > dig.out.test$n
 nextpart ns1/named.run | grep "dns-reporting-agent '_er.0.example.1._er.rad.example.net/IN'" > /dev/null || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
-status=`expr $status + $ret`
+status=$((status + ret))
 
 echo_i "exit status: $status"
 [ $status -eq 0 ] || exit 1
