@@ -3454,6 +3454,26 @@ cleanup:
 }
 
 static isc_result_t
+render_rad(isc_buffer_t *optbuf, isc_buffer_t *target) {
+	dns_decompress_t dctx = DNS_DECOMPRESS_NEVER;
+	dns_fixedname_t fixed;
+	dns_name_t *name = dns_fixedname_initname(&fixed);
+	char namebuf[DNS_NAME_FORMATSIZE];
+	isc_result_t result;
+
+	result = dns_name_fromwire(name, optbuf, dctx, 0, NULL);
+	if (result == ISC_R_SUCCESS && isc_buffer_activelength(optbuf) == 0) {
+		dns_name_format(name, namebuf, sizeof(namebuf));
+		ADD_STRING(target, " ");
+		ADD_STRING(target, namebuf);
+		return (result);
+	}
+	result = ISC_R_FAILURE;
+cleanup:
+	return (result);
+}
+
+static isc_result_t
 dns_message_pseudosectiontoyaml(dns_message_t *msg, dns_pseudosection_t section,
 				const dns_master_style_t *style,
 				dns_messagetextflag_t flags,
@@ -3679,6 +3699,18 @@ dns_message_pseudosectiontoyaml(dns_message_t *msg, dns_pseudosection_t section,
 					optlen -= 2;
 					POST(optlen);
 					continue;
+				}
+			} else if (optcode == DNS_OPT_RAD) {
+				INDENT(style);
+				ADD_STRING(target, "RAD:");
+				if (optlen > 0U) {
+					isc_buffer_t sb = optbuf;
+					isc_buffer_setactive(&optbuf, optlen);
+					result = render_rad(&optbuf, target);
+					if (result == ISC_R_SUCCESS) {
+						continue;
+					}
+					optbuf = sb;
 				}
 			} else {
 				INDENT(style);
@@ -4037,6 +4069,18 @@ dns_message_pseudosectiontotext(dns_message_t *msg, dns_pseudosection_t section,
 					optlen -= 2;
 					POST(optlen);
 					continue;
+				}
+			} else if (optcode == DNS_OPT_RAD) {
+				ADD_STRING(target, "; RAD:");
+				if (optlen > 0U) {
+					isc_buffer_t sb = optbuf;
+					isc_buffer_setactive(&optbuf, optlen);
+					result = render_rad(&optbuf, target);
+					if (result == ISC_R_SUCCESS) {
+						ADD_STRING(target, "\n");
+						continue;
+					}
+					optbuf = sb;
 				}
 			} else {
 				ADD_STRING(target, "; OPT=");
