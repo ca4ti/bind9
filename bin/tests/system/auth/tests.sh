@@ -181,7 +181,7 @@ n=$((n + 1))
 echo_i "check that CHAOS addresses are compared correctly ($n)"
 ret=0
 $DIG $DIGOPTS @10.53.0.1 +noall +answer ch test.example.chaos > dig.out.test$n
-lines=`wc -l < dig.out.test$n`
+lines=$(wc -l < dig.out.test$n)
 [ ${lines:-0} -eq 2 ] || ret=1
 [ $ret -eq 0 ] || echo_i "failed"
 status=$((status + ret))
@@ -195,11 +195,12 @@ grep "; RAD: rad.example.net" dig.out.test$n > /dev/null || ret=1
 status=$((status + ret))
 
 n=$((n + 1))
-echo_i "check that RAD requests are logged ($n)"
+echo_i "check that RAD requests are logged and no RAD option is present in the response ($n)"
 ret=0
 nextpart ns1/named.run > /dev/null
 $DIG $DIGOPTS @10.53.0.1 _er.0.example.1._er.rad.example.net TXT > dig.out.test$n
 nextpart ns1/named.run | grep "dns-reporting-agent '_er.0.example.1._er.rad.example.net/IN'" > /dev/null || ret=1
+grep "; RAD: rad.example.net" dig.out.test$n > /dev/null && ret=1
 [ $ret -eq 0 ] || echo_i "failed"
 status=$((status + ret))
 
