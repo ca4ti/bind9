@@ -64,10 +64,10 @@
 #define MAX_RESTARTS 16
 
 #ifdef TUNE_LARGE
-#define RESOLVER_NTASKS 523
 #else /* ifdef TUNE_LARGE */
-#define RESOLVER_NTASKS 31
 #endif /* TUNE_LARGE */
+
+#define RESOLVER_NTASKS 523
 
 #define CHECK(r)                             \
 	do {                                 \
