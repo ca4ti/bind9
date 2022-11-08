@@ -55,12 +55,6 @@
 #endif /* if defined(HAVE_LINUX_NETLINK_H) && defined(HAVE_LINUX_RTNETLINK_H) \
 	*/
 
-#ifdef TUNE_LARGE
-#define UDPBUFFERS 32768
-#else /* ifdef TUNE_LARGE */
-#define UDPBUFFERS 1000
-#endif /* TUNE_LARGE */
-
 #define IFMGR_MAGIC		 ISC_MAGIC('I', 'F', 'M', 'G')
 #define NS_INTERFACEMGR_VALID(t) ISC_MAGIC_VALID(t, IFMGR_MAGIC)
 
