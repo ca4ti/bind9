@@ -160,14 +160,14 @@
 #endif /* ifndef SIZE_AS_PERCENT */
 
 #ifdef TUNE_LARGE
-#define RESOLVER_NTASKS_PERCPU 32
 #define UDPBUFFERS	       32768
 #define EXCLBUFFERS	       32768
 #else
-#define RESOLVER_NTASKS_PERCPU 8
 #define UDPBUFFERS	       1000
 #define EXCLBUFFERS	       4096
 #endif /* TUNE_LARGE */
+
+#define RESOLVER_NTASKS_PERCPU 32
 
 /* RFC7828 defines timeout as 16-bit value specified in units of 100
  * milliseconds, so the maximum and minimum advertised and keepalive
