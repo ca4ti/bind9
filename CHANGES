@@ -1,3 +1,9 @@
+6014.	[func]		What was set with --with-tuning=large option has
+			been disabled by default again, and the configure
+			option --with-tuning=large has been restored for
+			installations that prefer performance over memory.
+			[GL #3663]
+
 6013.	[bug]		Fix a crash that could happen when you change
 			a dnssec-policy zone with NSEC3 to start using
 			inline-signing. [GL #3591]

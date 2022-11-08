@@ -30,7 +30,12 @@ Removed Features
 Feature Changes
 ~~~~~~~~~~~~~~~
 
-- None.
+- Compile-time settings enabled by the ``--with-tuning=large`` option
+  for ``configure`` have been disabled by default.  This makes the
+  memory usage in the resolver to be more aligned with the memory
+  usage in BIND 9.11.  Previously used default compile-time settings
+  in BIND 9.16 can be enabled by passing ``--with-tuning=large`` to
+  ``configure``. :gl:`#3663`
 
 Bug Fixes
 ~~~~~~~~~
