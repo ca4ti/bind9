@@ -1686,7 +1686,8 @@ Optional Packages:
   --with-libidn2=PATH     enable IDN support using GNU libidn2
                           [yes|no(default)|path]
   --with-cmocka=detect    enable CMocka based tests (default is detect)
-  --with-tuning=ARG       Specify server tuning (default or small)
+  --with-tuning=ARG       Specify server tuning - large or small (default is
+                          small)
   --with-dlopen=ARG       support dynamically loadable DLZ and DYNDB drivers
   --with-dnsrps-libname   DNSRPS provider library name (librpz.so)
   --with-dnsrps-dir       path to DNSRPS provider library
@@ -22498,23 +22499,27 @@ done
 # [pairwise: --with-tuning=small, --without-tuning]
 
 # Check whether --with-tuning was given.
-if test "${with_tuning+set}" = set; then :
+if test ${with_tuning+y}
+then :
   withval=$with_tuning;
-else
+else $as_nop
   with_tuning=no
 fi
 
 
 case $with_tuning in #(
   small) :
-    { $as_echo "$as_me:${as_lineno-$LINENO}: using small system tuning" >&5
-$as_echo "$as_me: using small system tuning" >&6;} ;; #(
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using small system tuning" >&5
+printf "%s\n" "$as_me: using small system tuning" >&6;} ;; #(
+  large) :
+
+printf "%s\n" "#define TUNE_LARGE 1" >>confdefs.h
+
+		 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using large system tuning" >&5
+printf "%s\n" "$as_me: using large system tuning" >&6;} ;; #(
   *) :
-
-$as_echo "#define TUNE_LARGE 1" >>confdefs.h
-
-	 { $as_echo "$as_me:${as_lineno-$LINENO}: using default system tuning" >&5
-$as_echo "$as_me: using default system tuning" >&6;} ;;
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: using default (small) system tuning" >&5
+printf "%s\n" "$as_me: using default (small) system tuning" >&6;} ;;
 esac
 
 #
