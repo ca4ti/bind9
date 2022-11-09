@@ -727,6 +727,23 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
 n=$((n+1))
+echo_i "check 'rndc managed-keys' and islands of trust root unreachable ($n)"
+ret=0
+mkeys_sync_on 5
+mkeys_status_on 5 > rndc.out.$n 2>&1 || ret=1
+# there should be three keys listed now
+count=$(grep -c "keyid: " rndc.out.$n) || true
+[ "$count" -eq 3 ] || ret=1
+# three lines indicating trust status
+count=$(grep -c "trust" rndc.out.$n) || true
+[ "$count" -eq 3 ] || ret=1
+# one indicates current trust
+count=$(grep -c "trusted since" rndc.out.$n) || true
+[ "$count" -eq 1 ] || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
 echo_i "check key refreshes are resumed after root servers become available ($n)"
 ret=0
 stop_server --use-rndc --port "${CONTROLPORT}" mkeys ns5
@@ -828,6 +845,23 @@ lines=$(wc -l < rndc.out.ns7.view2.test$n)
 grep "refreshing managed keys for 'view1'" rndc.out.ns7.view2.test$n > /dev/null || ret=1
 grep "refreshing managed keys for 'view2'" rndc.out.ns7.view2.test$n > /dev/null || ret=1
 [ "$lines" -eq 2 ] || ret=1
+if [ $ret != 0 ]; then echo_i "failed"; fi
+status=$((status+ret))
+
+n=$((n+1))
+echo_i "check 'rndc managed-keys' and islands of trust now that root is reachable ($n)"
+ret=0
+mkeys_sync_on 5
+mkeys_status_on 5 > rndc.out.$n 2>&1 || ret=1
+# there should be three keys listed now
+count=$(grep -c "keyid: " rndc.out.$n) || true
+[ "$count" -eq 3 ] || ret=1
+# theee lines indicating trust status
+count=$(grep -c "trust" rndc.out.$n) || true
+[ "$count" -eq 3 ] || ret=1
+# three indicates current trust
+count=$(grep -c "trusted since" rndc.out.$n) || true
+[ "$count" -eq 3 ] || ret=1
 if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status+ret))
 
