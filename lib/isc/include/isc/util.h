@@ -387,3 +387,5 @@ mock_assert(const int result, const char *const expression,
 		a = b;                    \
 		b = __tmp_swap;           \
 	}
+
+#define ISC_LOG2(x) (sizeof(uint32_t) * 8 - __builtin_clz(x) - 1)
