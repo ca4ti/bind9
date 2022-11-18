@@ -14,7 +14,9 @@
 from functools import partial
 import logging
 import os
+from pathlib import Path
 import random
+import re
 import subprocess
 from typing import Dict, List, Optional
 
@@ -28,6 +30,60 @@ logging.basicConfig(
     filename="pytest.log",
     filemode="w",
 )
+
+FILE_DIR = os.path.abspath(Path(__file__).parent)
+
+ENV_RE = re.compile("([^=]+)=(.*)")
+
+
+@pytest.fixture(scope="session")
+def conf_env():
+    """Common environment variables for running tests."""
+    # FUTURE Define all variables in pytest only. This is currently not done in
+    # order to support the legacy way of running system tests without having to
+    # duplicate the env variables both here and in conf.sh.
+
+    def parse_env(env):
+        """Parse the POSIX env format into Python dictionary."""
+        out = {}
+        for line in env.decode("utf-8").splitlines():
+            match = ENV_RE.match(line)
+            if match:
+                out[match.groups()[0]] = match.groups()[1]
+        return out
+
+    def _get_env(cmd):
+        try:
+            proc = subprocess.run(
+                [cmd],
+                shell=True,
+                check=True,
+                cwd=FILE_DIR,
+                stdout=subprocess.PIPE,
+            )
+        except subprocess.CalledProcessError as exc:
+            logging.error("failed to get shell env: %s", exc)
+            raise exc
+        return parse_env(proc.stdout)
+
+    pure_env = _get_env("env")
+    mod_env = _get_env(". ./conf.sh && env")
+    conf_env = {
+        name: value
+        for name, value in mod_env.items()
+        if (name not in pure_env or value != pure_env[name])
+    }
+    logging.debug("conf.sh env: %s", conf_env)
+    return conf_env
+
+
+@pytest.fixture
+def env(conf_env, ports):
+    test_env = conf_env.copy()
+    test_env.update(ports)
+    test_env["builddir"] = f"{test_env['TOP_BUILDDIR']}/bin/tests/system"
+    test_env["srcdir"] = f"{test_env['TOP_SRCDIR']}/bin/tests/system"
+    return test_env
 
 
 @pytest.fixture(scope="module")  # TODO update scope
