@@ -39,6 +39,15 @@ FILE_DIR = os.path.abspath(Path(__file__).parent)
 ENV_RE = re.compile("([^=]+)=(.*)")
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--clean",
+        action="store_true",
+        default=False,
+        help="clean any leftover files before test",
+    )
+
+
 def pytest_configure(config):
     if not XDIST_WORKER:  # run on main instance before any xdist workers are spawned
         logging.debug("compiling required files")
@@ -331,8 +340,11 @@ def system_test(
     def check_for_log_files():
         log_files = glob.glob(f"{testdir}/**/named.run", recursive=True)
         if log_files:
-            logger.debug("found log files: %s", ', '.join(log_files))
-            pytest.skip("Unclean test directory (previsouly failed test?).")
+            logger.debug("found log files: %s", ", ".join(log_files))
+            pytest.skip(
+                "Unclean test directory (previously failed test?). "
+                "Use --clean to always force cleanup."
+            )
 
     def cleanup_test(initial: bool = True):
         try:
@@ -405,7 +417,8 @@ def system_test(
 
         try:
             check_prerequisites()
-            check_for_log_files()
+            if not request.config.getoption("--clean"):
+                check_for_log_files()
             result = "failed"
             cleanup_test(initial=True)
             setup_test()
