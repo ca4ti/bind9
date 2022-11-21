@@ -402,6 +402,7 @@ def system_test(
     # some previous unclean state from affecting the current test.
     testdir = systest_dir
 
+    os.environ.update(env)  # Ensure pytests have the same env vars as shell tests.
     logger.info(f"test started: {request.node.name}")
     result = "skipped"
     try:
