@@ -1355,9 +1355,9 @@ zone_free(dns_zone_t *zone) {
 		dns_catz_catzs_detach(&zone->catzs);
 	}
 	zone_freedbargs(zone);
-	dns_zone_setparentals(zone, NULL, NULL, NULL, 0);
-	dns_zone_setprimaries(zone, NULL, NULL, NULL, 0);
-	dns_zone_setalsonotify(zone, NULL, NULL, NULL, NULL, 0);
+	dns_zone_setparentals(zone, NULL, NULL, NULL, NULL, 0);
+	dns_zone_setprimaries(zone, NULL, NULL, NULL, NULL, 0);
+	dns_zone_setalsonotify(zone, NULL, NULL, NULL, NULL, NULL, 0);
 	zone->check_names = dns_severity_ignore;
 	if (zone->update_acl != NULL) {
 		dns_acl_detach(&zone->update_acl);
@@ -6239,8 +6239,9 @@ dns_zone_getnotifysrc6dscp(dns_zone_t *zone) {
 
 void
 dns_zone_setalsonotify(dns_zone_t *zone, isc_sockaddr_t *addresses,
-		       isc_dscp_t *dscps, dns_name_t **keynames,
-		       dns_name_t **tlsnames, uint32_t count) {
+		       isc_sockaddr_t *sources, isc_dscp_t *dscps,
+		       dns_name_t **keynames, dns_name_t **tlsnames,
+		       uint32_t count) {
 	dns_remote_t remote;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
@@ -6248,6 +6249,7 @@ dns_zone_setalsonotify(dns_zone_t *zone, isc_sockaddr_t *addresses,
 	LOCK_ZONE(zone);
 
 	remote.addresses = addresses;
+	remote.sources = sources;
 	remote.dscps = dscps;
 	remote.keynames = keynames;
 	remote.tlsnames = tlsnames;
@@ -6269,8 +6271,8 @@ dns_zone_setalsonotify(dns_zone_t *zone, isc_sockaddr_t *addresses,
 	/*
 	 * Now set up the notify address and key lists.
 	 */
-	dns_remote_init(&zone->notify, count, addresses, dscps, keynames,
-			tlsnames, true, zone->mctx);
+	dns_remote_init(&zone->notify, count, addresses, sources, dscps,
+			keynames, tlsnames, true, zone->mctx);
 
 unlock:
 	UNLOCK_ZONE(zone);
@@ -6278,8 +6280,8 @@ unlock:
 
 void
 dns_zone_setprimaries(dns_zone_t *zone, isc_sockaddr_t *addresses,
-		      dns_name_t **keynames, dns_name_t **tlsnames,
-		      uint32_t count) {
+		      isc_sockaddr_t *sources, dns_name_t **keynames,
+		      dns_name_t **tlsnames, uint32_t count) {
 	dns_remote_t remote;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
@@ -6287,6 +6289,7 @@ dns_zone_setprimaries(dns_zone_t *zone, isc_sockaddr_t *addresses,
 	LOCK_ZONE(zone);
 
 	remote.addresses = addresses;
+	remote.sources = sources;
 	remote.dscps = NULL;
 	remote.keynames = keynames;
 	remote.tlsnames = tlsnames;
@@ -6318,8 +6321,8 @@ dns_zone_setprimaries(dns_zone_t *zone, isc_sockaddr_t *addresses,
 	/*
 	 * Now set up the primaries and primary key lists.
 	 */
-	dns_remote_init(&zone->primaries, count, addresses, NULL, keynames,
-			tlsnames, true, zone->mctx);
+	dns_remote_init(&zone->primaries, count, addresses, sources, NULL,
+			keynames, tlsnames, true, zone->mctx);
 
 	DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NOPRIMARIES);
 
@@ -6329,8 +6332,8 @@ unlock:
 
 void
 dns_zone_setparentals(dns_zone_t *zone, isc_sockaddr_t *addresses,
-		      dns_name_t **keynames, dns_name_t **tlsnames,
-		      uint32_t count) {
+		      isc_sockaddr_t *sources, dns_name_t **keynames,
+		      dns_name_t **tlsnames, uint32_t count) {
 	dns_remote_t remote;
 
 	REQUIRE(DNS_ZONE_VALID(zone));
@@ -6338,6 +6341,7 @@ dns_zone_setparentals(dns_zone_t *zone, isc_sockaddr_t *addresses,
 	LOCK_ZONE(zone);
 
 	remote.addresses = addresses;
+	remote.sources = sources;
 	remote.dscps = NULL;
 	remote.keynames = keynames;
 	remote.tlsnames = tlsnames;
@@ -6359,8 +6363,8 @@ dns_zone_setparentals(dns_zone_t *zone, isc_sockaddr_t *addresses,
 	/*
 	 * Now set up the parentals and parental key lists.
 	 */
-	dns_remote_init(&zone->parentals, count, addresses, NULL, keynames,
-			tlsnames, true, zone->mctx);
+	dns_remote_init(&zone->parentals, count, addresses, sources, NULL,
+			keynames, tlsnames, true, zone->mctx);
 
 	dns_zone_log(zone, ISC_LOG_NOTICE, "checkds: set %u parentals", count);
 

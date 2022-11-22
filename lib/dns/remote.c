@@ -31,6 +31,12 @@ dns_remote_addresses(dns_remote_t *remote) {
 	return (remote->addresses);
 }
 
+isc_sockaddr_t *
+dns_remote_sources(dns_remote_t *remote) {
+	REQUIRE(remote != NULL);
+	return (remote->sources);
+}
+
 unsigned int
 dns_remote_count(dns_remote_t *remote) {
 	REQUIRE(remote != NULL);
@@ -51,9 +57,9 @@ dns_remote_tlsnames(dns_remote_t *remote) {
 
 void
 dns_remote_init(dns_remote_t *remote, unsigned int count,
-		const isc_sockaddr_t *addrs, const isc_dscp_t *dscp,
-		dns_name_t **keynames, dns_name_t **tlsnames, bool mark,
-		isc_mem_t *mctx) {
+		const isc_sockaddr_t *addrs, const isc_sockaddr_t *srcs,
+		const isc_dscp_t *dscp, dns_name_t **keynames,
+		dns_name_t **tlsnames, bool mark, isc_mem_t *mctx) {
 	unsigned int i;
 
 	REQUIRE(remote != NULL);
@@ -71,6 +77,14 @@ dns_remote_init(dns_remote_t *remote, unsigned int count,
 			count * sizeof(isc_sockaddr_t));
 	} else {
 		remote->addresses = NULL;
+	}
+
+	if (srcs != NULL) {
+		remote->sources = isc_mem_get(mctx,
+					      count * sizeof(isc_sockaddr_t));
+		memmove(remote->sources, srcs, count * sizeof(isc_sockaddr_t));
+	} else {
+		remote->sources = NULL;
 	}
 
 	if (dscp != NULL) {
@@ -218,6 +232,12 @@ dns_remote_clear(dns_remote_t *remote) {
 		remote->addresses = NULL;
 	}
 
+	if (remote->sources != NULL) {
+		isc_mem_put(mctx, remote->sources,
+			    count * sizeof(isc_sockaddr_t));
+		remote->sources = NULL;
+	}
+
 	if (remote->dscps != NULL) {
 		isc_mem_put(mctx, remote->dscps, count * sizeof(isc_dscp_t));
 		remote->dscps = NULL;
@@ -313,6 +333,15 @@ dns_remote_addr(dns_remote_t *remote, unsigned int i) {
 	REQUIRE(i < remote->addrcnt);
 
 	return (remote->addresses[i]);
+}
+
+isc_sockaddr_t
+dns_remote_sourceaddr(dns_remote_t *remote) {
+	REQUIRE(remote != NULL);
+	REQUIRE(remote->sources != NULL);
+	REQUIRE(remote->curraddr < remote->addrcnt);
+
+	return (remote->sources[remote->curraddr]);
 }
 
 isc_dscp_t

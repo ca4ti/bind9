@@ -604,30 +604,41 @@ isc_result_t
 named_config_getipandkeylist(const cfg_obj_t *config, const char *listtype,
 			     const cfg_obj_t *list, isc_mem_t *mctx,
 			     dns_ipkeylist_t *ipkl) {
-	uint32_t addrcount = 0, dscpcount = 0, keycount = 0, tlscount = 0,
-		 i = 0;
-	uint32_t listcount = 0, l = 0, j;
+	uint32_t addrcount = 0, srccount = 0, dscpcount = 0;
+	uint32_t keycount = 0, tlscount = 0;
+	uint32_t listcount = 0, l = 0, i = 0;
 	uint32_t stackcount = 0, pushed = 0;
 	isc_result_t result;
 	const cfg_listelt_t *element;
 	const cfg_obj_t *addrlist;
 	const cfg_obj_t *portobj;
 	const cfg_obj_t *dscpobj;
+	const cfg_obj_t *src4obj;
+	const cfg_obj_t *src6obj;
 	in_port_t port = (in_port_t)0;
 	in_port_t def_port;
 	in_port_t def_tlsport;
+	isc_sockaddr_t src4;
+	isc_sockaddr_t src6;
 	isc_dscp_t dscp = -1;
 	isc_sockaddr_t *addrs = NULL;
+	isc_sockaddr_t *sources = NULL;
 	isc_dscp_t *dscps = NULL;
 	dns_name_t **keys = NULL;
 	dns_name_t **tlss = NULL;
 	struct {
 		const char *name;
+		in_port_t port;
+		isc_dscp_t dscp;
+		isc_sockaddr_t *src4s;
+		isc_sockaddr_t *src6s;
 	} *lists = NULL;
 	struct {
 		const cfg_listelt_t *element;
 		in_port_t port;
 		isc_dscp_t dscp;
+		isc_sockaddr_t src4;
+		isc_sockaddr_t src6;
 	} *stack = NULL;
 
 	REQUIRE(ipkl != NULL);
@@ -661,6 +672,8 @@ newlist:
 	addrlist = cfg_tuple_get(list, "addresses");
 	portobj = cfg_tuple_get(list, "port");
 	dscpobj = cfg_tuple_get(list, "dscp");
+	src4obj = cfg_tuple_get(list, "source");
+	src6obj = cfg_tuple_get(list, "source-v6");
 
 	if (cfg_obj_isuint32(portobj)) {
 		uint32_t val = cfg_obj_asuint32(portobj);
@@ -684,6 +697,18 @@ newlist:
 		dscp = (isc_dscp_t)cfg_obj_asuint32(dscpobj);
 	}
 
+	if (src4obj != NULL && cfg_obj_issockaddr(src4obj)) {
+		src4 = *cfg_obj_assockaddr(src4obj);
+	} else {
+		isc_sockaddr_any(&src4);
+	}
+
+	if (src6obj != NULL && cfg_obj_issockaddr(src6obj)) {
+		src6 = *cfg_obj_assockaddr(src6obj);
+	} else {
+		isc_sockaddr_any6(&src6);
+	}
+
 	result = ISC_R_NOMEMORY;
 
 	element = cfg_list_first(addrlist);
@@ -701,6 +726,7 @@ resume:
 		if (!cfg_obj_issockaddr(addr)) {
 			const char *listname = cfg_obj_asstring(addr);
 			isc_result_t tresult;
+			uint32_t j;
 
 			/* Grow lists? */
 			grow_array(mctx, lists, l, listcount);
@@ -738,6 +764,8 @@ resume:
 			stack[pushed].element = cfg_list_next(element);
 			stack[pushed].port = port;
 			stack[pushed].dscp = dscp;
+			stack[pushed].src4 = src4;
+			stack[pushed].src6 = src6;
 			pushed++;
 			goto newlist;
 		}
@@ -746,6 +774,7 @@ resume:
 		grow_array(mctx, dscps, i, dscpcount);
 		grow_array(mctx, keys, i, keycount);
 		grow_array(mctx, tlss, i, tlscount);
+		grow_array(mctx, sources, i, srccount);
 
 		addrs[i] = *cfg_obj_assockaddr(addr);
 		dscps[i] = cfg_obj_getdscp(addr);
@@ -783,6 +812,20 @@ resume:
 			isc_sockaddr_setport(&addrs[i], addr_port);
 		}
 
+		switch (isc_sockaddr_pf(&addrs[i])) {
+		case PF_INET:
+			sources[i] = src4;
+			break;
+		case PF_INET6:
+			sources[i] = src6;
+			break;
+		default:
+			i++; /* Increment here so that cleanup on error works.
+			      */
+			result = ISC_R_NOTIMPLEMENTED;
+			goto cleanup;
+		}
+
 		i++;
 	}
 	if (pushed != 0) {
@@ -790,6 +833,8 @@ resume:
 		element = stack[pushed].element;
 		port = stack[pushed].port;
 		dscp = stack[pushed].dscp;
+		src4 = stack[pushed].src4;
+		src6 = stack[pushed].src6;
 		goto resume;
 	}
 
@@ -797,6 +842,7 @@ resume:
 	shrink_array(mctx, dscps, i, dscpcount);
 	shrink_array(mctx, keys, i, keycount);
 	shrink_array(mctx, tlss, i, tlscount);
+	shrink_array(mctx, sources, i, srccount);
 
 	if (lists != NULL) {
 		isc_mem_put(mctx, lists, listcount * sizeof(lists[0]));
@@ -808,12 +854,14 @@ resume:
 	INSIST(dscpcount == addrcount);
 	INSIST(keycount == addrcount);
 	INSIST(tlscount == addrcount);
+	INSIST(srccount == addrcount);
 	INSIST(keycount == dscpcount);
 
 	ipkl->addrs = addrs;
 	ipkl->dscps = dscps;
 	ipkl->keys = keys;
 	ipkl->tlss = tlss;
+	ipkl->sources = sources;
 	ipkl->count = addrcount;
 	ipkl->allocated = addrcount;
 
@@ -827,7 +875,7 @@ cleanup:
 		isc_mem_put(mctx, dscps, dscpcount * sizeof(dscps[0]));
 	}
 	if (keys != NULL) {
-		for (j = 0; j < i; j++) {
+		for (uint32_t j = 0; j < i; j++) {
 			if (keys[j] == NULL) {
 				continue;
 			}
@@ -839,7 +887,7 @@ cleanup:
 		isc_mem_put(mctx, keys, keycount * sizeof(keys[0]));
 	}
 	if (tlss != NULL) {
-		for (j = 0; j < i; j++) {
+		for (uint32_t j = 0; j < i; j++) {
 			if (tlss[j] == NULL) {
 				continue;
 			}
@@ -849,6 +897,9 @@ cleanup:
 			isc_mem_put(mctx, tlss[j], sizeof(*tlss[j]));
 		}
 		isc_mem_put(mctx, tlss, tlscount * sizeof(tlss[0]));
+	}
+	if (sources != NULL) {
+		isc_mem_put(mctx, sources, srccount * sizeof(sources[0]));
 	}
 	if (lists != NULL) {
 		isc_mem_put(mctx, lists, listcount * sizeof(lists[0]));
