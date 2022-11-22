@@ -388,6 +388,9 @@ void
 cfg_print_sockaddr(cfg_printer_t *pctx, const cfg_obj_t *obj);
 
 void
+cfg_print_sourceaddr(cfg_printer_t *pctx, const cfg_obj_t *obj);
+
+void
 cfg_print_boolean(cfg_printer_t *pctx, const cfg_obj_t *obj);
 
 void

@@ -121,6 +121,8 @@ static cfg_type_t cfg_type_optional_dscp;
 static cfg_type_t cfg_type_optional_facility;
 static cfg_type_t cfg_type_optional_keyref;
 static cfg_type_t cfg_type_optional_port;
+static cfg_type_t cfg_type_optional_sourceaddr4;
+static cfg_type_t cfg_type_optional_sourceaddr6;
 static cfg_type_t cfg_type_optional_uint32;
 static cfg_type_t cfg_type_optional_tls;
 static cfg_type_t cfg_type_options;
@@ -139,6 +141,9 @@ static cfg_type_t cfg_type_sizeorpercent;
 static cfg_type_t cfg_type_sizeval;
 static cfg_type_t cfg_type_sockaddr4wild;
 static cfg_type_t cfg_type_sockaddr6wild;
+static cfg_type_t cfg_type_sourceaddr4;
+static cfg_type_t cfg_type_sourceaddr6;
+static cfg_type_t cfg_type_sourceaddr;
 static cfg_type_t cfg_type_statschannels;
 static cfg_type_t cfg_type_tlsconf;
 static cfg_type_t cfg_type_view;
@@ -234,6 +239,8 @@ static cfg_tuplefielddef_t remotes_fields[] = {
 	{ "name", &cfg_type_astring, 0 },
 	{ "port", &cfg_type_optional_port, 0 },
 	{ "dscp", &cfg_type_optional_dscp, 0 },
+	{ "source", &cfg_type_optional_sourceaddr4, 0 },
+	{ "source-v6", &cfg_type_optional_sourceaddr6, 0 },
 	{ "addresses", &cfg_type_bracketed_namesockaddrkeylist, 0 },
 	{ NULL, NULL, 0 }
 };
@@ -273,6 +280,8 @@ static cfg_type_t cfg_type_bracketed_namesockaddrkeylist = {
 static cfg_tuplefielddef_t namesockaddrkeylist_fields[] = {
 	{ "port", &cfg_type_optional_port, 0 },
 	{ "dscp", &cfg_type_optional_dscp, 0 },
+	{ "source", &cfg_type_optional_sourceaddr4, 0 },
+	{ "source-v6", &cfg_type_optional_sourceaddr6, 0 },
 	{ "addresses", &cfg_type_bracketed_namesockaddrkeylist, 0 },
 	{ NULL, NULL, 0 }
 };
@@ -3335,6 +3344,88 @@ static cfg_type_t cfg_type_querysource6 = {
 static cfg_type_t cfg_type_querysource = { "querysource",     NULL,
 					   print_querysource, NULL,
 					   &cfg_rep_sockaddr, NULL };
+
+static isc_result_t
+parse_sourceaddr(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
+	isc_result_t result;
+	isc_netaddr_t netaddr;
+	in_port_t port = 0;
+	isc_dscp_t dscp = -1;
+	cfg_obj_t *obj = NULL;
+	const unsigned int *flagp = type->of;
+
+	CHECK(parse_netaddr(pctx, *flagp, &netaddr, &port, &dscp));
+	CHECK(cfg_create_obj(pctx, &cfg_type_sourceaddr, &obj));
+	obj->type = type;
+	isc_sockaddr_fromnetaddr(&obj->value.sockaddr, &netaddr, port);
+	obj->value.sockaddrdscp.dscp = dscp;
+	*ret = obj;
+	return (ISC_R_SUCCESS);
+
+cleanup:
+	cfg_parser_error(pctx, CFG_LOG_NEAR, "invalid source address");
+	CLEANUP_OBJ(obj);
+	return (result);
+}
+
+static void
+print_sourceaddr(cfg_printer_t *pctx, const cfg_obj_t *obj) {
+	cfg_print_sourceaddr(pctx, obj);
+}
+
+static void
+doc_sourceaddr(cfg_printer_t *pctx, const cfg_type_t *type) {
+	const unsigned int *flagp = type->of;
+
+	cfg_print_cstr(pctx, "( ( [ address ] ( ");
+	if ((*flagp & CFG_ADDR_V4OK) != 0) {
+		cfg_print_cstr(pctx, "<ipv4_address>");
+	} else if ((*flagp & CFG_ADDR_V6OK) != 0) {
+		cfg_print_cstr(pctx, "<ipv6_address>");
+	} else {
+		UNREACHABLE();
+	}
+	cfg_print_cstr(pctx, " | * ) ) | "
+			     "( [ [ address ] ( ");
+	if ((*flagp & CFG_ADDR_V4OK) != 0) {
+		cfg_print_cstr(pctx, "<ipv4_address>");
+	} else if ((*flagp & CFG_ADDR_V6OK) != 0) {
+		cfg_print_cstr(pctx, "<ipv6_address>");
+	} else {
+		UNREACHABLE();
+	}
+	cfg_print_cstr(pctx, " | * ) ] ) ) ]");
+}
+
+static unsigned int sockaddr4src_flags = CFG_ADDR_WILDOK | CFG_ADDR_V4OK;
+static unsigned int sockaddr6src_flags = CFG_ADDR_WILDOK | CFG_ADDR_V6OK;
+
+static cfg_type_t cfg_type_sourceaddr4 = {
+	"sourceaddr4",	parse_sourceaddr,  print_sourceaddr,
+	doc_sourceaddr, &cfg_rep_sockaddr, &sockaddr4src_flags
+};
+
+static cfg_type_t cfg_type_sourceaddr6 = {
+	"sourceaddr6",	parse_sourceaddr,  print_sourceaddr,
+	doc_sourceaddr, &cfg_rep_sockaddr, &sockaddr6src_flags
+};
+
+static cfg_type_t cfg_type_sourceaddr = { "sourceaddr", NULL, print_sourceaddr,
+					  NULL,		NULL, NULL };
+
+static keyword_type_t sourceaddr4_kw = { "source", &cfg_type_sourceaddr4 };
+
+static cfg_type_t cfg_type_optional_sourceaddr4 = {
+	"optional_sourceaddr4", parse_optional_keyvalue, print_keyvalue,
+	doc_optional_keyvalue,	&cfg_rep_sockaddr,	 &sourceaddr4_kw
+};
+
+static keyword_type_t sourceaddr6_kw = { "source-v6", &cfg_type_sourceaddr6 };
+
+static cfg_type_t cfg_type_optional_sourceaddr6 = {
+	"optional_sourceaddr6", parse_optional_keyvalue, print_keyvalue,
+	doc_optional_keyvalue,	&cfg_rep_sockaddr,	 &sourceaddr6_kw
+};
 
 /*%
  * The socket address syntax in the "controls" statement is silly.

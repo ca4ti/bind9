@@ -3349,6 +3349,17 @@ cfg_print_sockaddr(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 }
 
 void
+cfg_print_sourceaddr(cfg_printer_t *pctx, const cfg_obj_t *obj) {
+	char buf[ISC_SOCKADDR_FORMATSIZE];
+
+	REQUIRE(pctx != NULL);
+	REQUIRE(obj != NULL);
+
+	isc_sockaddr_format(&obj->value.sockaddr, buf, sizeof(buf));
+	cfg_print_cstr(pctx, buf);
+}
+
+void
 cfg_doc_sockaddr(cfg_printer_t *pctx, const cfg_type_t *type) {
 	const unsigned int *flagp;
 	int n = 0;

@@ -82,7 +82,7 @@ options {
 	transfer-source 0.0.0.0 dscp 63;
 	zone-statistics none;
 };
-parental-agents "parents" {
+parental-agents "parents" source 10.10.10.10p53 source-v6 2001:db8::10p53 {
 	10.10.10.11;
 	10.10.10.12;
 };

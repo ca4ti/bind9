@@ -126,7 +126,7 @@ options {
 	allow\-transfer [ port <integer> ] [ transport <string> ] { <address_match_element>; ... };
 	allow\-update { <address_match_element>; ... };
 	allow\-update\-forwarding { <address_match_element>; ... };
-	also\-notify [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	also\-notify [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	alt\-transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	alt\-transfer\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	answer\-cookie <boolean>;
@@ -138,7 +138,7 @@ options {
 	avoid\-v6\-udp\-ports { <portrange>; ... };
 	bindkeys\-file <quoted_string>;
 	blackhole { <address_match_element>; ... };
-	catalog\-zones { zone <string> [ default\-primaries [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... } ] [ zone\-directory <quoted_string> ] [ in\-memory <boolean> ] [ min\-update\-interval <duration> ]; ... };
+	catalog\-zones { zone <string> [ default\-primaries [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... } ] [ zone\-directory <quoted_string> ] [ in\-memory <boolean> ] [ min\-update\-interval <duration> ]; ... };
 	check\-dup\-records ( fail | warn | ignore );
 	check\-integrity <boolean>;
 	check\-mx ( fail | warn | ignore );
@@ -377,11 +377,11 @@ options {
 	zone\-statistics ( full | terse | none | <boolean> );
 };
 
-parental\-agents <string> [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... }; // may occur multiple times
+parental\-agents <string> [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... }; // may occur multiple times
 
 plugin ( query ) <string> [ { <unspecified\-text> } ]; // may occur multiple times
 
-primaries <string> [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... }; // may occur multiple times
+primaries <string> [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... }; // may occur multiple times
 
 server <netprefix> {
 	bogus <boolean>;
@@ -441,13 +441,13 @@ view <string> [ <class> ] {
 	allow\-transfer [ port <integer> ] [ transport <string> ] { <address_match_element>; ... };
 	allow\-update { <address_match_element>; ... };
 	allow\-update\-forwarding { <address_match_element>; ... };
-	also\-notify [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	also\-notify [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	alt\-transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	alt\-transfer\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	attach\-cache <string>;
 	auth\-nxdomain <boolean>;
 	auto\-dnssec ( allow | maintain | off ); // deprecated
-	catalog\-zones { zone <string> [ default\-primaries [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... } ] [ zone\-directory <quoted_string> ] [ in\-memory <boolean> ] [ min\-update\-interval <duration> ]; ... };
+	catalog\-zones { zone <string> [ default\-primaries [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... } ] [ zone\-directory <quoted_string> ] [ in\-memory <boolean> ] [ min\-update\-interval <duration> ]; ... };
 	check\-dup\-records ( fail | warn | ignore );
 	check\-integrity <boolean>;
 	check\-mx ( fail | warn | ignore );
@@ -670,7 +670,7 @@ zone <string> [ <class> ] {
 	allow\-query\-on { <address_match_element>; ... };
 	allow\-transfer [ port <integer> ] [ transport <string> ] { <address_match_element>; ... };
 	allow\-update { <address_match_element>; ... };
-	also\-notify [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	also\-notify [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	alt\-transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	alt\-transfer\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	auto\-dnssec ( allow | maintain | off ); // deprecated
@@ -714,7 +714,7 @@ zone <string> [ <class> ] {
 	notify\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	notify\-to\-soa <boolean>;
 	nsec3\-test\-zone <boolean>; // test only
-	parental\-agents [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	parental\-agents [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	parental\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	parental\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	serial\-update\-method ( date | increment | unixtime );
@@ -744,7 +744,7 @@ zone <string> [ <class> ] {
 	allow\-query\-on { <address_match_element>; ... };
 	allow\-transfer [ port <integer> ] [ transport <string> ] { <address_match_element>; ... };
 	allow\-update\-forwarding { <address_match_element>; ... };
-	also\-notify [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	also\-notify [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	alt\-transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	alt\-transfer\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	auto\-dnssec ( allow | maintain | off ); // deprecated
@@ -784,10 +784,10 @@ zone <string> [ <class> ] {
 	notify\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	notify\-to\-soa <boolean>;
 	nsec3\-test\-zone <boolean>; // test only
-	parental\-agents [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	parental\-agents [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	parental\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	parental\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
-	primaries [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	primaries [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	request\-expire <boolean>;
 	request\-ixfr <boolean>;
 	sig\-signing\-nodes <integer>;
@@ -819,7 +819,7 @@ zone <string> [ <class> ] {
 	allow\-query\-on { <address_match_element>; ... };
 	allow\-transfer [ port <integer> ] [ transport <string> ] { <address_match_element>; ... };
 	allow\-update\-forwarding { <address_match_element>; ... };
-	also\-notify [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	also\-notify [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	alt\-transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	alt\-transfer\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ]; // deprecated
 	check\-names ( fail | warn | ignore );
@@ -845,7 +845,7 @@ zone <string> [ <class> ] {
 	notify\-delay <integer>;
 	notify\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	notify\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
-	primaries [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	primaries [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	request\-expire <boolean>;
 	request\-ixfr <boolean>;
 	transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
@@ -907,7 +907,7 @@ zone <string> [ <class> ] {
 	masterfile\-style ( full | relative );
 	max\-records <integer>;
 	max\-zone\-ttl ( unlimited | <duration> ); // deprecated
-	primaries [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	primaries [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	zone\-statistics ( full | terse | none | <boolean> );
 };
 
@@ -962,7 +962,7 @@ zone <string> [ <class> ] {
 	min\-refresh\-time <integer>;
 	min\-retry\-time <integer>;
 	multi\-master <boolean>;
-	primaries [ port <integer> ] [ dscp <integer> ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
+	primaries [ port <integer> ] [ dscp <integer> ] [ source ( ( [ address ] ( <ipv4_address> | * ) ) | ( [ [ address ] ( <ipv4_address> | * ) ] ) ) ] ] [ source\-v6 ( ( [ address ] ( <ipv6_address> | * ) ) | ( [ [ address ] ( <ipv6_address> | * ) ] ) ) ] ] { ( <remote\-servers> | <ipv4_address> [ port <integer> ] | <ipv6_address> [ port <integer> ] ) [ key <string> ] [ tls <string> ]; ... };
 	transfer\-source ( <ipv4_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	transfer\-source\-v6 ( <ipv6_address> | * ) [ port ( <integer> | * ) ] [ dscp <integer> ];
 	use\-alt\-transfer\-source <boolean>; // deprecated
