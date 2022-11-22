@@ -239,7 +239,7 @@ isc_result_t
 isc_sockaddr_fromsockaddr(isc_sockaddr_t *isa, const struct sockaddr *sa);
 
 #define ISC_SOCKADDR_FORMATSIZE                                            \
-	sizeof("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:XXX.XXX.XXX.XXX%SSSSSSSSSS#" \
+	sizeof("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:XXX.XXX.XXX.XXX%SSSSSSSSSSp" \
 	       "YYYYY")
 /*%<
  * Minimum size of array to pass to isc_sockaddr_format().

@@ -38,7 +38,8 @@ struct isc_netaddr {
 		struct in6_addr in6;
 		char		un[sizeof(((struct sockaddr_un *)0)->sun_path)];
 	} type;
-	uint32_t zone;
+	uint32_t  zone;
+	in_port_t port;
 };
 
 struct isc_netprefix {
@@ -119,6 +120,12 @@ isc_netaddr_setzone(isc_netaddr_t *netaddr, uint32_t zone);
 
 uint32_t
 isc_netaddr_getzone(const isc_netaddr_t *netaddr);
+
+void
+isc_netaddr_setport(isc_netaddr_t *netaddr, in_port_t port);
+
+in_port_t
+isc_netaddr_getport(const isc_netaddr_t *netaddr);
 
 void
 isc_netaddr_any(isc_netaddr_t *netaddr);

@@ -336,6 +336,16 @@ isc_netaddr_getzone(const isc_netaddr_t *netaddr) {
 }
 
 void
+isc_netaddr_setport(isc_netaddr_t *netaddr, in_port_t port) {
+	netaddr->port = port;
+}
+
+in_port_t
+isc_netaddr_getport(const isc_netaddr_t *netaddr) {
+	return (netaddr->port);
+}
+
+void
 isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s) {
 	int family = s->type.sa.sa_family;
 	t->family = family;
@@ -361,6 +371,7 @@ void
 isc_netaddr_any(isc_netaddr_t *netaddr) {
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET;
+	netaddr->port = 0;
 	netaddr->type.in.s_addr = INADDR_ANY;
 }
 
@@ -368,6 +379,7 @@ void
 isc_netaddr_any6(isc_netaddr_t *netaddr) {
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_INET6;
+	netaddr->port = 0;
 	netaddr->type.in6 = in6addr_any;
 }
 
@@ -375,6 +387,7 @@ void
 isc_netaddr_unspec(isc_netaddr_t *netaddr) {
 	memset(netaddr, 0, sizeof(*netaddr));
 	netaddr->family = AF_UNSPEC;
+	netaddr->port = 0;
 }
 
 bool

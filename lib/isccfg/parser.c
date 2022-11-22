@@ -58,6 +58,7 @@
 #include <isc/netaddr.h>
 #include <isc/netmgr.h>
 #include <isc/netscope.h>
+#include <isc/parseint.h>
 #include <isc/print.h>
 #include <isc/sockaddr.h>
 #include <isc/string.h>
@@ -2854,16 +2855,32 @@ cfg_type_t cfg_type_unsupported = { "unsupported",	 parse_unsupported,
  */
 static isc_result_t
 token_addr(cfg_parser_t *pctx, unsigned int flags, isc_netaddr_t *na) {
-	char *s;
+	char addrbuf[128]; /* see lib/bind9/getaddresses.c */
+	char *s, *p, *addr;
 	struct in_addr in4a;
 	struct in6_addr in6a;
+	uint16_t port = 0;
+	isc_result_t result;
 
 	if (pctx->token.type != isc_tokentype_string) {
 		return (ISC_R_UNEXPECTEDTOKEN);
 	}
 
 	s = TOKEN_STRING(pctx);
-	if ((flags & CFG_ADDR_WILDOK) != 0 && strcmp(s, "*") == 0) {
+	strlcpy(addrbuf, s, sizeof(addrbuf));
+	addr = &addrbuf[0];
+
+	/* Split address and port. */
+	p = strchr(addrbuf, 'p');
+	if (p != NULL) {
+		*p = '\0';
+		result = isc_parse_uint16(&port, p + 1, 10);
+		if (result != ISC_R_SUCCESS) {
+			return (result);
+		}
+	}
+
+	if ((flags & CFG_ADDR_WILDOK) != 0 && strcmp(addr, "*") == 0) {
 		if ((flags & CFG_ADDR_V4OK) != 0) {
 			isc_netaddr_any(na);
 			return (ISC_R_SUCCESS);
@@ -2875,12 +2892,13 @@ token_addr(cfg_parser_t *pctx, unsigned int flags, isc_netaddr_t *na) {
 		}
 	} else {
 		if ((flags & (CFG_ADDR_V4OK | CFG_ADDR_V4PREFIXOK)) != 0) {
-			if (inet_pton(AF_INET, s, &in4a) == 1) {
+			if (inet_pton(AF_INET, addr, &in4a) == 1) {
 				isc_netaddr_fromin(na, &in4a);
+				isc_netaddr_setport(na, (in_port_t)port);
 				return (ISC_R_SUCCESS);
 			}
 		}
-		if ((flags & CFG_ADDR_V4PREFIXOK) != 0 && strlen(s) <= 15U) {
+		if ((flags & CFG_ADDR_V4PREFIXOK) != 0 && strlen(addr) <= 15U) {
 			char buf[64];
 			int i;
 
@@ -2893,12 +2911,12 @@ token_addr(cfg_parser_t *pctx, unsigned int flags, isc_netaddr_t *na) {
 				}
 			}
 		}
-		if ((flags & CFG_ADDR_V6OK) != 0 && strlen(s) <= 127U) {
+		if ((flags & CFG_ADDR_V6OK) != 0 && strlen(addr) <= 127U) {
 			char buf[128];	   /* see lib/bind9/getaddresses.c */
 			char *d;	   /* zone delimiter */
 			uint32_t zone = 0; /* scope zone ID */
 
-			strlcpy(buf, s, sizeof(buf));
+			strlcpy(buf, addr, sizeof(buf));
 			d = strchr(buf, '%');
 			if (d != NULL) {
 				*d = '\0';
@@ -2906,8 +2924,6 @@ token_addr(cfg_parser_t *pctx, unsigned int flags, isc_netaddr_t *na) {
 
 			if (inet_pton(AF_INET6, buf, &in6a) == 1) {
 				if (d != NULL) {
-					isc_result_t result;
-
 					result = isc_netscope_pton(
 						AF_INET6, d + 1, &in6a, &zone);
 					if (result != ISC_R_SUCCESS) {
@@ -2917,6 +2933,7 @@ token_addr(cfg_parser_t *pctx, unsigned int flags, isc_netaddr_t *na) {
 
 				isc_netaddr_fromin6(na, &in6a);
 				isc_netaddr_setzone(na, zone);
+				isc_netaddr_setport(na, (in_port_t)port);
 				return (ISC_R_SUCCESS);
 			}
 		}
@@ -3242,7 +3259,9 @@ parse_sockaddrsub(cfg_parser_t *pctx, const cfg_type_t *type, int flags,
 	for (;;) {
 		CHECK(cfg_peektoken(pctx, 0));
 		if (pctx->token.type == isc_tokentype_string) {
-			if (strcasecmp(TOKEN_STRING(pctx), "port") == 0) {
+			if ((flags & CFG_ADDR_PORTOK) != 0 &&
+			    strcasecmp(TOKEN_STRING(pctx), "port") == 0)
+			{
 				CHECK(cfg_gettoken(pctx, 0)); /* read "port" */
 				CHECK(cfg_parse_rawport(pctx, flags, &port));
 				++have_port;
@@ -3280,13 +3299,14 @@ cleanup:
 	return (result);
 }
 
-static unsigned int sockaddr_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK;
+static unsigned int sockaddr_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK |
+				     CFG_ADDR_PORTOK;
 cfg_type_t cfg_type_sockaddr = { "sockaddr",	     cfg_parse_sockaddr,
 				 cfg_print_sockaddr, cfg_doc_sockaddr,
 				 &cfg_rep_sockaddr,  &sockaddr_flags };
 
 static unsigned int sockaddrdscp_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK |
-					 CFG_ADDR_DSCPOK;
+					 CFG_ADDR_PORTOK | CFG_ADDR_DSCPOK;
 cfg_type_t cfg_type_sockaddrdscp = { "sockaddr",	 cfg_parse_sockaddr,
 				     cfg_print_sockaddr, cfg_doc_sockaddr,
 				     &cfg_rep_sockaddr,	 &sockaddrdscp_flags };
@@ -3359,10 +3379,12 @@ cfg_doc_sockaddr(cfg_printer_t *pctx, const cfg_type_t *type) {
 		POST(n);
 	}
 	cfg_print_cstr(pctx, " ) ");
-	if ((*flagp & CFG_ADDR_WILDOK) != 0) {
-		cfg_print_cstr(pctx, "[ port ( <integer> | * ) ]");
-	} else {
-		cfg_print_cstr(pctx, "[ port <integer> ]");
+	if ((*flagp & CFG_ADDR_PORTOK) != 0) {
+		if ((*flagp & CFG_ADDR_WILDOK) != 0) {
+			cfg_print_cstr(pctx, "[ port ( <integer> | * ) ]");
+		} else {
+			cfg_print_cstr(pctx, "[ port <integer> ]");
+		}
 	}
 	if ((*flagp & CFG_ADDR_DSCPOK) != 0) {
 		cfg_print_cstr(pctx, " [ dscp <integer> ]");

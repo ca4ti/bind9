@@ -3166,23 +3166,32 @@ static cfg_type_t cfg_type_optional_class = { "optional_class",
 					      NULL };
 
 static isc_result_t
-parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
+parse_netaddr(cfg_parser_t *pctx, const unsigned int flags,
+	      isc_netaddr_t *netaddr, in_port_t *pport, isc_dscp_t *pdscp) {
 	isc_result_t result;
-	cfg_obj_t *obj = NULL;
-	isc_netaddr_t netaddr;
+	isc_netaddr_t na;
 	in_port_t port = 0;
 	isc_dscp_t dscp = -1;
 	unsigned int have_address = 0;
 	unsigned int have_port = 0;
 	unsigned int have_dscp = 0;
-	const unsigned int *flagp = type->of;
+	bool dscpok = false, portok = false;
 
-	if ((*flagp & CFG_ADDR_V4OK) != 0) {
-		isc_netaddr_any(&netaddr);
-	} else if ((*flagp & CFG_ADDR_V6OK) != 0) {
-		isc_netaddr_any6(&netaddr);
+	if ((flags & CFG_ADDR_V4OK) != 0) {
+		isc_netaddr_any(&na);
+	} else if ((flags & CFG_ADDR_V6OK) != 0) {
+		isc_netaddr_any6(&na);
 	} else {
 		UNREACHABLE();
+	}
+
+	*pport = port;
+	*pdscp = dscp;
+	if ((flags & CFG_ADDR_PORTOK) != 0) {
+		portok = true;
+	}
+	if ((flags & CFG_ADDR_DSCPOK) != 0) {
+		dscpok = true;
 	}
 
 	for (;;) {
@@ -3191,12 +3200,14 @@ parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 			if (strcasecmp(TOKEN_STRING(pctx), "address") == 0) {
 				/* read "address" */
 				CHECK(cfg_gettoken(pctx, 0));
-				CHECK(cfg_parse_rawaddr(pctx, *flagp,
-							&netaddr));
+				CHECK(cfg_parse_rawaddr(pctx, flags, &na));
 				have_address++;
 			} else if (strcasecmp(TOKEN_STRING(pctx), "port") == 0)
 			{
 				/* read "port" */
+				if (!portok) {
+					return (ISC_R_UNEXPECTEDTOKEN);
+				}
 				CHECK(cfg_gettoken(pctx, 0));
 				CHECK(cfg_parse_rawport(pctx, CFG_ADDR_WILDOK,
 							&port));
@@ -3204,13 +3215,18 @@ parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 			} else if (strcasecmp(TOKEN_STRING(pctx), "dscp") == 0)
 			{
 				/* read "dscp" */
+				if (!dscpok) {
+					return (ISC_R_UNEXPECTEDTOKEN);
+				}
 				CHECK(cfg_gettoken(pctx, 0));
 				CHECK(cfg_parse_dscp(pctx, &dscp));
 				have_dscp++;
 			} else if (have_port == 0 && have_dscp == 0 &&
 				   have_address == 0)
 			{
-				return (cfg_parse_sockaddr(pctx, type, ret));
+				result = cfg_parse_rawaddr(pctx, flags, &na);
+				have_address = 1;
+				break;
 			} else {
 				cfg_parser_error(pctx, CFG_LOG_NEAR,
 						 "expected 'address', 'port', "
@@ -3221,6 +3237,7 @@ parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 			break;
 		}
 	}
+
 	if (have_address > 1 || have_port > 1 || have_address + have_port == 0)
 	{
 		cfg_parser_error(pctx, 0, "expected one address and/or port");
@@ -3232,6 +3249,23 @@ parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 		return (ISC_R_UNEXPECTEDTOKEN);
 	}
 
+cleanup:
+	*netaddr = na;
+	*pport = port;
+	*pdscp = dscp;
+	return (result);
+}
+
+static isc_result_t
+parse_querysource(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
+	isc_result_t result;
+	isc_netaddr_t netaddr;
+	in_port_t port = 0;
+	isc_dscp_t dscp = -1;
+	cfg_obj_t *obj = NULL;
+	const unsigned int *flagp = type->of;
+
+	CHECK(parse_netaddr(pctx, *flagp, &netaddr, &port, &dscp));
 	CHECK(cfg_create_obj(pctx, &cfg_type_querysource, &obj));
 	isc_sockaddr_fromnetaddr(&obj->value.sockaddr, &netaddr, port);
 	obj->value.sockaddrdscp.dscp = dscp;
@@ -3284,9 +3318,9 @@ doc_querysource(cfg_printer_t *pctx, const cfg_type_t *type) {
 }
 
 static unsigned int sockaddr4wild_flags = CFG_ADDR_WILDOK | CFG_ADDR_V4OK |
-					  CFG_ADDR_DSCPOK;
+					  CFG_ADDR_PORTOK | CFG_ADDR_DSCPOK;
 static unsigned int sockaddr6wild_flags = CFG_ADDR_WILDOK | CFG_ADDR_V6OK |
-					  CFG_ADDR_DSCPOK;
+					  CFG_ADDR_PORTOK | CFG_ADDR_DSCPOK;
 
 static cfg_type_t cfg_type_querysource4 = {
 	"querysource4", parse_querysource,   NULL, doc_querysource,
@@ -3308,7 +3342,7 @@ static cfg_type_t cfg_type_querysource = { "querysource",     NULL,
  * which is gratuitously interpreted as the IPv4 wildcard address.
  */
 static unsigned int controls_sockaddr_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK |
-					      CFG_ADDR_WILDOK;
+					      CFG_ADDR_PORTOK | CFG_ADDR_WILDOK;
 static cfg_type_t cfg_type_controls_sockaddr = {
 	"controls_sockaddr", cfg_parse_sockaddr, cfg_print_sockaddr,
 	cfg_doc_sockaddr,    &cfg_rep_sockaddr,	 &controls_sockaddr_flags

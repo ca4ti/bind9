@@ -172,7 +172,7 @@ isc_sockaddr_totext(const isc_sockaddr_t *sockaddr, isc_buffer_t *target) {
 		return (ISC_R_NOSPACE);
 	}
 
-	isc_buffer_putmem(target, (const unsigned char *)"#", 1);
+	isc_buffer_putmem(target, (const unsigned char *)"p", 1);
 	isc_buffer_putmem(target, (const unsigned char *)pbuf, plen);
 
 	/*
@@ -349,19 +349,20 @@ isc_sockaddr_pf(const isc_sockaddr_t *sockaddr) {
 void
 isc_sockaddr_fromnetaddr(isc_sockaddr_t *sockaddr, const isc_netaddr_t *na,
 			 in_port_t port) {
+	in_port_t sport = (na->port != 0) ? na->port : port;
 	memset(sockaddr, 0, sizeof(*sockaddr));
 	sockaddr->type.sin.sin_family = na->family;
 	switch (na->family) {
 	case AF_INET:
 		sockaddr->length = sizeof(sockaddr->type.sin);
 		sockaddr->type.sin.sin_addr = na->type.in;
-		sockaddr->type.sin.sin_port = htons(port);
+		sockaddr->type.sin.sin_port = htons(sport);
 		break;
 	case AF_INET6:
 		sockaddr->length = sizeof(sockaddr->type.sin6);
 		memmove(&sockaddr->type.sin6.sin6_addr, &na->type.in6, 16);
 		sockaddr->type.sin6.sin6_scope_id = isc_netaddr_getzone(na);
-		sockaddr->type.sin6.sin6_port = htons(port);
+		sockaddr->type.sin6.sin6_port = htons(sport);
 		break;
 	default:
 		UNREACHABLE();
