@@ -239,6 +239,10 @@ stages:
   - PYTHON="$(source bin/tests/system/conf.sh; echo $PYTHON)"
   - test -x "$PYTHON"
 
+.find_pytest: &find_pytest
+  - PYTEST="$(source bin/tests/system/conf.sh; echo $PYTEST)"
+  - test -x "$PYTEST"
+
 .check_readline_setup: &check_readline_setup
     - if [[ -n "${WITHOUT_READLINE}" ]]; then
         ! grep "^#define HAVE_READLINE" config.h;
@@ -302,8 +306,10 @@ stages:
     - test -n "${OUT_OF_TREE_WORKSPACE}" && cd "${OUT_OF_TREE_WORKSPACE}"
     - *setup_interfaces
   script:
+    - *find_pytest
     - cd bin/tests/system
-    - make -j${TEST_PARALLEL_JOBS:-1} -k check V=1
+    - >
+      "$PYTEST" --dist loadgroup -n $TEST_PARALLEL_JOBS
     - if git rev-parse > /dev/null 2>&1; then ( ! grep "^I:.*:file.*not removed$" *.log ); fi
     - '( ! grep -F "grep: warning:" *.log )'
   after_script:
