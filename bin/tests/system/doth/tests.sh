@@ -606,8 +606,8 @@ if [ $ret != 0 ]; then echo_i "failed"; fi
 status=$((status + ret))
 
 wait_for_tlsctx_update_ns4 () {
-	grep "updating TLS context on 10.53.0.4#${HTTPSPORT}" ns4/named.run > /dev/null || return 1
-	grep "updating TLS context on 10.53.0.4#${TLSPORT}" ns4/named.run > /dev/null || return 1
+	grep "updating TLS context on 10.53.0.4p${HTTPSPORT}" ns4/named.run > /dev/null || return 1
+	grep "updating TLS context on 10.53.0.4p${TLSPORT}" ns4/named.run > /dev/null || return 1
 	return 0
 }
 

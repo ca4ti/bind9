@@ -525,7 +525,7 @@ server 10.53.0.1 ${PORT}
 update add the-31st-record.ixfr-too-big 0 TXT this is it
 send
 EOF
-msg="'ixfr-too-big/IN' from 10.53.0.1#${PORT}: Transfer status: too many records"
+msg="'ixfr-too-big/IN' from 10.53.0.1p${PORT}: Transfer status: too many records"
 wait_for_log 10 "$msg" ns6/named.run || tmp=1
 if test $tmp != 0 ; then echo_i "failed"; fi
 status=$((status+tmp))

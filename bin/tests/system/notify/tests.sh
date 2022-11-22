@@ -105,10 +105,10 @@ rm -f ns2/example.db
 cp -f ns2/example2.db ns2/example.db
 echo_i "reloading with example2 using HUP and waiting up to 45 seconds"
 kill -HUP "$(cat ns2/named.pid)"
-wait_for_log_re 45 "transfer of 'example/IN' from 10.53.0.2#.*success" ns3/named.run
+wait_for_log_re 45 "transfer of 'example/IN' from 10.53.0.2p.*success" ns3/named.run
 
 test_start "checking notify message was logged"
-grep 'notify from 10.53.0.2#[0-9][0-9]*: serial 2$' ns3/named.run > /dev/null || ret=1
+grep 'notify from 10.53.0.2p[0-9][0-9]*: serial 2$' ns3/named.run > /dev/null || ret=1
 test_end
 
 test_start "checking example2 loaded"
@@ -135,10 +135,10 @@ rm -f ns2/example.db
 cp -f ns2/example4.db ns2/example.db
 
 start_server --noclean --restart --port "${PORT}" ns2
-wait_for_log_re 45 "transfer of 'example/IN' from 10.53.0.2#.*success" ns3/named.run
+wait_for_log_re 45 "transfer of 'example/IN' from 10.53.0.2p.*success" ns3/named.run
 
 test_start "checking notify message was logged"
-grep 'notify from 10.53.0.2#[0-9][0-9]*: serial 4$' ns3/named.run > /dev/null || ret=1
+grep 'notify from 10.53.0.2p[0-9][0-9]*: serial 4$' ns3/named.run > /dev/null || ret=1
 test_end
 
 test_start "checking example4 loaded"
@@ -198,8 +198,8 @@ do
 done
 grep "test string" "$fnb" > /dev/null || ret=1
 grep "test string" "$fnc" > /dev/null || ret=1
-grep "sending notify to 10.53.0.5#[0-9]* : TSIG (b)" ns5/named.run > /dev/null || ret=1
-grep "sending notify to 10.53.0.5#[0-9]* : TSIG (c)" ns5/named.run > /dev/null || ret=1
+grep "sending notify to 10.53.0.5p[0-9]* : TSIG (b)" ns5/named.run > /dev/null || ret=1
+grep "sending notify to 10.53.0.5p[0-9]* : TSIG (c)" ns5/named.run > /dev/null || ret=1
 test_end
 
 # notify messages were sent to unresponsive 10.53.10.53 during the tests

@@ -1221,7 +1221,7 @@ zone unreachable.
 update add unreachable. 600 A 192.0.2.1
 send
 END
-grep "; Communication with 10.53.0.4#${PORT} failed: timed out" nsupdate.out.test$n > /dev/null 2>&1 || ret=1
+grep "; Communication with 10.53.0.4p${PORT} failed: timed out" nsupdate.out.test$n > /dev/null 2>&1 || ret=1
 grep "not implemented" nsupdate.out.test$n > /dev/null 2>&1 && ret=1
 [ $ret = 0 ] || { echo_i "failed"; status=1; }
 
