@@ -200,28 +200,44 @@ def ports(base_port):
     }
 
 
-def pytest_collect_file(parent, file_path):
+def pytest_collect_file(path, parent):
+    file_path = Path(path)
     if file_path.name == "tests.sh":
-        return ShellSystemTest.from_parent(parent, path=file_path.parent)
+        path = file_path.parent
+        try:
+            return ShellSystemTest.from_parent(parent, path=path)
+        except AttributeError:  # compatibility with pytest<5.4.0
+            return ShellSystemTest(str(path), parent=parent)
 
 
 class ShellSystemTest(pytest.Module):
     def collect(self):
-        yield pytest.Function.from_parent(
-            name=f"tests_sh",
-            parent=self,
-            callobj=run_tests_sh,
-        )
+        try:
+            yield pytest.Function.from_parent(
+                name=f"tests_sh",
+                parent=self,
+                callobj=run_tests_sh,
+            )
+        except AttributeError:  # compatibility with pytest<5.4.0
+            yield pytest.Function(
+                name=f"tests_sh",
+                parent=self,
+                callobj=run_tests_sh
+            )
+
+    def _importtestmodule(self):  # compatibility with pytest<5.4.0
+        return None
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(session, config, items):
     for item in items:
-        name = _system_test_name_from_path(item.path)
+        name = _system_test_name_from_fspath(item.fspath)
         item.add_marker(pytest.mark.xdist_group(name))
 
 
-def _system_test_name_from_path(path):
+def _system_test_name_from_fspath(fspath):
+    path = Path(fspath)
     if path.name.endswith(".py"):
         return path.parent.name
     return path.name
@@ -229,7 +245,7 @@ def _system_test_name_from_path(path):
 
 @pytest.fixture(scope="module")
 def system_test_name(request):
-    return _system_test_name_from_path(request.path)
+    return _system_test_name_from_fspath(request.fspath)
 
 
 @pytest.fixture(scope="module")
