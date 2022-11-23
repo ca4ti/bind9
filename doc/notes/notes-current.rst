@@ -50,6 +50,9 @@ Feature Changes
   which worked only very briefly on Linux 2.6.28 (and was causing performance
   problems and thus the change was reverted in the kernel). :gl:`#3676`
 
+- Replace DNS over TCP and DNS over TLS transports code with a new,
+  unified transport implementation. :gl:`#3374`
+
 Bug Fixes
 ~~~~~~~~~
 
