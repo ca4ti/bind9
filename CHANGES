@@ -1,3 +1,9 @@
+6036.	[func]		Refactor remote servers (primaries, parental-agents)
+			in zone.c. Store common code in new source files
+			remote.c and remote.h. Introduce a new way to set the
+			source address and port (with the 'p' delimiter).
+			[GL !7110]
+
 6035.	[bug]		Refactor the dns_resolver unit to store the fetch
 			contexts and zone counter directly in the hash
 			tables without buckets and implement effective
