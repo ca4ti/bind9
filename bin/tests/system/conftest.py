@@ -130,12 +130,12 @@ def conf_env():
             raise exc
         return parse_env(proc.stdout)
 
-    pure_env = _get_env("env")
+    #pure_env = _get_env("env")
     mod_env = _get_env(". ./conf.sh && env")
     conf_env = {
         name: value
         for name, value in mod_env.items()
-        if (name not in pure_env or value != pure_env[name])
+    #    if (name not in pure_env or value != pure_env[name])
     }
     logging.debug("conf.sh env: %s", conf_env)
     return conf_env
