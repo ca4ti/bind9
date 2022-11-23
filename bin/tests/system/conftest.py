@@ -22,10 +22,10 @@ import subprocess
 from typing import Dict, List, Optional
 
 import pytest
-pytest_ver = pytest.__version__.split('.')
-pytest_major_ver = int(pytest_ver[0])
-pytest_minor_ver = int(pytest_ver[1])
-if pytest_major_ver < 7:
+_pytest_ver = pytest.__version__.split('.')
+_pytest_major_ver = int(_pytest_ver[0])
+_pytest_minor_ver = int(_pytest_ver[1])
+if _pytest_major_ver < 7:
     # This has been a dependency of pytest<7.0.0 and was used for py.path.local
     # which was later replaced with pathlib.
     import py.path
@@ -211,17 +211,16 @@ def pytest_collect_file(path, parent):
     if file_path.name == "tests.sh":
         path = file_path.parent
         fspath = str(path)
-        if pytest_major_ver >= 7:
+        if _pytest_major_ver >= 7:
             return ShellSystemTest.from_parent(parent, path=path)
-        elif pytest_major_ver > 5 or (pytest_major_ver == 5 and pytest_minor_ver >= 4):
+        elif _pytest_major_ver > 5 or (_pytest_major_ver == 5 and _pytest_minor_ver >= 4):
             return ShellSystemTest.from_parent(parent, fspath=py.path.local(fspath))
-        else:
-            return ShellSystemTest(fspath, parent=parent)
+        return ShellSystemTest(fspath, parent=parent)
 
 
 class ShellSystemTest(pytest.Module):
     def collect(self):
-        if pytest_major_ver > 5 or (pytest_major_ver == 5 and pytest_minor_ver >= 4):
+        if _pytest_major_ver > 5 or (_pytest_major_ver == 5 and _pytest_minor_ver >= 4):
             yield pytest.Function.from_parent(
                 name=f"tests_sh",
                 parent=self,
@@ -235,15 +234,15 @@ class ShellSystemTest(pytest.Module):
             )
 
     def _importtestmodule(self):  # compat with pytest<5.4.0
-        if pytest_major_ver > 5 or (pytest_major_ver == 5 and pytest_minor_ver >= 4):
+        if _pytest_major_ver > 5 or (_pytest_major_ver == 5 and _pytest_minor_ver >= 4):
             return super()._importtestmodule()
         else:
             return None
 
     def _getobj(self):  # compat with pytest<7.0.0
-        if pytest_major_ver > 7:
+        if _pytest_major_ver >= 7:
             return super()._getobj()
-        elif pytest_major_ver > 4:
+        elif _pytest_major_ver > 4:
             return ()
 
 
