@@ -22,6 +22,13 @@ import subprocess
 from typing import Dict, List, Optional
 
 import pytest
+pytest_ver = pytest.__version__.split('.')
+pytest_major_ver = int(pytest_ver[0])
+pytest_minor_ver = int(pytest_ver[1])
+if pytest_major_ver < 7:
+    # This has been a dependency of pytest<7.0.0 and was used for py.path.local
+    # which was later replaced with pathlib.
+    import py.path
 
 
 # Configure logging to file on DEBUG level
@@ -37,7 +44,6 @@ logging.basicConfig(
 FILE_DIR = os.path.abspath(Path(__file__).parent)
 
 ENV_RE = re.compile("([^=]+)=(.*)")
-
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -204,10 +210,13 @@ def pytest_collect_file(path, parent):
     file_path = Path(path)
     if file_path.name == "tests.sh":
         path = file_path.parent
-        try:
-            return ShellSystemTest.from_parent(parent, path=path, fspath=str(path))
-        except AttributeError:  # compatibility with pytest<5.4.0
-            return ShellSystemTest(str(path), parent=parent)
+        fspath = str(path)
+        if pytest_major_ver >= 7:
+            return ShellSystemTest.from_parent(parent, path=path)
+        elif pytest_major_ver > 5 or (pytest_major_ver == 5 and pytest_minor_ver >= 4):
+            return ShellSystemTest.from_parent(parent, fspath=py.path.local(fspath))
+        else:
+            return ShellSystemTest(fspath, parent=parent)
 
 
 class ShellSystemTest(pytest.Module):
