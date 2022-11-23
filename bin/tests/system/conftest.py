@@ -221,21 +221,30 @@ def pytest_collect_file(path, parent):
 
 class ShellSystemTest(pytest.Module):
     def collect(self):
-        try:
+        if pytest_major_ver > 5 or (pytest_major_ver == 5 and pytest_minor_ver >= 4):
             yield pytest.Function.from_parent(
                 name=f"tests_sh",
                 parent=self,
                 callobj=run_tests_sh,
             )
-        except AttributeError:  # compatibility with pytest<5.4.0
+        else:
             yield pytest.Function(
                 name=f"tests_sh",
                 parent=self,
                 callobj=run_tests_sh
             )
 
-    def _importtestmodule(self):  # compatibility with pytest<5.4.0
-        return None
+    def _importtestmodule(self):  # compat with pytest<5.4.0
+        if pytest_major_ver > 5 or (pytest_major_ver == 5 and pytest_minor_ver >= 4):
+            return super()._importtestmodule()
+        else:
+            return None
+
+    def _getobj(self):  # compat with pytest<7.0.0
+        if pytest_major_ver > 7:
+            return super()._getobj()
+        elif pytest_major_ver > 4:
+            return ()
 
 
 @pytest.hookimpl(tryfirst=True)
