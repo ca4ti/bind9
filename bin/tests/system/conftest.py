@@ -205,7 +205,7 @@ def pytest_collect_file(path, parent):
     if file_path.name == "tests.sh":
         path = file_path.parent
         try:
-            return ShellSystemTest.from_parent(parent, path=path)
+            return ShellSystemTest.from_parent(parent, path=path, fspath=str(path))
         except AttributeError:  # compatibility with pytest<5.4.0
             return ShellSystemTest(str(path), parent=parent)
 
@@ -233,7 +233,7 @@ class ShellSystemTest(pytest.Module):
 def pytest_collection_modifyitems(session, config, items):
     for item in items:
         name = _system_test_name_from_fspath(item.fspath)
-        item.add_marker(pytest.mark.xdist_group(name))
+        # item.add_marker(pytest.mark.xdist_group(name))
 
 
 def _system_test_name_from_fspath(fspath):
