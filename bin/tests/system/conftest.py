@@ -18,7 +18,9 @@ import os
 from pathlib import Path
 import random
 import re
+import shutil
 import subprocess
+import tempfile
 from typing import Dict, List, Optional
 
 import pytest
@@ -207,7 +209,10 @@ def ports(base_port):
 
 
 def pytest_collect_file(path, parent):
+    # TODO ignore -tmp-
     file_path = Path(path)
+    if "-tmp-" in str(file_path):
+        return
     if file_path.name == "tests.sh":
         path = file_path.parent
         fspath = str(path)
@@ -400,14 +405,14 @@ def system_test(
 
     def start_servers():
         try:
-            perl("start.pl", ["--port", env["PORT"], system_test_name])
+            perl("start.pl", ["--port", env["PORT"], system_test_tmpname])
         except subprocess.CalledProcessError as exc:
             logger.error("start.pl: failed to start servers")
             pytest.fail(f"start.pl exited with {exc.returncode}")
 
     def stop_servers():
         try:
-            perl("stop.pl", [system_test_name])
+            perl("stop.pl", [system_test_tmpname])
         except subprocess.CalledProcessError as exc:
             logger.error("stop.pl: failed to stop servers")
             pytest.fail(f"stop.pl exited with {exc.returncode}")
@@ -433,7 +438,11 @@ def system_test(
     # FUTURE Always create a tempdir for the test and run it out of tree. It
     # would get rid of the need for explicit cleanup and eliminate the risk of
     # some previous unclean state from affecting the current test.
-    testdir = systest_dir
+    # testdir = systest_dir
+    system_test_root = Path(system_test_dir).parent
+    testdir = tempfile.mkdtemp(prefix=f"{system_test_name}-tmp-", dir=system_test_root)
+    system_test_tmpname = Path(testdir).name
+    shutil.copytree(systest_dir, testdir, dirs_exist_ok=True)
 
     os.environ.update(env)  # Ensure pytests have the same env vars as shell tests.
     logger.info(f"test started: {request.node.name}")
@@ -473,6 +482,7 @@ def system_test(
 
             if result == "passed":  # TODO implement --keep option
                 cleanup_test(initial=False)
+                shutil.rmtree(testdir)
         finally:
             os.chdir(old_cwd)
             logger.debug("changed workdir to: %s", old_cwd)
