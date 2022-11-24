@@ -106,13 +106,13 @@ foreach my $name (@ns) {
 	stop_signal($name, "TERM");
 }
 
-@ns = wait_for_servers(5, @ns);
+@ns = wait_for_servers(300, @ns);
 
 foreach my $name(@ans) {
 	stop_signal($name, "TERM", 1);
 }
 
-@ans = wait_for_servers(5, @ans);
+@ans = wait_for_servers(300, @ans);
 
 # Pass 3: SIGABRT
 foreach my $name (@ns) {
