@@ -57,10 +57,6 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_ignore_collect(path):
-    return "-tmp-" in str(path)
-
-
 def pytest_configure(config):
     if not XDIST_WORKER:  # run on main instance before any xdist workers are spawned
         logging.debug("compiling required files")
@@ -213,54 +209,9 @@ def ports(base_port):
     }
 
 
-def pytest_collect_file(path, parent):
-    # TODO ignore -tmp-
-    file_path = Path(path)
-    if "-tmp-" in str(file_path):
-        return
-    if file_path.name == "tests.sh":
-        path = file_path.parent
-        fspath = str(path)
-        if _pytest_major_ver >= 7:
-            return ShellSystemTest.from_parent(parent, path=path)
-        elif _pytest_major_ver > 5 or (_pytest_major_ver == 5 and _pytest_minor_ver >= 4):
-            return ShellSystemTest.from_parent(parent, fspath=py.path.local(fspath))
-        return ShellSystemTest(fspath, parent=parent)
-
-
-class ShellSystemTest(pytest.Module):
-    def collect(self):
-        if _pytest_major_ver > 5 or (_pytest_major_ver == 5 and _pytest_minor_ver >= 4):
-            yield pytest.Function.from_parent(
-                name=f"tests_sh",
-                parent=self,
-                callobj=run_tests_sh,
-            )
-        else:
-            yield pytest.Function(
-                name=f"tests_sh",
-                parent=self,
-                callobj=run_tests_sh
-            )
-
-    def _importtestmodule(self):  # compat with pytest<5.4.0
-        if _pytest_major_ver > 5 or (_pytest_major_ver == 5 and _pytest_minor_ver >= 4):
-            return super()._importtestmodule()
-        else:
-            return None
-
-    def _getobj(self):  # compat with pytest<7.0.0
-        if _pytest_major_ver >= 7:
-            return super()._getobj()
-        elif _pytest_major_ver > 4:
-            return ()
-
-
-@pytest.hookimpl(tryfirst=True)
-def pytest_collection_modifyitems(session, config, items):
-    for item in items:
-        name = _system_test_name_from_fspath(item.fspath)
-        # item.add_marker(pytest.mark.xdist_group(name))
+# TODO reorg code - hooks, fixtures, etc
+def pytest_ignore_collect(path):
+    return "-tmp-" in str(path)
 
 
 def _system_test_name_from_fspath(fspath):
@@ -341,22 +292,25 @@ def perl(env, system_test_dir, logger):
     return partial(_run_script, logger, system_test_dir, env, env["PERL"])
 
 
+@pytest.fixture(scope="module")
 def run_tests_sh(system_test_dir, shell):
-    stdout = b""
-    try:
-        tests_proc = shell(f"{system_test_dir}/tests.sh")
-    except subprocess.CalledProcessError as exc:
-        stdout = exc.stdout
-        raise
-    else:
-        stdout = tests_proc.stdout
-    finally:
-        if stdout:
-            # Print is called here in order to integrate with pytest
-            # output. Combined with pytests's -rA option (our default from
-            # pytest.ini), it will display the log from each test for both
-            # successessful and failed tests.
-            print(stdout.decode().strip())
+    def run_tests():
+        stdout = b""
+        try:
+            tests_proc = shell(f"{system_test_dir}/tests.sh")
+        except subprocess.CalledProcessError as exc:
+            stdout = exc.stdout
+            raise
+        else:
+            stdout = tests_proc.stdout
+        finally:
+            if stdout:
+                # Print is called here in order to integrate with pytest
+                # output. Combined with pytests's -rA option (our default from
+                # pytest.ini), it will display the log from each test for both
+                # successessful and failed tests.
+                print(stdout.decode().strip())
+    return run_tests
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -452,8 +406,9 @@ def system_test(
     system_test_root = Path(system_test_dir).parent
     testdir = tempfile.mkdtemp(prefix=f"{system_test_name}-tmp-", dir=system_test_root)
     system_test_tmpname = Path(testdir).name
-    shutil.copytree(systest_dir, testdir, dirs_exist_ok=True)
-    logging.info(f"  created tmpdir: %s", testdir)
+    shutil.rmtree(testdir)
+    shutil.copytree(systest_dir, testdir)
+    logger.info(f"  created tmpdir: %s", testdir)
 
     result = "skipped"
     try:
