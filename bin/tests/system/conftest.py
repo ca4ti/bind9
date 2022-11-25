@@ -57,6 +57,10 @@ def pytest_addoption(parser):
     )
 
 
+def pytest_ignore_collect(path):
+    return "-tmp-" in str(path)
+
+
 def pytest_configure(config):
     if not XDIST_WORKER:  # run on main instance before any xdist workers are spawned
         logging.debug("compiling required files")
