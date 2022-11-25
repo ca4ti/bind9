@@ -11,6 +11,7 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
+from contextlib import contextmanager
 from functools import partial
 import glob
 import logging
@@ -435,6 +436,11 @@ def system_test(
         assert all([res == "passed" for res in test_results])
         return "passed"
 
+
+    os.environ.update(env)  # Ensure pytests have the same env vars as shell tests.
+    logger.info(f"test started: {request.node.name}")
+
+    # TODO comment
     # FUTURE Always create a tempdir for the test and run it out of tree. It
     # would get rid of the need for explicit cleanup and eliminate the risk of
     # some previous unclean state from affecting the current test.
@@ -443,9 +449,8 @@ def system_test(
     testdir = tempfile.mkdtemp(prefix=f"{system_test_name}-tmp-", dir=system_test_root)
     system_test_tmpname = Path(testdir).name
     shutil.copytree(systest_dir, testdir, dirs_exist_ok=True)
+    logging.info(f"  created tmpdir: %s", testdir)
 
-    os.environ.update(env)  # Ensure pytests have the same env vars as shell tests.
-    logger.info(f"test started: {request.node.name}")
     result = "skipped"
     try:
         check_net_interfaces()
