@@ -1,3 +1,7 @@
+6035.	[func]		Add a qp-trie data structure. This is a foundation for
+			our plan to replace, in stages, BIND's red-black tree.
+			[GL !7130]
+
 6034.	[func]		Deprecate alt-transfer-source, alt-transfer-source-v6
 			and use-alt-transfer-source. [GL #3694]
 
