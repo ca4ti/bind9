@@ -13,7 +13,7 @@
 
 . ../../conf.sh
 
-SYSTESTDIR=filter-aaaa
+SYSTESTDIR=filteraaaa
 
 zone=signed.
 infile=signed.db.in

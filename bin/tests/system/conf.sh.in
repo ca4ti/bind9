@@ -79,8 +79,8 @@ cookie
 dlzexternal
 dnssec
 dyndb
-engine_pkcs11
-filter-aaaa
+enginepkcs11
+filteraaaa
 kasp
 keyfromlabel
 keymgr2kasp

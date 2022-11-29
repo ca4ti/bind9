@@ -35,18 +35,18 @@ export LANG=C
 # Parallel tests that only run on unix/linux should be added to
 # PARALLEL_UNIX in conf.sh.in;
 #
-# Note: some of the longer-running tests such as serve-stale and
+# Note: some of the longer-running tests such as servestale and
 # rpzrecurse are scheduled first, in order to get more benefit from
 # parallelism.
 #
 PARALLEL_COMMON="
 rpzrecurse
-serve-stale
+servestale
 dupsigs
 acl
 additional
 addzone
-allow-query
+allowquery
 auth
 autosign
 builtin
@@ -73,7 +73,7 @@ forward
 geoip2
 glue
 idna
-include-multiplecfg
+includemultiplecfg
 inline
 integrity
 ixfr

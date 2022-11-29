@@ -67,7 +67,7 @@ tkey_keydelete_LDADD =		\
 TESTS =
 
 if HAVE_PERLMOD_TIME_HIRES
-TESTS += serve-stale
+TESTS += servestale
 endif HAVE_PERLMOD_TIME_HIRES
 
 if HAVE_PERLMOD_NET_DNS
@@ -84,7 +84,7 @@ TESTS +=			\
 	acl			\
 	additional		\
 	addzone			\
-	allow-query		\
+	allowquery		\
 	auth			\
 	autosign		\
 	builtin			\
@@ -107,13 +107,13 @@ TESTS +=			\
 	eddsa			\
 	ednscompliance		\
 	emptyzones		\
-	engine_pkcs11		\
-	filter-aaaa		\
+	enginepkcs11		\
+	filteraaaa		\
 	formerr			\
 	geoip2			\
 	glue			\
 	idna			\
-	include-multiplecfg	\
+	includemultiplecfg	\
 	inline			\
 	integrity		\
 	hooks			\
@@ -152,7 +152,7 @@ TESTS +=			\
 	synthfromdnssec		\
 	tkey			\
 	tools			\
-	transport-acl		\
+	transportacl		\
 	tsig			\
 	tsiggss			\
 	ttl			\
