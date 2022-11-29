@@ -309,7 +309,7 @@ stages:
     - *find_pytest
     - cd bin/tests/system
     - >
-      "$PYTEST" -k doth -n "$TEST_PARALLEL_JOBS" --dist loadscope
+      "$PYTEST" -n "$TEST_PARALLEL_JOBS" --dist loadscope
     - if git rev-parse > /dev/null 2>&1; then ( ! grep "^I:.*:file.*not removed$" *.log ); fi
     - '( ! grep -F "grep: warning:" *.log )'
   after_script:
