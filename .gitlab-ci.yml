@@ -121,7 +121,7 @@ stages:
 # Debian
 
 .debian-buster-amd64: &debian_buster_amd64_image
-  image: "$CI_REGISTRY_IMAGE:debian-buster-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:debian-buster-amd64"
   <<: *linux_amd64
 
 .debian-bullseye-amd64: &debian_bullseye_amd64_image
@@ -197,6 +197,7 @@ stages:
 .api-schedules-tags-triggers-web-triggering-rules: &api_schedules_tags_triggers_web_triggering_rules
   only:
     - api
+    - merge_requests
     - schedules
     - tags
     - triggers
@@ -205,6 +206,7 @@ stages:
 .api-schedules-triggers-web-triggering-rules: &api_schedules_triggers_web_triggering_rules
   only:
     - api
+    - merge_requests
     - schedules
     - triggers
     - web
