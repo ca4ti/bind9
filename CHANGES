@@ -1,3 +1,6 @@
+6040.	[bug]		Improve thread safety in the dns_dispatch unit.
+			[GL #3178] [GL #3636]
+
 6039.	[bug]		Removing a catalog zone from catalog-zones without
 			also removing the referenced zone could leave a
 			dangling pointer. [GL #3683]

@@ -75,6 +75,9 @@ Bug Fixes
   cases a dangling pointer could cause a :iscman:`named` process
   crash. This has been fixed. :gl:`#3683`
 
+- Fix a rare assertion failure in the outgoing TCP DNS connection handling.
+  :gl:`#3178` :gl:`#3636`
+
 Known Issues
 ~~~~~~~~~~~~
 
