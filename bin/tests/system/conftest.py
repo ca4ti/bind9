@@ -103,8 +103,8 @@ def pytest_runtest_makereport(item, call):
         test_results[nodeid] = report.outcome
 
 
-@pytest.fixture(scope="session")
-def conf_env():
+
+def get_conf_env():
     """Common environment variables for running tests."""
     # FUTURE Define all variables in pytest only. This is currently not done in
     # order to support the legacy way of running system tests without having to
@@ -140,13 +140,17 @@ def conf_env():
         for name, value in mod_env.items()
     #    if (name not in pure_env or value != pure_env[name])
     }
-    logging.debug("conf.sh env: %s", conf_env)
     return conf_env
 
 
+CONF_ENV = get_conf_env()
+os.environ.update(CONF_ENV)
+logging.debug("conf.sh env: %s", CONF_ENV)
+
+
 @pytest.fixture(scope="module")
-def env(conf_env, ports):
-    test_env = conf_env.copy()
+def env(ports):
+    test_env = CONF_ENV.copy()
     test_env.update(ports)
     test_env["builddir"] = f"{test_env['TOP_BUILDDIR']}/bin/tests/system"
     test_env["srcdir"] = f"{test_env['TOP_SRCDIR']}/bin/tests/system"
