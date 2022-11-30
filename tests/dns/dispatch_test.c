@@ -389,6 +389,10 @@ response(isc_result_t eresult, isc_region_t *region, void *arg) {
 	UNUSED(region);
 	UNUSED(arg);
 
+	if (eresult == ISC_R_CANCELED || eresult == ISC_R_EOF) {
+		return;
+	}
+
 	assert_int_equal(eresult, ISC_R_SUCCESS);
 
 	dns_dispatch_done(&dispentry);
@@ -399,6 +403,10 @@ static void
 response_timeout(isc_result_t eresult, isc_region_t *region, void *arg) {
 	UNUSED(region);
 	UNUSED(arg);
+
+	if (eresult == ISC_R_CANCELED || eresult == ISC_R_EOF) {
+		return;
+	}
 
 	assert_int_equal(eresult, ISC_R_TIMEDOUT);
 
