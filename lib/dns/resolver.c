@@ -2235,8 +2235,8 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 					    sizeof(sockaddrbuf2));
 			isc_log_write(dns_lctx, DNS_LOGCATEGORY_RESOLVER,
 				      DNS_LOGMODULE_RESOLVER, ISC_LOG_DEBUG(3),
-				      "Using DNS64 %s -> %s\n", sockaddrbuf1,
-				      sockaddrbuf2);
+				      "Using DNS64 address %s to talk to %s\n",
+				      sockaddrbuf2, sockaddrbuf1);
 			addrinfo->sockaddr = sockaddr;
 		}
 	}
