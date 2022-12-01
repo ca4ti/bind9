@@ -11,18 +11,16 @@
 # See the COPYRIGHT file distributed with this work for additional
 # information regarding copyright ownership.
 
-import xml.etree.ElementTree as ET
 from datetime import datetime
-
+import xml.etree.ElementTree as ET
 import os
 
 import pytest
 
 import generic
+import pytest_custom_markers
 
-pytestmark = pytest.mark.skipif(
-    not os.environ.get("HAVEXMLSTATS"), reason="libxml2 support disabled in the build"
-)
+pytestmark = pytest_custom_markers.have_libxml2
 requests = pytest.importorskip("requests")
 
 
