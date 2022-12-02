@@ -306,8 +306,6 @@ struct dns_zone {
 	isc_sockaddr_t parentalsrc6;
 	isc_sockaddr_t xfrsource4;
 	isc_sockaddr_t xfrsource6;
-	isc_sockaddr_t altxfrsource4;
-	isc_sockaddr_t altxfrsource6;
 	isc_sockaddr_t sourceaddr;
 	isc_dscp_t notifysrc4dscp;
 	isc_dscp_t notifysrc6dscp;
@@ -315,8 +313,6 @@ struct dns_zone {
 	isc_dscp_t parentalsrc6dscp;
 	isc_dscp_t xfrsource4dscp;
 	isc_dscp_t xfrsource6dscp;
-	isc_dscp_t altxfrsource4dscp;
-	isc_dscp_t altxfrsource6dscp;
 
 	dns_xfrin_ctx_t *xfr;	    /* task locked */
 	dns_tsigkey_t *tsigkey;	    /* key used for xfr */
@@ -526,7 +522,7 @@ typedef enum {
 	DNS_ZONEFLG_NOIXFR = 0x00100000U, /*%< IXFR failed, force AXFR */
 	DNS_ZONEFLG_FLUSH = 0x00200000U,
 	DNS_ZONEFLG_NOEDNS = 0x00400000U,
-	DNS_ZONEFLG_USEALTXFRSRC = 0x00800000U,
+	DNS_ZONEFLG_USEALTXFRSRC = 0x00800000U, /*%< Obsoleted. */
 	DNS_ZONEFLG_SOABEFOREAXFR = 0x01000000U,
 	DNS_ZONEFLG_NEEDCOMPACT = 0x02000000U,
 	DNS_ZONEFLG_REFRESHING = 0x04000000U, /*%< Refreshing keydata */
@@ -1124,8 +1120,6 @@ dns_zone_create(dns_zone_t **zonep, isc_mem_t *mctx, unsigned int tid) {
 		.parentalsrc6dscp = -1,
 		.xfrsource4dscp = -1,
 		.xfrsource6dscp = -1,
-		.altxfrsource4dscp = -1,
-		.altxfrsource6dscp = -1,
 		.maxxfrin = MAX_XFER_TIME,
 		.maxxfrout = MAX_XFER_TIME,
 		.sigvalidityinterval = 30 * 24 * 3600,
@@ -1187,8 +1181,6 @@ dns_zone_create(dns_zone_t **zonep, isc_mem_t *mctx, unsigned int tid) {
 	isc_sockaddr_any6(&zone->parentalsrc6);
 	isc_sockaddr_any(&zone->xfrsource4);
 	isc_sockaddr_any6(&zone->xfrsource6);
-	isc_sockaddr_any(&zone->altxfrsource4);
-	isc_sockaddr_any6(&zone->altxfrsource6);
 	ISC_LINK_INIT(zone, statelink);
 	ISC_LIST_INIT(zone->signing);
 	ISC_LIST_INIT(zone->nsec3chain);
@@ -6031,76 +6023,6 @@ dns_zone_setxfrsource6dscp(dns_zone_t *zone, isc_dscp_t dscp) {
 	UNLOCK_ZONE(zone);
 
 	return (ISC_R_SUCCESS);
-}
-
-isc_result_t
-dns_zone_setaltxfrsource4(dns_zone_t *zone,
-			  const isc_sockaddr_t *altxfrsource) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-
-	LOCK_ZONE(zone);
-	zone->altxfrsource4 = *altxfrsource;
-	UNLOCK_ZONE(zone);
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_sockaddr_t *
-dns_zone_getaltxfrsource4(dns_zone_t *zone) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-	return (&zone->altxfrsource4);
-}
-
-isc_result_t
-dns_zone_setaltxfrsource4dscp(dns_zone_t *zone, isc_dscp_t dscp) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-
-	LOCK_ZONE(zone);
-	zone->altxfrsource4dscp = dscp;
-	UNLOCK_ZONE(zone);
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_dscp_t
-dns_zone_getaltxfrsource4dscp(dns_zone_t *zone) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-	return (zone->altxfrsource4dscp);
-}
-
-isc_result_t
-dns_zone_setaltxfrsource6(dns_zone_t *zone,
-			  const isc_sockaddr_t *altxfrsource) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-
-	LOCK_ZONE(zone);
-	zone->altxfrsource6 = *altxfrsource;
-	UNLOCK_ZONE(zone);
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_sockaddr_t *
-dns_zone_getaltxfrsource6(dns_zone_t *zone) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-	return (&zone->altxfrsource6);
-}
-
-isc_result_t
-dns_zone_setaltxfrsource6dscp(dns_zone_t *zone, isc_dscp_t dscp) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-
-	LOCK_ZONE(zone);
-	zone->altxfrsource6dscp = dscp;
-	UNLOCK_ZONE(zone);
-
-	return (ISC_R_SUCCESS);
-}
-
-isc_dscp_t
-dns_zone_getaltxfrsource6dscp(dns_zone_t *zone) {
-	REQUIRE(DNS_ZONE_VALID(zone));
-	return (zone->altxfrsource6dscp);
 }
 
 isc_result_t
@@ -11617,7 +11539,6 @@ zone_refresh(dns_zone_t *zone) {
 	}
 	DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_REFRESH);
 	DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NOEDNS);
-	DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_USEALTXFRSRC);
 	if ((oldflags & (DNS_ZONEFLG_REFRESH | DNS_ZONEFLG_LOADING)) != 0) {
 		return;
 	}
@@ -13806,32 +13727,9 @@ next_primary:
 	dns_remote_next(&zone->primaries, true);
 	DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NOEDNS);
 	if (exiting || dns_remote_done(&zone->primaries)) {
-		bool done = true;
-		if (!exiting &&
-		    DNS_ZONE_OPTION(zone, DNS_ZONEOPT_USEALTXFRSRC) &&
-		    !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_USEALTXFRSRC))
-		{
-			/*
-			 * Did we get a good answer from all the primaries?
-			 */
-			done = dns_remote_allgood(&zone->primaries);
-		}
-		if (!done) {
-			dns_remote_reset(&zone->primaries, false);
-
-			/*
-			 * Find the next failed primary.
-			 */
-			if (dns_remote_addrok(&zone->primaries)) {
-				dns_remote_next(&zone->primaries, true);
-			}
-			DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_USEALTXFRSRC);
-		} else {
-			DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_REFRESH);
-
-			zone_settimer(zone, &now);
-			goto free_stub;
-		}
+		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_REFRESH);
+		zone_settimer(zone, &now);
+		goto free_stub;
 	}
 	queue_soa_query(zone);
 	goto free_stub;
@@ -14334,37 +14232,15 @@ next_primary:
 	dns_remote_next(&zone->primaries, true);
 	DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NOEDNS);
 	if (dns_remote_done(&zone->primaries)) {
-		bool done = true;
-		if (DNS_ZONE_OPTION(zone, DNS_ZONEOPT_USEALTXFRSRC) &&
-		    !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_USEALTXFRSRC))
-		{
-			/*
-			 * Did we get a good answer from all the primaries?
-			 */
-			done = dns_remote_allgood(&zone->primaries);
-		}
-		if (!done) {
-			DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_USEALTXFRSRC);
-			dns_remote_reset(&zone->primaries, false);
-			/*
-			 * Find the next failed primary.
-			 */
-			if (dns_remote_addrok(&zone->primaries)) {
-				dns_remote_next(&zone->primaries, true);
-			}
-			goto requeue;
-		}
 		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_REFRESH);
 		if (DNS_ZONE_FLAG(zone, DNS_ZONEFLG_NEEDREFRESH)) {
 			DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_NEEDREFRESH);
 			zone->refreshtime = now;
 		}
-		DNS_ZONE_CLRFLAG(zone, DNS_ZONEFLG_USEALTXFRSRC);
 		zone_settimer(zone, &now);
 		goto detach;
 	}
 
-requeue:
 	queue_soa_query(zone);
 	goto detach;
 
@@ -17656,20 +17532,6 @@ again:
 	same_primary:
 		if (dns_remote_done(&zone->primaries)) {
 			dns_remote_reset(&zone->primaries, false);
-			if (DNS_ZONE_OPTION(zone, DNS_ZONEOPT_USEALTXFRSRC) &&
-			    !DNS_ZONE_FLAG(zone, DNS_ZONEFLG_USEALTXFRSRC))
-			{
-				DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_REFRESH);
-				DNS_ZONE_SETFLAG(zone,
-						 DNS_ZONEFLG_USEALTXFRSRC);
-				if (dns_remote_addrok(&zone->primaries)) {
-					dns_remote_next(&zone->primaries, true);
-				}
-				again = true;
-			} else {
-				DNS_ZONE_CLRFLAG(zone,
-						 DNS_ZONEFLG_USEALTXFRSRC);
-			}
 		} else {
 			DNS_ZONE_SETFLAG(zone, DNS_ZONEFLG_REFRESH);
 			again = true;
