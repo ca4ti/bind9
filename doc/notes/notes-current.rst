@@ -30,6 +30,10 @@ Removed Features
   also means that the option :any:`dnssec-secure-to-insecure` has been
   obsoleted. :gl:`#3686`
 
+- The options to set alternate local addresses for inbound zone transfers
+  are removed (``alt-transfer-source``, ``alt-transfer-source-v6``,
+  ``use-alt-transfer-source``). :gl:`#3694`
+
 Feature Changes
 ~~~~~~~~~~~~~~~
 
@@ -44,10 +48,6 @@ Feature Changes
   ``files`` and ``stacksize``) from ``named.conf``.  These options should be set
   from the operating system (``ulimit``) or from the process supervisor
   (e.g. ``systemd``). :gl:`#3676`
-
-- Deprecate setting alternate local addresses for inbound zone transfers
-  (:any:`alt-transfer-source`, :any:`alt-transfer-source-v6`,
-  :any:`use-alt-transfer-source`). :gl:`#3694`
 
 Bug Fixes
 ~~~~~~~~~
