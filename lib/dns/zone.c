@@ -13916,7 +13916,8 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 			{
 				if (!dns_zonemgr_unreachable(
 					    zone->zmgr, &curraddr,
-					    &zone->sourceaddr, &now)) {
+					    &zone->sourceaddr, &now))
+				{
 					DNS_ZONE_SETFLAG(
 						zone,
 						DNS_ZONEFLG_SOABEFOREAXFR);
@@ -14152,7 +14153,8 @@ refresh_callback(isc_task_t *task, isc_event_t *event) {
 	    isc_serial_gt(serial, oldserial))
 	{
 		if (dns_zonemgr_unreachable(zone->zmgr, &curraddr,
-					    &zone->sourceaddr, &now)) {
+					    &zone->sourceaddr, &now))
+		{
 			dns_zone_log(zone, ISC_LOG_INFO,
 				     "refresh: skipping %s as primary %s "
 				     "(source %s) is unreachable (cached)",
@@ -17819,7 +17821,8 @@ got_transfer_quota(isc_task_t *task, isc_event_t *event) {
 	primaryaddr = dns_remote_curraddr(&zone->primaries);
 	isc_sockaddr_format(&primaryaddr, primary, sizeof(primary));
 	if (dns_zonemgr_unreachable(zone->zmgr, &primaryaddr, &zone->sourceaddr,
-				    &now)) {
+				    &now))
+	{
 		isc_sockaddr_format(&zone->sourceaddr, source, sizeof(source));
 		dns_zone_logc(zone, DNS_LOGCATEGORY_XFER_IN, ISC_LOG_INFO,
 			      "got_transfer_quota: skipping zone transfer as "
