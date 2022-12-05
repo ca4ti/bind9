@@ -409,35 +409,6 @@ dns_remote_done(dns_remote_t *remote) {
 	return (remote->curraddr >= remote->addrcnt);
 }
 
-bool
-dns_remote_allgood(dns_remote_t *remote) {
-	REQUIRE(remote != NULL);
-
-	if (remote->ok == NULL) {
-		return (true);
-	}
-
-	for (unsigned int i = 0; i < remote->addrcnt; i++) {
-		if (!remote->ok[i]) {
-			return (false);
-		}
-	}
-
-	return (true);
-}
-
-bool
-dns_remote_addrok(dns_remote_t *remote) {
-	REQUIRE(remote != NULL);
-	REQUIRE(remote->curraddr < remote->addrcnt);
-
-	if (remote->ok == NULL) {
-		return (true);
-	}
-
-	return (remote->ok[remote->curraddr]);
-}
-
 void
 dns_remote_mark(dns_remote_t *remote, bool good) {
 	REQUIRE(remote != NULL);
