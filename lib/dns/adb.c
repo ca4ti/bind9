@@ -1431,9 +1431,11 @@ get_attached_entry(dns_adb_t *adb, isc_stdtime_t now,
 
 		ISC_LIST_PREPEND(adb->entries_lru, adbentry, link);
 		adbentry->last_used = now;
+		dns_adbentry_ref(adbentry);
 		break;
 	}
 	case ISC_R_SUCCESS:
+		dns_adbentry_ref(adbentry);
 		LOCK(&adbentry->lock);
 		if (maybe_expire_entry(adbentry, now)) {
 			UNLOCK(&adbentry->lock);
@@ -1451,7 +1453,6 @@ get_attached_entry(dns_adb_t *adb, isc_stdtime_t now,
 	default:
 		UNREACHABLE();
 	}
-	dns_adbentry_ref(adbentry);
 
 	UNLOCK(&adb->entries_lock);
 
