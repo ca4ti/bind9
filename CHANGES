@@ -1,3 +1,5 @@
+6038.	[cleanup]	Remove some remnants of bitstring labels. [GL !7196]
+
 6037.	[func]		Reject zones which have DS records not at delegation
 			points. [GL #3697]
 
