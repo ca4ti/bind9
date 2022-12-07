@@ -1627,9 +1627,7 @@ udp_dispentry_cancel(dns_dispentry_t *resp, isc_result_t result) {
 		if (resp->reading) {
 			dns_dispentry_ref(resp); /* DISPENTRY003 */
 			response = resp->response;
-		}
 
-		if (resp->handle) {
 			dispentry_log(resp, LVL(90), "canceling read on %p",
 				      resp->handle);
 			isc_nm_cancelread(resp->handle);
@@ -1708,14 +1706,40 @@ tcp_dispentry_cancel(dns_dispentry_t *resp, isc_result_t result) {
 		if (ISC_LIST_EMPTY(disp->active)) {
 			INSIST(disp->handle != NULL);
 
+#if DISPATCH_TCP_KEEPALIVE
+			/*
+			 * This is an experimental code that keeps the TCP
+			 * connection open for 1 second before it is finally
+			 * closed.  By keeping the TCP connection open, it can
+			 * be reused by dns_request that uses
+			 * dns_dispatch_gettcp() to join existing TCP
+			 * connections.
+			 *
+			 * It is disabled for now, because it changes the
+			 * behaviour, but I am keeping the code here for future
+			 * reference when we improve the dns_dispatch to reuse
+			 * the TCP connections also in the resolver.
+			 *
+			 * The TCP connection reuse should be seamless and not
+			 * require any extra handling on the client side though.
+			 */
+			isc_nmhandle_cleartimeout(disp->handle);
+			isc_nmhandle_settimeout(disp->handle, 1000);
+
 			if (!disp->reading) {
 				dispentry_log(resp, LVL(90),
 					      "final 1 second timeout on %p",
 					      disp->handle);
-				isc_nmhandle_cleartimeout(disp->handle);
-				isc_nmhandle_settimeout(disp->handle, 1000);
 				tcp_startrecv(NULL, disp, NULL);
 			}
+#else
+			if (disp->reading) {
+				dispentry_log(resp, LVL(90),
+					      "canceling read on %p",
+					      disp->handle);
+				isc_nm_cancelread(disp->handle);
+			}
+#endif
 		}
 		break;
 
