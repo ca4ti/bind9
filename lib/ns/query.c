@@ -5960,13 +5960,6 @@ query_lookup(query_ctx_t *qctx) {
 		dns_cache_updatestats(qctx->view->cache, result);
 	}
 
-	if (dns_rdataset_isassociated(qctx->rdataset) &&
-	    dns_rdataset_count(qctx->rdataset) > 0 && !STALE(qctx->rdataset))
-	{
-		/* Found non-stale usable rdataset. */
-		goto gotanswer;
-	}
-
 	/*
 	 * If DNS_DBFIND_STALEOK is set this means we are dealing with a
 	 * lookup following a failed lookup and it is okay to serve a stale
@@ -5996,6 +5989,13 @@ query_lookup(query_ctx_t *qctx) {
 	 * RRset because a fetch is already in progress.
 	 */
 	stale_timeout = ((dboptions & DNS_DBFIND_STALETIMEOUT) != 0);
+
+	if (dns_rdataset_isassociated(qctx->rdataset) &&
+	    dns_rdataset_count(qctx->rdataset) > 0 && !STALE(qctx->rdataset))
+	{
+		/* Found non-stale usable rdataset. */
+		goto gotanswer;
+	}
 
 	if (dbfind_stale || stale_refresh_window || stale_timeout) {
 		dns_name_format(qctx->client->query.qname, namebuf,
@@ -6118,7 +6118,20 @@ query_lookup(query_ctx_t *qctx) {
 			} else {
 				return (result);
 			}
+		}
+	}
 
+gotanswer:
+	if (stale_timeout && stale_found) {
+		/*
+		 * Mark RRsets that we are adding to the client message on a
+		 * lookup during 'stale-answer-client-timeout', so we can
+		 * clean it up if needed when we resume from recursion.
+		 */
+		qctx->client->query.attributes |= NS_QUERYATTR_STALEOK;
+		qctx->rdataset->attributes |= DNS_RDATASETATTR_STALE_ADDED;
+
+		if ((qctx->options & DNS_GETDB_STALEFIRST) == 0) {
 			/*
 			 * There still might be real answer later. Mark the
 			 * query so we'll know we can skip answering.
@@ -6128,17 +6141,6 @@ query_lookup(query_ctx_t *qctx) {
 		}
 	}
 
-	if (stale_timeout && stale_found) {
-		/*
-		 * Mark RRsets that we are adding to the client message on a
-		 * lookup during 'stale-answer-client-timeout', so we can
-		 * clean it up if needed when we resume from recursion.
-		 */
-		qctx->client->query.attributes |= NS_QUERYATTR_STALEOK;
-		qctx->rdataset->attributes |= DNS_RDATASETATTR_STALE_ADDED;
-	}
-
-gotanswer:
 	result = query_gotanswer(qctx, result);
 
 cleanup:
