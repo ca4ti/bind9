@@ -204,9 +204,10 @@ struct dns_adbfind {
 struct dns_adbaddrinfo {
 	unsigned int magic; /*%< private */
 
-	isc_sockaddr_t sockaddr; /*%< [rw] */
-	unsigned int   srtt;	 /*%< [rw] microsecs */
-	isc_dscp_t     dscp;
+	isc_sockaddr_t	 sockaddr; /*%< [rw] */
+	unsigned int	 srtt;	   /*%< [rw] microsecs */
+	isc_dscp_t	 dscp;
+	dns_transport_t *transport;
 
 	unsigned int	flags; /*%< [rw] */
 	dns_adbentry_t *entry; /*%< private */

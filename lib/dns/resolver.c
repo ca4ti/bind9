@@ -549,6 +549,7 @@ struct dns_resolver {
 	dns_view_t *view;
 	bool frozen;
 	unsigned int options;
+	isc_tlsctx_cache_t *tlsctx_cache;
 	dns_dispatchmgr_t *dispatchmgr;
 	dns_dispatchset_t *dispatches4;
 	dns_dispatchset_t *dispatches6;
@@ -2138,12 +2139,28 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 	bool have_addr = false;
 	unsigned int srtt;
 	isc_dscp_t dscp = -1;
+	isc_tlsctx_cache_t *tlsctx_cache = NULL;
 
 	FCTXTRACE("query");
 
 	res = fctx->res;
 
 	srtt = addrinfo->srtt;
+
+	if (addrinfo->transport != NULL) {
+		switch (dns_transport_get_type(addrinfo->transport)) {
+		case DNS_TRANSPORT_TLS:
+			options |= DNS_FETCHOPT_TCP;
+			tlsctx_cache = res->tlsctx_cache;
+			break;
+		case DNS_TRANSPORT_TCP:
+		case DNS_TRANSPORT_HTTP:
+			options |= DNS_FETCHOPT_TCP;
+			break;
+		default:
+			break;
+		}
+	}
 
 	/*
 	 * Allow an additional second for the kernel to resend the SYN
@@ -2332,9 +2349,9 @@ fctx_query(fetchctx_t *fctx, dns_adbaddrinfo_t *addrinfo,
 	/* Set up the dispatch and set the query ID */
 	result = dns_dispatch_add(
 		query->dispatch, 0, isc_interval_ms(&fctx->interval),
-		&query->addrinfo->sockaddr, NULL, NULL, resquery_connected,
-		resquery_senddone, resquery_response, query, &query->id,
-		&query->dispentry);
+		&query->addrinfo->sockaddr, addrinfo->transport, tlsctx_cache,
+		resquery_connected, resquery_senddone, resquery_response, query,
+		&query->id, &query->dispentry);
 	if (result != ISC_R_SUCCESS) {
 		goto cleanup_udpfetch;
 	}
@@ -3702,6 +3719,17 @@ fctx_getaddresses(fetchctx_t *fctx, bool badcache) {
 			dns_adbaddrinfo_t *cur;
 			ai->flags |= FCTX_ADDRINFO_FORWARDER;
 			ai->dscp = fwd->dscp;
+
+			if (fwd->tlsname != NULL) {
+				result = dns_view_gettransport(
+					res->view, DNS_TRANSPORT_TLS,
+					fwd->tlsname, &ai->transport);
+				if (result != ISC_R_SUCCESS) {
+					dns_adb_freeaddrinfo(fctx->adb, &ai);
+					goto next;
+				}
+			}
+
 			cur = ISC_LIST_HEAD(fctx->forwaddrs);
 			while (cur != NULL && cur->srtt < ai->srtt) {
 				cur = ISC_LIST_NEXT(cur, publink);
@@ -3713,6 +3741,7 @@ fctx_getaddresses(fetchctx_t *fctx, bool badcache) {
 				ISC_LIST_APPEND(fctx->forwaddrs, ai, publink);
 			}
 		}
+	next:
 		fwd = ISC_LIST_NEXT(fwd, link);
 	}
 
@@ -10127,9 +10156,9 @@ spillattimer_countdown(void *arg) {
 isc_result_t
 dns_resolver_create(dns_view_t *view, isc_loopmgr_t *loopmgr,
 		    isc_taskmgr_t *taskmgr, unsigned int ndisp, isc_nm_t *nm,
-		    unsigned int options, dns_dispatchmgr_t *dispatchmgr,
-		    dns_dispatch_t *dispatchv4, dns_dispatch_t *dispatchv6,
-		    dns_resolver_t **resp) {
+		    unsigned int options, isc_tlsctx_cache_t *tlsctx_cache,
+		    dns_dispatchmgr_t *dispatchmgr, dns_dispatch_t *dispatchv4,
+		    dns_dispatch_t *dispatchv6, dns_resolver_t **resp) {
 	isc_result_t result = ISC_R_SUCCESS;
 	char name[sizeof("res4294967295")];
 	dns_resolver_t *res = NULL;
@@ -10141,6 +10170,7 @@ dns_resolver_create(dns_view_t *view, isc_loopmgr_t *loopmgr,
 	REQUIRE(DNS_VIEW_VALID(view));
 	REQUIRE(ndisp > 0);
 	REQUIRE(resp != NULL && *resp == NULL);
+	REQUIRE(tlsctx_cache != NULL);
 	REQUIRE(dispatchmgr != NULL);
 	REQUIRE(dispatchv4 != NULL || dispatchv6 != NULL);
 
@@ -10154,6 +10184,7 @@ dns_resolver_create(dns_view_t *view, isc_loopmgr_t *loopmgr,
 		.taskmgr = taskmgr,
 		.dispatchmgr = dispatchmgr,
 		.options = options,
+		.tlsctx_cache = tlsctx_cache,
 		.spillatmin = 10,
 		.spillat = 10,
 		.spillatmax = 100,
