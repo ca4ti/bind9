@@ -107,15 +107,15 @@ stages:
 # Oracle Linux
 
 .oraclelinux-7-amd64: &oraclelinux_7_amd64_image
-  image: "$CI_REGISTRY_IMAGE:oraclelinux-7-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:oraclelinux-7-amd64"
   <<: *linux_amd64
 
 .oraclelinux-8-amd64: &oraclelinux_8_amd64_image
-  image: "$CI_REGISTRY_IMAGE:oraclelinux-8-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:oraclelinux-8-amd64"
   <<: *linux_amd64
 
 .oraclelinux-9-amd64: &oraclelinux_9_amd64_image
-  image: "$CI_REGISTRY_IMAGE:oraclelinux-9-amd64"
+  image: "$CI_REGISTRY_IMAGE-staging:oraclelinux-9-amd64"
   <<: *linux_amd64
 
 # Debian
