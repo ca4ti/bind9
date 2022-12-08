@@ -196,7 +196,7 @@ options {
 	fetches\-per\-zone <integer> [ ( drop | fail ) ];
 	flush\-zones\-on\-shutdown <boolean>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	fstrm\-set\-buffer\-hint <integer>; // not configured
 	fstrm\-set\-flush\-timeout <integer>; // not configured
 	fstrm\-set\-input\-queue\-size <integer>; // not configured
@@ -497,7 +497,7 @@ view <string> [ <class> ] {
 	fetches\-per\-server <integer> [ ( drop | fail ) ];
 	fetches\-per\-zone <integer> [ ( drop | fail ) ];
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	ipv4only\-contact <string>;
 	ipv4only\-enable <boolean>;
 	ipv4only\-server <string>;
@@ -691,7 +691,7 @@ zone <string> [ <class> ] {
 	dnssec\-update\-mode ( maintain | no\-resign );
 	file <quoted_string>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	inline\-signing <boolean>;
 	ixfr\-from\-differences <boolean>;
 	journal <quoted_string>;
@@ -755,7 +755,7 @@ zone <string> [ <class> ] {
 	dnssec\-update\-mode ( maintain | no\-resign );
 	file <quoted_string>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	inline\-signing <boolean>;
 	ixfr\-from\-differences <boolean>;
 	journal <quoted_string>;
@@ -865,7 +865,7 @@ zone <string> [ <class> ] {
 	type forward;
 	delegation\-only <boolean>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 };
 
 .ft P
@@ -921,7 +921,7 @@ zone <string> [ <class> ] {
 	allow\-query { <address_match_element>; ... };
 	allow\-query\-on { <address_match_element>; ... };
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	max\-records <integer>;
 	server\-addresses { ( <ipv4_address> | <ipv6_address> ); ... };
 	server\-names { <string>; ... };
@@ -947,7 +947,7 @@ zone <string> [ <class> ] {
 	dialup ( notify | notify\-passive | passive | refresh | <boolean> );
 	file <quoted_string>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	masterfile\-format ( raw | text );
 	masterfile\-style ( full | relative );
 	max\-records <integer>;

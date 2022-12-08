@@ -8,7 +8,7 @@ zone <string> [ <class> ] {
 	dialup ( notify | notify-passive | passive | refresh | <boolean> );
 	file <quoted_string>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	masterfile-format ( raw | text );
 	masterfile-style ( full | relative );
 	max-records <integer>;

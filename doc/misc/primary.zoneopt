@@ -29,7 +29,7 @@ zone <string> [ <class> ] {
 	dnssec-update-mode ( maintain | no-resign );
 	file <quoted_string>;
 	forward ( first | only );
-	forwarders [ port <integer> ] [ dscp <integer> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ]; ... };
+	forwarders [ port <integer> ] [ dscp <integer> ] [ tls <string> ] { ( <ipv4_address> | <ipv6_address> ) [ port <integer> ] [ dscp <integer> ] [ tls <string> ]; ... };
 	inline-signing <boolean>;
 	ixfr-from-differences <boolean>;
 	journal <quoted_string>;

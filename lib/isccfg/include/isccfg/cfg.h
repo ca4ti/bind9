@@ -420,6 +420,20 @@ cfg_obj_getdscp(const cfg_obj_t *obj);
  * \li     DSCP value associated with a sockaddr, or -1.
  */
 
+const char *
+cfg_obj_getsockaddrtls(const cfg_obj_t *obj);
+/*%<
+ * Returns the TLS value of a configuration object representing a
+ * socket address.
+ *
+ * Requires:
+ * \li     'obj' points to a valid configuration object of a
+ *         socket address type.
+ *
+ * Returns:
+ * \li     TLS value associated with a sockaddr, or NULL.
+ */
+
 bool
 cfg_obj_isnetprefix(const cfg_obj_t *obj);
 /*%<

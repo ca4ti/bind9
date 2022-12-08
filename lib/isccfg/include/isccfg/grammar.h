@@ -178,9 +178,10 @@ struct cfg_obj {
 		cfg_obj_t      **tuple;
 		isc_sockaddr_t	 sockaddr;
 		struct {
-			isc_sockaddr_t sockaddr;
-			isc_dscp_t     dscp;
-		} sockaddrdscp;
+			isc_sockaddr_t	 sockaddr;
+			isc_dscp_t	 dscp;
+			isc_textregion_t tls;
+		} sockaddrdscptls;
 		cfg_netprefix_t	  netprefix;
 		isccfg_duration_t duration;
 	} value;
@@ -270,6 +271,7 @@ struct cfg_parser {
 #define CFG_ADDR_V6OK	    0x00000004
 #define CFG_ADDR_WILDOK	    0x00000008
 #define CFG_ADDR_DSCPOK	    0x00000010
+#define CFG_ADDR_TLSOK	    0x00000020
 #define CFG_ADDR_MASK	    (CFG_ADDR_V6OK | CFG_ADDR_V4OK)
 /*@}*/
 
@@ -308,7 +310,7 @@ extern cfg_type_t cfg_type_bracketed_text;
 extern cfg_type_t cfg_type_optional_bracketed_text;
 extern cfg_type_t cfg_type_keyref;
 extern cfg_type_t cfg_type_sockaddr;
-extern cfg_type_t cfg_type_sockaddrdscp;
+extern cfg_type_t cfg_type_sockaddrdscptls;
 extern cfg_type_t cfg_type_netaddr;
 extern cfg_type_t cfg_type_netaddr4;
 extern cfg_type_t cfg_type_netaddr4wild;

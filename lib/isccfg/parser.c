@@ -119,6 +119,12 @@ create_string(cfg_parser_t *pctx, const char *contents, const cfg_type_t *type,
 static void
 free_string(cfg_parser_t *pctx, cfg_obj_t *obj);
 
+static void
+copy_string(cfg_parser_t *pctx, const cfg_obj_t *obj, isc_textregion_t *dst);
+
+static void
+free_sockaddr(cfg_parser_t *pctx, cfg_obj_t *obj);
+
 static isc_result_t
 create_map(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **objp);
 
@@ -163,7 +169,7 @@ cfg_rep_t cfg_rep_boolean = { "boolean", free_noop };
 cfg_rep_t cfg_rep_map = { "map", free_map };
 cfg_rep_t cfg_rep_list = { "list", free_list };
 cfg_rep_t cfg_rep_tuple = { "tuple", free_tuple };
-cfg_rep_t cfg_rep_sockaddr = { "sockaddr", free_noop };
+cfg_rep_t cfg_rep_sockaddr = { "sockaddr", free_sockaddr };
 cfg_rep_t cfg_rep_netprefix = { "netprefix", free_noop };
 cfg_rep_t cfg_rep_void = { "void", free_noop };
 cfg_rep_t cfg_rep_fixedpoint = { "fixedpoint", free_noop };
@@ -1511,15 +1517,20 @@ cfg_print_ustring(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 }
 
 static void
-print_qstring(cfg_printer_t *pctx, const cfg_obj_t *obj) {
+print_rawqstring(cfg_printer_t *pctx, const isc_textregion_t string) {
 	cfg_print_cstr(pctx, "\"");
-	for (size_t i = 0; i < obj->value.string.length; i++) {
-		if (obj->value.string.base[i] == '"') {
+	for (size_t i = 0; i < string.length; i++) {
+		if (string.base[i] == '"') {
 			cfg_print_cstr(pctx, "\\");
 		}
-		cfg_print_chars(pctx, &obj->value.string.base[i], 1);
+		cfg_print_chars(pctx, (const char *)&string.base[i], 1);
 	}
 	cfg_print_cstr(pctx, "\"");
+}
+
+static void
+print_qstring(cfg_printer_t *pctx, const cfg_obj_t *obj) {
+	print_rawqstring(pctx, obj->value.string);
 }
 
 static void
@@ -1540,6 +1551,27 @@ static void
 free_string(cfg_parser_t *pctx, cfg_obj_t *obj) {
 	isc_mem_put(pctx->mctx, obj->value.string.base,
 		    obj->value.string.length + 1);
+}
+
+static void
+copy_string(cfg_parser_t *pctx, const cfg_obj_t *obj, isc_textregion_t *dst) {
+	if (dst->base != NULL) {
+		INSIST(dst->length != 0);
+		isc_mem_put(pctx->mctx, dst->base, dst->length + 1);
+	}
+	dst->length = obj->value.string.length;
+	dst->base = isc_mem_get(pctx->mctx, dst->length + 1);
+	memmove(dst->base, obj->value.string.base, dst->length);
+	dst->base[dst->length] = '\0';
+}
+
+static void
+free_sockaddr(cfg_parser_t *pctx, cfg_obj_t *obj) {
+	if (obj->value.sockaddrdscptls.tls.base != NULL) {
+		INSIST(obj->value.sockaddrdscptls.tls.length != 0);
+		isc_mem_put(pctx->mctx, obj->value.sockaddrdscptls.tls.base,
+			    obj->value.sockaddrdscptls.tls.length + 1);
+	}
 }
 
 bool
@@ -3060,7 +3092,7 @@ parse_netaddr(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	CHECK(cfg_create_obj(pctx, type, &obj));
 	CHECK(cfg_parse_rawaddr(pctx, flags, &netaddr));
 	isc_sockaddr_fromnetaddr(&obj->value.sockaddr, &netaddr, 0);
-	obj->value.sockaddrdscp.dscp = -1;
+	obj->value.sockaddrdscptls.dscp = -1;
 	*ret = obj;
 	return (ISC_R_SUCCESS);
 cleanup:
@@ -3235,10 +3267,11 @@ parse_sockaddrsub(cfg_parser_t *pctx, const cfg_type_t *type, int flags,
 	in_port_t port = 0;
 	isc_dscp_t dscp = -1;
 	cfg_obj_t *obj = NULL;
-	int have_port = 0, have_dscp = 0;
+	int have_port = 0, have_dscp = 0, have_tls = 0;
 
 	CHECK(cfg_create_obj(pctx, type, &obj));
 	CHECK(cfg_parse_rawaddr(pctx, flags, &netaddr));
+
 	for (;;) {
 		CHECK(cfg_peektoken(pctx, 0));
 		if (pctx->token.type == isc_tokentype_string) {
@@ -3252,6 +3285,17 @@ parse_sockaddrsub(cfg_parser_t *pctx, const cfg_type_t *type, int flags,
 				CHECK(cfg_gettoken(pctx, 0)); /* read "dscp" */
 				CHECK(cfg_parse_dscp(pctx, &dscp));
 				++have_dscp;
+			} else if ((flags & CFG_ADDR_TLSOK) != 0 &&
+				   strcasecmp(TOKEN_STRING(pctx), "tls") == 0)
+			{
+				cfg_obj_t *tls = NULL;
+
+				CHECK(cfg_gettoken(pctx, 0)); /* read "tls" */
+				CHECK(cfg_parse_astring(pctx, NULL, &tls));
+				copy_string(pctx, tls,
+					    &obj->value.sockaddrdscptls.tls);
+				CLEANUP_OBJ(tls);
+				++have_tls;
 			} else {
 				break;
 			}
@@ -3259,19 +3303,25 @@ parse_sockaddrsub(cfg_parser_t *pctx, const cfg_type_t *type, int flags,
 			break;
 		}
 	}
+
 	if (have_port > 1) {
 		cfg_parser_error(pctx, 0, "expected at most one port");
 		result = ISC_R_UNEXPECTEDTOKEN;
 		goto cleanup;
 	}
-
 	if (have_dscp > 1) {
 		cfg_parser_error(pctx, 0, "expected at most one dscp");
 		result = ISC_R_UNEXPECTEDTOKEN;
 		goto cleanup;
 	}
+	if (have_tls > 1) {
+		cfg_parser_error(pctx, 0, "expected at most one tls");
+		result = ISC_R_UNEXPECTEDTOKEN;
+		goto cleanup;
+	}
+
 	isc_sockaddr_fromnetaddr(&obj->value.sockaddr, &netaddr, port);
-	obj->value.sockaddrdscp.dscp = dscp;
+	obj->value.sockaddrdscptls.dscp = dscp;
 	*ret = obj;
 	return (ISC_R_SUCCESS);
 
@@ -3285,11 +3335,12 @@ cfg_type_t cfg_type_sockaddr = { "sockaddr",	     cfg_parse_sockaddr,
 				 cfg_print_sockaddr, cfg_doc_sockaddr,
 				 &cfg_rep_sockaddr,  &sockaddr_flags };
 
-static unsigned int sockaddrdscp_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK |
-					 CFG_ADDR_DSCPOK;
-cfg_type_t cfg_type_sockaddrdscp = { "sockaddr",	 cfg_parse_sockaddr,
-				     cfg_print_sockaddr, cfg_doc_sockaddr,
-				     &cfg_rep_sockaddr,	 &sockaddrdscp_flags };
+static unsigned int sockaddrdscptls_flags = CFG_ADDR_V4OK | CFG_ADDR_V6OK |
+					    CFG_ADDR_DSCPOK | CFG_ADDR_TLSOK;
+cfg_type_t cfg_type_sockaddrdscptls = {
+	"sockaddr",	  cfg_parse_sockaddr, cfg_print_sockaddr,
+	cfg_doc_sockaddr, &cfg_rep_sockaddr,  &sockaddrdscptls_flags
+};
 
 isc_result_t
 cfg_parse_sockaddr(cfg_parser_t *pctx, const cfg_type_t *type,
@@ -3322,9 +3373,13 @@ cfg_print_sockaddr(cfg_printer_t *pctx, const cfg_obj_t *obj) {
 		cfg_print_cstr(pctx, " port ");
 		cfg_print_rawuint(pctx, port);
 	}
-	if (obj->value.sockaddrdscp.dscp != -1) {
+	if (obj->value.sockaddrdscptls.dscp != -1) {
 		cfg_print_cstr(pctx, " dscp ");
-		cfg_print_rawuint(pctx, obj->value.sockaddrdscp.dscp);
+		cfg_print_rawuint(pctx, obj->value.sockaddrdscptls.dscp);
+	}
+	if (obj->value.sockaddrdscptls.tls.base != NULL) {
+		cfg_print_cstr(pctx, " tls ");
+		print_rawqstring(pctx, obj->value.sockaddrdscptls.tls);
 	}
 }
 
@@ -3367,6 +3422,9 @@ cfg_doc_sockaddr(cfg_printer_t *pctx, const cfg_type_t *type) {
 	if ((*flagp & CFG_ADDR_DSCPOK) != 0) {
 		cfg_print_cstr(pctx, " [ dscp <integer> ]");
 	}
+	if ((*flagp & CFG_ADDR_TLSOK) != 0) {
+		cfg_print_cstr(pctx, " [ tls <string> ]");
+	}
 }
 
 bool
@@ -3384,7 +3442,13 @@ cfg_obj_assockaddr(const cfg_obj_t *obj) {
 isc_dscp_t
 cfg_obj_getdscp(const cfg_obj_t *obj) {
 	REQUIRE(obj != NULL && obj->type->rep == &cfg_rep_sockaddr);
-	return (obj->value.sockaddrdscp.dscp);
+	return (obj->value.sockaddrdscptls.dscp);
+}
+
+const char *
+cfg_obj_getsockaddrtls(const cfg_obj_t *obj) {
+	REQUIRE(obj != NULL && obj->type->rep == &cfg_rep_sockaddr);
+	return (obj->value.sockaddrdscptls.tls.base);
 }
 
 isc_result_t
@@ -3671,6 +3735,8 @@ cfg_create_obj(cfg_parser_t *pctx, const cfg_type_t *type, cfg_obj_t **ret) {
 	REQUIRE(ret != NULL && *ret == NULL);
 
 	obj = isc_mem_get(pctx->mctx, sizeof(cfg_obj_t));
+
+	memset(&obj->value, 0, sizeof(obj->value));
 
 	obj->type = type;
 	obj->file = current_file(pctx);
