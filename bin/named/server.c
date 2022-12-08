@@ -447,6 +447,9 @@ static isc_result_t
 configure_newzones(dns_view_t *view, cfg_obj_t *config, cfg_obj_t *vconfig,
 		   cfg_aclconfctx_t *actx);
 
+static const cfg_obj_t *
+find_maplist(const cfg_obj_t *config, const char *listname, const char *name);
+
 static isc_result_t
 add_keydata_zone(dns_view_t *view, const char *directory, isc_mem_t *mctx);
 
@@ -6240,10 +6243,40 @@ cleanup:
 }
 
 static isc_result_t
+validate_tls(const cfg_obj_t *config, dns_view_t *view, const cfg_obj_t *obj,
+	     isc_log_t *logctx, const char *str, dns_name_t **name) {
+	const cfg_obj_t *tlsmap = NULL;
+	dns_fixedname_t fname;
+	dns_name_t *nm = dns_fixedname_initname(&fname);
+	isc_result_t result = dns_name_fromstring(nm, str, 0, NULL);
+
+	if (result != ISC_R_SUCCESS) {
+		cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+			    "'%s' is not a valid name", str);
+		return (result);
+	}
+
+	tlsmap = find_maplist(config, "tls", str);
+	if (tlsmap == NULL) {
+		cfg_obj_log(obj, logctx, ISC_LOG_ERROR,
+			    "tls '%s' is not defined", str);
+		return (ISC_R_FAILURE);
+	}
+
+	if (name != NULL && *name == NULL) {
+		*name = isc_mem_get(view->mctx, sizeof(dns_name_t));
+		dns_name_init(*name, NULL);
+		dns_name_dup(nm, view->mctx, *name);
+	}
+
+	return (ISC_R_SUCCESS);
+}
+
+static isc_result_t
 configure_forward(const cfg_obj_t *config, dns_view_t *view,
 		  const dns_name_t *origin, const cfg_obj_t *forwarders,
 		  const cfg_obj_t *forwardtype) {
-	const cfg_obj_t *portobj, *dscpobj;
+	const cfg_obj_t *portobj, *dscpobj, *tlspobj;
 	const cfg_obj_t *faddresses;
 	const cfg_listelt_t *element;
 	dns_fwdpolicy_t fwdpolicy = dns_fwdpolicy_none;
@@ -6252,6 +6285,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 	isc_result_t result;
 	in_port_t port;
 	isc_dscp_t dscp = -1;
+	const char *tls = NULL;
 
 	ISC_LIST_INIT(fwdlist);
 
@@ -6292,6 +6326,23 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 		}
 	}
 
+	/*
+	 * TLS value for forwarded requests.
+	 */
+	if (forwarders != NULL) {
+		tlspobj = cfg_tuple_get(forwarders, "tls");
+		if (cfg_obj_isstring(tlspobj)) {
+			tls = cfg_obj_asstring(tlspobj);
+			if (tls != NULL) {
+				result = validate_tls(config, view, tlspobj,
+						      named_g_lctx, tls, NULL);
+				if (result != ISC_R_SUCCESS) {
+					return (result);
+				}
+			}
+		}
+	}
+
 	faddresses = NULL;
 	if (forwarders != NULL) {
 		faddresses = cfg_tuple_get(forwarders, "addresses");
@@ -6301,6 +6352,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 	     element = cfg_list_next(element))
 	{
 		const cfg_obj_t *forwarder = cfg_listelt_value(element);
+		const char *cur_tls;
 		fwd = isc_mem_get(view->mctx, sizeof(dns_forwarder_t));
 		fwd->addr = *cfg_obj_assockaddr(forwarder);
 		if (isc_sockaddr_getport(&fwd->addr) == 0) {
@@ -6309,6 +6361,19 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 		fwd->dscp = cfg_obj_getdscp(forwarder);
 		if (fwd->dscp == -1) {
 			fwd->dscp = dscp;
+		}
+		fwd->tlsname = NULL;
+		cur_tls = cfg_obj_getsockaddrtls(forwarder);
+		if (cur_tls == NULL) {
+			cur_tls = tls;
+		}
+		if (cur_tls != NULL) {
+			result = validate_tls(config, view, faddresses,
+					      named_g_lctx, cur_tls,
+					      &fwd->tlsname);
+			if (result != ISC_R_SUCCESS) {
+				return (result);
+			}
 		}
 		ISC_LINK_INIT(fwd, link);
 		ISC_LIST_APPEND(fwdlist, fwd, link);
@@ -6358,6 +6423,11 @@ cleanup:
 	while (!ISC_LIST_EMPTY(fwdlist)) {
 		fwd = ISC_LIST_HEAD(fwdlist);
 		ISC_LIST_UNLINK(fwdlist, fwd, link);
+		if (fwd->tlsname != NULL) {
+			dns_name_free(fwd->tlsname, view->mctx);
+			isc_mem_put(view->mctx, fwd->tlsname,
+				    sizeof(dns_name_t));
+		}
 		isc_mem_put(view->mctx, fwd, sizeof(dns_forwarder_t));
 	}
 

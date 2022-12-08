@@ -20,6 +20,7 @@
 #include <isc/util.h>
 
 #include <dns/forward.h>
+#include <dns/name.h>
 #include <dns/rbt.h>
 #include <dns/types.h>
 
@@ -84,6 +85,15 @@ dns_fwdtable_addfwd(dns_fwdtable_t *fwdtable, const dns_name_t *name,
 	{
 		nfwd = isc_mem_get(fwdtable->mctx, sizeof(dns_forwarder_t));
 		*nfwd = *fwd;
+
+		if (fwd->tlsname != NULL) {
+			nfwd->tlsname = isc_mem_get(fwdtable->mctx,
+						    sizeof(dns_name_t));
+			dns_name_init(nfwd->tlsname, NULL);
+			dns_name_dup(fwd->tlsname, fwdtable->mctx,
+				     nfwd->tlsname);
+		}
+
 		ISC_LINK_INIT(nfwd, link);
 		ISC_LIST_APPEND(forwarders->fwdrs, nfwd, link);
 	}
@@ -103,6 +113,11 @@ cleanup:
 	while (!ISC_LIST_EMPTY(forwarders->fwdrs)) {
 		fwd = ISC_LIST_HEAD(forwarders->fwdrs);
 		ISC_LIST_UNLINK(forwarders->fwdrs, fwd, link);
+		if (fwd->tlsname != NULL) {
+			dns_name_free(fwd->tlsname, fwdtable->mctx);
+			isc_mem_put(fwdtable->mctx, fwd->tlsname,
+				    sizeof(dns_name_t));
+		}
 		isc_mem_put(fwdtable->mctx, fwd, sizeof(isc_sockaddr_t));
 	}
 	isc_mem_put(fwdtable->mctx, forwarders, sizeof(dns_forwarders_t));
@@ -128,6 +143,7 @@ dns_fwdtable_add(dns_fwdtable_t *fwdtable, const dns_name_t *name,
 		fwd = isc_mem_get(fwdtable->mctx, sizeof(dns_forwarder_t));
 		fwd->addr = *sa;
 		fwd->dscp = -1;
+		fwd->tlsname = NULL;
 		ISC_LINK_INIT(fwd, link);
 		ISC_LIST_APPEND(forwarders->fwdrs, fwd, link);
 	}
@@ -212,6 +228,11 @@ auto_detach(void *data, void *arg) {
 	while (!ISC_LIST_EMPTY(forwarders->fwdrs)) {
 		fwd = ISC_LIST_HEAD(forwarders->fwdrs);
 		ISC_LIST_UNLINK(forwarders->fwdrs, fwd, link);
+		if (fwd->tlsname != NULL) {
+			dns_name_free(fwd->tlsname, fwdtable->mctx);
+			isc_mem_put(fwdtable->mctx, fwd->tlsname,
+				    sizeof(dns_name_t));
+		}
 		isc_mem_put(fwdtable->mctx, fwd, sizeof(dns_forwarder_t));
 	}
 	isc_mem_put(fwdtable->mctx, forwarders, sizeof(dns_forwarders_t));
