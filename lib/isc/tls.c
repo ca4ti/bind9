@@ -1728,3 +1728,16 @@ isc_tlsctx_client_session_cache_getctx(
 	REQUIRE(VALID_TLSCTX_CLIENT_SESSION_CACHE(cache));
 	return (cache->ctx);
 }
+
+void
+isc_tlsctx_set_random_session_id_context(isc_tlsctx_t *ctx) {
+	uint8_t session_id_ctx[SSL_MAX_SID_CTX_LENGTH] = { 0 };
+
+	REQUIRE(ctx != NULL);
+
+	RUNTIME_CHECK(RAND_bytes(session_id_ctx, sizeof(session_id_ctx)) == 1);
+
+	RUNTIME_CHECK(SSL_CTX_set_session_id_context(ctx, session_id_ctx,
+						     sizeof(session_id_ctx)) ==
+		      1);
+}
