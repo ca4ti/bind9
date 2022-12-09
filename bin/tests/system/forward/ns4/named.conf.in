@@ -63,7 +63,7 @@ tls tls-expired {
 zone "example1." {
 	type forward;
 	forward first;
-	forwarders { 10.53.0.2 tls tls-insecure port @TLSPORT@; };
+	forwarders { 10.53.0.2 tls tls-insecure; };
 };
 
 zone "example3." {
