@@ -3461,9 +3461,7 @@ dns_adb_setcookie(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
 }
 
 size_t
-dns_adb_getcookie(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
-		  unsigned char *cookie, size_t len) {
-	REQUIRE(DNS_ADB_VALID(adb));
+dns_adb_getcookie(dns_adbaddrinfo_t *addr, unsigned char *cookie, size_t len) {
 	REQUIRE(DNS_ADBADDRINFO_VALID(addr));
 
 	dns_adbentry_t *entry = addr->entry;
@@ -3475,6 +3473,22 @@ dns_adb_getcookie(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
 		len = entry->cookielen;
 	} else {
 		len = 0;
+	}
+	UNLOCK(&entry->lock);
+
+	return (len);
+}
+
+size_t
+dns_adb_getcookiesize(dns_adbaddrinfo_t *addr) {
+	REQUIRE(DNS_ADBADDRINFO_VALID(addr));
+
+	dns_adbentry_t *entry = addr->entry;
+	size_t len = 0;
+
+	LOCK(&entry->lock);
+	if (entry->cookie != NULL) {
+		len = entry->cookielen;
 	}
 	UNLOCK(&entry->lock);
 

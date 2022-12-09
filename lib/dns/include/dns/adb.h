@@ -671,19 +671,29 @@ dns_adb_setcookie(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
  */
 
 size_t
-dns_adb_getcookie(dns_adb_t *adb, dns_adbaddrinfo_t *addr,
-		  unsigned char *cookie, size_t len);
+dns_adb_getcookie(dns_adbaddrinfo_t *addr, unsigned char *cookie, size_t len);
 /*
  * Retrieve the saved COOKIE value and store it in 'cookie' which has
  * size 'len'.
  *
  * Requires:
- *\li	'adb' is valid.
  *\li	'addr' is valid.
  *
  * Returns:
  *	The size of the cookie or zero if it doesn't fit in the buffer
  *	or it doesn't exist.
+ */
+
+size_t
+dns_adb_getcookiesize(dns_adbaddrinfo_t *addr);
+/*
+ * Retrieve the saved cookie's size.
+ *
+ * Requires:
+ *\li	'addr' is valid.
+ *
+ * Returns:
+ *	The size of the cookie or zero if it doesn't exist.
  */
 
 void
