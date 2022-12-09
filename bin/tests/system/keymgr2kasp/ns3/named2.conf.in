@@ -48,14 +48,14 @@ zone "csk.kasp" {
 	type primary;
 	file "csk.kasp.db";
 	allow-update { any; };
-	dnssec-policy "default";
+	dnssec-policy "default-dynamic";
 };
 
 zone "csk-nosep.kasp" {
 	type primary;
 	file "csk-nosep.kasp.db";
 	allow-update { any; };
-	dnssec-policy "default";
+	dnssec-policy "default-dynamic";
 };
 
 zone "rumoured.kasp" {

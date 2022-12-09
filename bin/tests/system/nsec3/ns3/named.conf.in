@@ -149,6 +149,7 @@ zone "nsec3-change.kasp" {
 zone "nsec3-dynamic-change.kasp" {
 	type primary;
 	file "nsec3-dynamic-change.kasp.db";
+	inline-signing no;
 	dnssec-policy "nsec3";
 	allow-update { any; };
 };
@@ -189,6 +190,7 @@ zone "nsec3-fails-to-load.kasp" {
 zone "nsec3-dynamic-to-inline.kasp" {
 	type primary;
 	file "nsec3-dynamic-to-inline.kasp.db";
+	inline-signing no;
 	dnssec-policy "nsec3";
 	allow-update { any; };
 };

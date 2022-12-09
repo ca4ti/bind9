@@ -308,6 +308,7 @@ cfg_kasp_fromconfig(const cfg_obj_t *config, dns_kasp_t *default_kasp,
 	const cfg_obj_t *koptions = NULL;
 	const cfg_obj_t *keys = NULL;
 	const cfg_obj_t *nsec3 = NULL;
+	const cfg_obj_t *inlinesigning = NULL;
 	const cfg_listelt_t *element = NULL;
 	const char *kaspname = NULL;
 	dns_kasp_t *kasp = NULL;
@@ -393,6 +394,14 @@ cfg_kasp_fromconfig(const cfg_obj_t *config, dns_kasp_t *default_kasp,
 	}
 
 	/* Configuration: Zone settings */
+	(void)confget(maps, "inline-signing", &inlinesigning);
+	if (inlinesigning != NULL && cfg_obj_isboolean(inlinesigning)) {
+		dns_kasp_setinlinesigning(kasp,
+					  cfg_obj_asboolean(inlinesigning));
+	} else {
+		dns_kasp_setinlinesigning(kasp, true);
+	}
+
 	maxttl = get_duration(maps, "max-zone-ttl", DNS_KASP_ZONE_MAXTTL);
 	dns_kasp_setzonemaxttl(kasp, maxttl);
 

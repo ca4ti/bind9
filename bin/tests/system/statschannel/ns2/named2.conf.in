@@ -37,6 +37,7 @@ controls {
 };
 
 dnssec-policy "manykeys" {
+	inline-signing no;
 	keys {
 		ksk lifetime unlimited algorithm 8;
 		zsk lifetime unlimited algorithm 8;

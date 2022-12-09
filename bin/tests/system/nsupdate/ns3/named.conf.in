@@ -26,6 +26,10 @@ options {
 	dnssec-validation yes;
 };
 
+dnssec-policy "default-dynamic" {
+	inline-signing no;
+};
+
 zone "example" {
 	type primary;
 	allow-update { any; };
@@ -75,6 +79,6 @@ zone "too-big.test" {
 zone "multisigner.test" {
 	type primary;
 	allow-update { any; };
-	dnssec-policy "default";
+	dnssec-policy "default-dynamic";
 	file "multisigner.test.db";
 };

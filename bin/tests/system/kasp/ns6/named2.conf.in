@@ -64,6 +64,7 @@ zone "step2.going-insecure.kasp" {
 zone "step1.going-insecure-dynamic.kasp" {
         type primary;
         file "step1.going-insecure-dynamic.kasp.db";
+	inline-signing no;
         dnssec-policy "insecure";
 	allow-update { any; };
 };
@@ -71,6 +72,7 @@ zone "step1.going-insecure-dynamic.kasp" {
 zone "step2.going-insecure-dynamic.kasp" {
         type primary;
         file "step2.going-insecure-dynamic.kasp.db";
+	inline-signing no;
         dnssec-policy "insecure";
 	allow-update { any; };
 };
