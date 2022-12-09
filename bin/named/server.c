@@ -6371,7 +6371,9 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 					      named_g_lctx, cur_tls,
 					      &fwd->tlsname);
 			if (result != ISC_R_SUCCESS) {
-				return (result);
+				isc_mem_put(view->mctx, fwd,
+				            sizeof(dns_forwarder_t));
+				goto cleanup;
 			}
 		}
 		fwd->addr = *cfg_obj_assockaddr(forwarder);
