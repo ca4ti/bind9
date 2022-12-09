@@ -50,6 +50,13 @@ Feature Changes
   which worked only very briefly on Linux 2.6.28 (and was causing performance
   problems and thus the change was reverted in the kernel). :gl:`#3676`
 
+- The option :any:`inline-signing` can now also be set inside
+  :any:`dnssec-policy`. The built-in policies ``default`` and ``insecure``
+  enable the use of :any:`inline-signing`. If you set :any:`inline-signing`
+  at the ``zone`` level, it overrides the value used set in
+  :any:`dnssec-policy`. :gl:`#3677`.
+
+
 Bug Fixes
 ~~~~~~~~~
 
