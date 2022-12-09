@@ -49,7 +49,6 @@ zone "." {
 zone "dspublished.checkds" {
 	type primary;
 	file "dspublished.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents { 10.53.0.2 port @PORT@; };
 };
@@ -61,7 +60,6 @@ zone "dspublished.checkds" {
 zone "reference.checkds" {
 	type primary;
 	file "reference.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents { "ns2"; };
 };
@@ -73,7 +71,6 @@ zone "reference.checkds" {
 zone "missing-dspublished.checkds" {
 	type primary;
 	file "missing-dspublished.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents {
 		10.53.0.5 port @PORT@; // missing
@@ -88,7 +85,6 @@ zone "missing-dspublished.checkds" {
 zone "bad-dspublished.checkds" {
 	type primary;
 	file "bad-dspublished.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents {
 		10.53.0.6 port @PORT@; // bad
@@ -102,7 +98,6 @@ zone "bad-dspublished.checkds" {
 zone "multiple-dspublished.checkds" {
 	type primary;
 	file "multiple-dspublished.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents {
 		10.53.0.2 port @PORT@;
@@ -118,7 +113,6 @@ zone "multiple-dspublished.checkds" {
 zone "incomplete-dspublished.checkds" {
 	type primary;
 	file "incomplete-dspublished.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents {
 		10.53.0.2 port @PORT@;
@@ -136,7 +130,6 @@ zone "incomplete-dspublished.checkds" {
 zone "bad2-dspublished.checkds" {
 	type primary;
 	file "bad2-dspublished.checkds.db";
-	inline-signing yes;
 	dnssec-policy "default";
 	parental-agents {
 		10.53.0.2 port @PORT@;
@@ -157,7 +150,6 @@ zone "bad2-dspublished.checkds" {
 zone "dswithdrawn.checkds" {
 	type primary;
 	file "dswithdrawn.checkds.db";
-	inline-signing yes;
 	dnssec-policy "insecure";
 	parental-agents { 10.53.0.5 port @PORT@; };
 };
@@ -165,7 +157,6 @@ zone "dswithdrawn.checkds" {
 zone "missing-dswithdrawn.checkds" {
 	type primary;
 	file "missing-dswithdrawn.checkds.db";
-	inline-signing yes;
 	dnssec-policy "insecure";
 	parental-agents {
 		10.53.0.2 port @PORT@; // still published
@@ -175,7 +166,6 @@ zone "missing-dswithdrawn.checkds" {
 zone "bad-dswithdrawn.checkds" {
 	type primary;
 	file "bad-dswithdrawn.checkds.db";
-	inline-signing yes;
 	dnssec-policy "insecure";
 	parental-agents {
 		10.53.0.6 port @PORT@; // bad
@@ -185,7 +175,6 @@ zone "bad-dswithdrawn.checkds" {
 zone "multiple-dswithdrawn.checkds" {
 	type primary;
 	file "multiple-dswithdrawn.checkds.db";
-	inline-signing yes;
 	dnssec-policy "insecure";
 	parental-agents {
 		10.53.0.5 port @PORT@;
@@ -196,7 +185,6 @@ zone "multiple-dswithdrawn.checkds" {
 zone "incomplete-dswithdrawn.checkds" {
 	type primary;
 	file "incomplete-dswithdrawn.checkds.db";
-	inline-signing yes;
 	dnssec-policy "insecure";
 	parental-agents {
 		10.53.0.2 port @PORT@; // still published
@@ -208,7 +196,6 @@ zone "incomplete-dswithdrawn.checkds" {
 zone "bad2-dswithdrawn.checkds" {
 	type primary;
 	file "bad2-dswithdrawn.checkds.db";
-	inline-signing yes;
 	dnssec-policy "insecure";
 	parental-agents {
 		10.53.0.5 port @PORT@;

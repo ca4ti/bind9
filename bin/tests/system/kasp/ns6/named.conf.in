@@ -50,7 +50,6 @@ zone "dynamic2inline.kasp" {
 zone "step1.going-insecure.kasp" {
 	type primary;
 	file "step1.going-insecure.kasp.db";
-	inline-signing yes;
 	dnssec-policy "unsigning";
 };
 
@@ -65,7 +64,6 @@ zone "step1.going-insecure-dynamic.kasp" {
 zone "step1.going-straight-to-none.kasp" {
 	type primary;
 	file "step1.going-straight-to-none.kasp.db";
-	inline-signing yes;
 	dnssec-policy "default";
 };
 
@@ -73,14 +71,12 @@ zone "step1.going-straight-to-none.kasp" {
 zone "step1.algorithm-roll.kasp" {
 	type primary;
 	file "step1.algorithm-roll.kasp.db";
-	inline-signing yes;
 	dnssec-policy "rsasha256";
 };
 
 zone "step1.csk-algorithm-roll.kasp" {
 	type primary;
 	file "step1.csk-algorithm-roll.kasp.db";
-	inline-signing yes;
 	dnssec-policy "csk-algoroll";
 };
 
@@ -93,6 +89,5 @@ dnssec-policy "modified" {
 zone example {
 	type primary;
 	file "example.db";
-	inline-signing yes;
 	dnssec-policy modified;
 };
