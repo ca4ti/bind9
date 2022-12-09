@@ -6372,7 +6372,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 					      &fwd->tlsname);
 			if (result != ISC_R_SUCCESS) {
 				isc_mem_put(view->mctx, fwd,
-				            sizeof(dns_forwarder_t));
+					    sizeof(dns_forwarder_t));
 				goto cleanup;
 			}
 		}
