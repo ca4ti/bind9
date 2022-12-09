@@ -876,9 +876,6 @@ if [ $ret -ne 0 ]; then
     status=1
 fi
 
-if false; then
-# disable this test until the TLS context cache is fixed
-
 n=$((n + 1))
 ret=0
 echo_i "check DoT (mutual-tls) with a valid client certificate ($n)"
@@ -893,8 +890,6 @@ grep -F "10.10.10.3" dig.out.test$n >/dev/null 2>&1 || ret=1
 if [ $ret -ne 0 ]; then
     echo_i "failed"
     status=1
-fi
-
 fi
 
 n=$((n + 1))
