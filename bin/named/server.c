@@ -6285,6 +6285,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 	dns_forwarder_t *fwd;
 	isc_result_t result;
 	in_port_t port;
+	in_port_t tls_port;
 	isc_dscp_t dscp = -1;
 	const char *tls = NULL;
 
@@ -6294,6 +6295,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 	 * Determine which port to send forwarded requests to.
 	 */
 	CHECKM(named_config_getport(config, "port", &port), "port");
+	CHECKM(named_config_getport(config, "tls-port", &tls_port), "tls-port");
 
 	if (forwarders != NULL) {
 		portobj = cfg_tuple_get(forwarders, "port");
@@ -6305,7 +6307,7 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 					    "port '%u' out of range", val);
 				return (ISC_R_RANGE);
 			}
-			port = (in_port_t)val;
+			port = tls_port = (in_port_t)val;
 		}
 	}
 
@@ -6355,10 +6357,6 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 		const cfg_obj_t *forwarder = cfg_listelt_value(element);
 		const char *cur_tls;
 		fwd = isc_mem_get(view->mctx, sizeof(dns_forwarder_t));
-		fwd->addr = *cfg_obj_assockaddr(forwarder);
-		if (isc_sockaddr_getport(&fwd->addr) == 0) {
-			isc_sockaddr_setport(&fwd->addr, port);
-		}
 		fwd->dscp = cfg_obj_getdscp(forwarder);
 		if (fwd->dscp == -1) {
 			fwd->dscp = dscp;
@@ -6375,6 +6373,11 @@ configure_forward(const cfg_obj_t *config, dns_view_t *view,
 			if (result != ISC_R_SUCCESS) {
 				return (result);
 			}
+		}
+		fwd->addr = *cfg_obj_assockaddr(forwarder);
+		if (isc_sockaddr_getport(&fwd->addr) == 0) {
+			isc_sockaddr_setport(&fwd->addr,
+					     cur_tls != NULL ? tls_port : port);
 		}
 		ISC_LINK_INIT(fwd, link);
 		ISC_LIST_APPEND(fwdlist, fwd, link);
